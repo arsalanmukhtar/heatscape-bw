@@ -1,0 +1,401 @@
+/*
+  Design tokens.
+
+  Sober glassmorphism with a restrained accent glow. Both themes are first class.
+  Nothing in a component writes a colour, everything resolves through these names.
+
+  The navbar has its own scoped palette and follows the theme. It is chrome, not
+  content, so it is solid where the panels are translucent surfaces over the map, and it
+  sits at the far end of the value scale in both themes: deeper than the background in
+  dark, lighter than it in light. That is what separates it from a panel now, rather
+  than it being dark in both themes as it was before.
+*/
+
+:root {
+  /* Layout geometry, matched to the approved workspace screen: a 48px navigation bar
+     level with the rail, a narrow 240px layer panel on the left, the 320px inspector on
+     the right, and a dock tall enough for its bar plus four table rows. */
+  --nav-h: 48px;
+  --rail-w: 48px;
+  --panel-left-w: 240px;
+  --panel-w: 320px;
+  --legend-w: 172px;
+  --legend-tab-w: 34px;
+  --dock-bar-h: 38px;
+  --dock-open-h: 188px;
+  --dock-cur: var(--dock-bar-h);
+
+  /* Square throughout. Surfaces sit flush against the viewport edges and the
+     controls inside them follow, so nothing carries a corner radius. */
+  --radius-panel: 0px;
+  --radius-control: 0px;
+  --radius-pill: 0px;
+
+  /* Width of a scrollbar that takes layout space. Group headers bleed by this much
+     so their wash reaches the panel edge rather than stopping short of the bar. */
+  --scrollbar-w: 2px;
+
+  /* The active indicator: a thick bar on the edge facing the button's placement,
+     shorter than the control so it reads as a marker rather than a border. */
+  --active-bar: 4px;
+  --active-bar-length: 44%;
+
+  /* Freshness chips sit in a column at the right edge of a layer row. They are read
+     as a set, so they share one width sized to the longest label rather than each
+     shrinking to its own text. Wide enough for OBSERVED and FORECAST in full. */
+  --chip-w: 72px;
+
+  /* Level chips read as a column in the distribution list and in the level column of
+     the attribute table, so they share a width there too. Wide enough for SCREENING,
+     the longest of the six labels, at the small size. */
+  --level-chip-w: 88px;
+
+  /* The vertical variant runs down the right edge of a layer row, edge to edge, so the
+     chips of a group stack into one unbroken column. The row carries no vertical
+     padding, which leaves the chip as the tallest item in it: these four values set the
+     row height between them. The longest labels are eight characters (OBSERVED,
+     FORECAST, OFFICIAL), so that run plus twice the padding is the height. Raising the
+     font size makes every layer row taller. The floor is 32px, below which the action
+     buttons become the tallest item and the chip starts to clip. */
+  --chip-vertical-w: 18px;
+  --chip-vertical-fs: 0.4375rem;
+  --chip-vertical-tracking: 0.04em;
+  --chip-vertical-pad: 3px;
+
+  /* Type. Urbanist everywhere, loaded from Google Fonts in index.html. Code and SQL
+     fall back to the platform monospace rather than a second webfont. The scale is
+     dense on purpose: this is a working tool, so body text sits at 13px and only
+     panel titles and figures step up. */
+  --font-sans: 'Urbanist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --fs-2xs: 0.6875rem;  /* 11px, section labels in caps */
+  --fs-xs: 0.75rem;     /* 12px, meta, table cells */
+  --fs-sm: 0.8125rem;   /* 13px, body */
+  --fs-md: 0.875rem;    /* 14px, emphasised body, inputs */
+  --fs-lg: 1rem;        /* 16px, panel titles */
+  --fs-xl: 1.25rem;     /* 20px, headings */
+  --fs-2xl: 1.5rem;     /* 24px, stat figures */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --tracking-caps: 0.06em;
+
+  /* Focus. A solid ring in the accent, never the translucent accent line, which is
+     too faint to meet the 3:1 non-text contrast a keyboard user needs. The offset
+     leaves a gap of surface between ring and control, so the ring still reads on a
+     filled accent button. */
+  --focus-ring-w: 2px;
+  --focus-ring-offset: 1px;
+
+  /* ------------------------------------------------------------------------------
+     Data colours. These are content, not chrome, so they live here and do not change
+     with the theme: a map exported in light must match the one seen in dark, and a
+     legend in a PDF report must match the screen. Every ramp steps lightness evenly
+     in OKLCH (about 0.07 per step, high to low), so the order survives colour vision
+     deficiency and greyscale printing. Nine steps per sequential ramp, five per
+     diverging arm around one neutral midpoint.
+     ------------------------------------------------------------------------------ */
+
+  /* Heat: surface and air temperature, heat exposure. Pale yellow to deep wine. This
+     is the one warm ramp and it belongs to temperature alone. The rust accent sits
+     inside its range, which is why the accent and the glow never appear on the map. */
+  --heat-1: #fcf1aa;
+  --heat-2: #fad16a;
+  --heat-3: #f9ad33;
+  --heat-4: #f28905;
+  --heat-5: #e5640e;
+  --heat-6: #d14226;
+  --heat-7: #b62432;
+  --heat-8: #931440;
+  --heat-9: #6b1346;
+
+  /* Cool: cold-air production and flow, cooling effect, cool places. */
+  --cool-1: #d0f7f9;
+  --cool-2: #a8e2e9;
+  --cool-3: #7ecddb;
+  --cool-4: #57b7cd;
+  --cool-5: #349fbe;
+  --cool-6: #1886af;
+  --cool-7: #086d9c;
+  --cool-8: #115584;
+  --cool-9: #123e6a;
+
+  /* Green: vegetation (NDVI), tree canopy, green-space access. */
+  --green-1: #e5f6cb;
+  --green-2: #c3e3a4;
+  --green-3: #9dd080;
+  --green-4: #75bc65;
+  --green-5: #4ca853;
+  --green-6: #279243;
+  --green-7: #057a37;
+  --green-8: #00622f;
+  --green-9: #024a28;
+
+  /* Sealing: share of sealed surface. A cool slate that reads as asphalt and stays
+     clear of the heat hues, so a sealing map is never read as a temperature map. */
+  --seal-1: #eceef5;
+  --seal-2: #d3d6e0;
+  --seal-3: #babecc;
+  --seal-4: #a2a6b7;
+  --seal-5: #8b90a4;
+  --seal-6: #747990;
+  --seal-7: #5e647d;
+  --seal-8: #494f6a;
+  --seal-9: #353b57;
+
+  /* Population and vulnerability: residents, share aged 65+, vulnerability index. */
+  --vuln-1: #fae7ff;
+  --vuln-2: #eac8f5;
+  --vuln-3: #d5ade6;
+  --vuln-4: #c092d8;
+  --vuln-5: #ab78ca;
+  --vuln-6: #9460b8;
+  --vuln-7: #7c4ba2;
+  --vuln-8: #633988;
+  --vuln-9: #4b286f;
+
+  /* Diverging midpoint. A grey, never a hue, so "no change" reads as nothing. */
+  --div-mid: #e8e8e8;
+
+  /* Temperature change: cooler (blue) to warmer (red). Index 1 is next to the
+     midpoint, 5 is the extreme. Scenario effects and before/after comparisons. */
+  --dt-cool-1: #c9daeb;
+  --dt-cool-2: #91b7de;
+  --dt-cool-3: #5e93ca;
+  --dt-cool-4: #2d70b0;
+  --dt-cool-5: #014f8a;
+  --dt-warm-1: #ebd1cd;
+  --dt-warm-2: #dca29a;
+  --dt-warm-3: #c97469;
+  --dt-warm-4: #b44238;
+  --dt-warm-5: #901211;
+
+  /* Sealing change: de-sealed (green) to newly sealed (purple). The classic
+     purple-green pairing, safe under red-green deficiency, and free of warm hues. */
+  --ds-unseal-1: #caddcd;
+  --ds-unseal-2: #93c09b;
+  --ds-unseal-3: #60a06e;
+  --ds-unseal-4: #2e8046;
+  --ds-unseal-5: #035d28;
+  --ds-seal-1: #dfd2e5;
+  --ds-seal-2: #c4a6d2;
+  --ds-seal-3: #a67cb9;
+  --ds-seal-4: #87569d;
+  --ds-seal-5: #67327d;
+
+  /* Bivariate 3x3: heat (rows, low to high) by vulnerability (columns, low to high).
+     After Joshua Stevens' red-blue scheme. --biv-33 is hot and vulnerable, the
+     cell that matters most for a heat action plan. */
+  --biv-11: #e8e8e8;
+  --biv-12: #b0d5df;
+  --biv-13: #64acbe;
+  --biv-21: #e4acac;
+  --biv-22: #ad9ea5;
+  --biv-23: #627f8c;
+  --biv-31: #c85a5a;
+  --biv-32: #985356;
+  --biv-33: #574249;
+
+  /* Uncertainty. Low-confidence areas are hatched at 45 degrees with alternating dark
+     and light lines, so the hatch shows over every step of every ramp, from pale yellow
+     to deep wine. Gap-filled areas use a sparse dot pattern instead, so the two can be
+     told apart. The suppress target is the grey that the value-suppressing palette
+     fades towards as uncertainty grows (rendered server side, in TiTiler). */
+  --unc-hatch-dark: rgba(10, 13, 17, 0.55);
+  --unc-hatch-light: rgba(255, 255, 255, 0.6);
+  --unc-hatch-gap: 6px;
+  --unc-dot: rgba(10, 13, 17, 0.5);
+  --unc-suppress: #9aa1ab;
+  --unc-nodata: #b8bec6;
+}
+
+/* Dark, the default operations theme. */
+[data-theme='dark'] {
+  --bg: #0b0f14;
+  --bg-deep: #070a0e;
+  --map-ground: #0d141b;
+
+  --surface: rgba(18, 24, 32, 0.94);
+  --surface-strong: rgba(14, 19, 26, 0.97);
+  --surface-raised: rgba(30, 38, 48, 0.72);
+  --field: rgba(255, 255, 255, 0.035);
+  --hover: rgba(232, 112, 31, 0.08);
+
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-soft: rgba(255, 255, 255, 0.05);
+
+  --text: #e6ebf2;
+  --text-muted: #93a1b3;
+  --text-faint: #6b7889;
+
+  /* Rust. #bb4d00 is the base and is used as is in light; on a near black ground it
+     reads as brown, so dark lifts the same hue to a brighter tint. Both are more
+     saturated than the level scale on purpose, so an active control does not get
+     mistaken for a moderate or high reading, which are the two nearest hues. */
+  --accent: #e8701f;
+  --accent-soft: rgba(232, 112, 31, 0.13);
+  --accent-line: rgba(232, 112, 31, 0.32);
+  --accent-2: #6d8fd6;
+  --on-accent: #1a0b02;
+
+  /* Navbar chrome. Deeper than every content surface so the bar reads as its own
+     layer, including where the legend card meets it at the top right. */
+  --nav-bg: #05080c;
+  --nav-text: #e9eef5;
+  --nav-muted: #8695a8;
+  --nav-border: rgba(255, 255, 255, 0.10);
+  --nav-border-strong: rgba(255, 255, 255, 0.20);
+  --nav-field: rgba(255, 255, 255, 0.05);
+  --nav-hover: rgba(255, 255, 255, 0.07);
+
+  /* Group headers. The accent over a light wash so a heading is never mistaken for one
+     of the rows beneath it. The accent doubles as the active colour, which is allowed
+     here because a heading is a full width band with a caps label and reads as
+     structure, not as a control that happens to be on. */
+  --group-bg: rgba(255, 255, 255, 0.045);
+  --group-text: var(--accent);
+
+  /* Layer visibility. On matches the accent, off is muted rather than the literal
+     colour of the old unchecked box, which had too little contrast to perceive. */
+  --layer-on: var(--accent);
+  --layer-off: #6b7889;
+
+  /* The place search pin. The teal the portal used as its accent before the change to
+     rust, kept because it is the one hue that belongs to nothing on the level scale, so
+     a search result cannot be read as a hazard reading. */
+  --marker-place: #4db6a4;
+
+  --level-unknown: #7c8899;
+  --level-normal: #4a9d7f;
+  --level-moderate: #c9974a;
+  --level-high: #cc7a55;
+  --level-severe: #c1566b;
+  --level-screening: #6d8fd6;
+
+  --shadow-glass: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 18px 38px -24px rgba(0, 0, 0, 0.85);
+  --glow: 0 0 0 1px rgba(232, 112, 31, 0.28), 0 0 22px rgba(232, 112, 31, 0.16);
+  --glow-soft: 0 0 18px rgba(232, 112, 31, 0.10);
+
+  --map-line: rgba(150, 175, 200, 0.22);
+
+  /* Status, for jobs, forms, pipelines and alerts. Kept apart from the level scale on
+     purpose: a failed job must not look like a severe heat reading. Every value clears
+     4.5:1 as text on --surface, and every use pairs it with an icon and a word, because
+     danger still sits nearer the rust accent than hue alone can carry. Info borrows the
+     second accent. */
+  --success: #5ac576;
+  --warning: #efcc36;
+  --danger: #ff7172;
+  --info: var(--accent-2);
+  --success-soft: rgba(90, 197, 118, 0.14);
+  --warning-soft: rgba(239, 204, 54, 0.14);
+  --danger-soft: rgba(255, 113, 114, 0.14);
+  --info-soft: rgba(109, 143, 214, 0.14);
+
+  --focus-ring: var(--accent);
+
+  /* Chart series. Eight hues in a fixed order, assigned in sequence and never cycled,
+     validated for colour vision deficiency on this surface. For scatter plots and
+     small multiples use the first three only. Text never wears a series colour. */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  --chart-grid: var(--border-soft);
+  --chart-axis: var(--border-strong);
+}
+
+/* Light, the same structure with the roles swapped rather than a washed out copy. */
+[data-theme='light'] {
+  --bg: #eef1f5;
+  --bg-deep: #e3e8ee;
+  --map-ground: #dfe5ec;
+
+  --surface: rgba(255, 255, 255, 0.95);
+  --surface-strong: rgba(255, 255, 255, 0.98);
+  --surface-raised: rgba(244, 247, 250, 0.9);
+  --field: rgba(16, 24, 40, 0.03);
+  --hover: rgba(187, 77, 0, 0.07);
+
+  --border: rgba(16, 24, 40, 0.11);
+  --border-strong: rgba(16, 24, 40, 0.2);
+  --border-soft: rgba(16, 24, 40, 0.06);
+
+  --text: #16202c;
+  --text-muted: #5b6b7f;
+  --text-faint: #8494a6;
+
+  --accent: #bb4d00;
+  --accent-soft: rgba(187, 77, 0, 0.11);
+  --accent-line: rgba(187, 77, 0, 0.3);
+  --accent-2: #41639f;
+  --on-accent: #ffffff;
+
+  /* Pure white, one step lighter than the workspace behind it, mirroring how the dark
+     bar sits one step deeper than its own background. The bar is told apart from a
+     panel by being opaque and by its border, not by being the only dark thing on
+     screen. */
+  --nav-bg: #ffffff;
+  --nav-text: #16202c;
+  --nav-muted: #5b6b7f;
+  --nav-border: rgba(16, 24, 40, 0.12);
+  --nav-border-strong: rgba(16, 24, 40, 0.24);
+  --nav-field: rgba(16, 24, 40, 0.04);
+  --nav-hover: rgba(16, 24, 40, 0.06);
+
+  --group-bg: rgba(16, 24, 40, 0.04);
+  --group-text: var(--accent);
+
+  --layer-on: var(--accent);
+  --layer-off: #8494a6;
+
+  --marker-place: #2f8d7d;
+
+  --level-unknown: #7c8899;
+  --level-normal: #3f8a6f;
+  --level-moderate: #b5823a;
+  --level-high: #b96745;
+  --level-severe: #a9455a;
+  --level-screening: #41639f;
+
+  --shadow-glass: 0 0 0 1px rgba(16, 24, 40, 0.05), 0 16px 34px -26px rgba(16, 24, 40, 0.45);
+  --glow: 0 0 0 1px rgba(187, 77, 0, 0.24), 0 0 18px rgba(187, 77, 0, 0.12);
+  --glow-soft: 0 0 16px rgba(187, 77, 0, 0.08);
+
+  --map-line: rgba(60, 80, 105, 0.24);
+
+  /* Status, the same roles stepped darker for the light ground. Danger is a crimson and
+     warning an olive amber, pulled away from the rust accent and the moderate level. */
+  --success: #1d7d3e;
+  --warning: #766202;
+  --danger: #a10128;
+  --info: var(--accent-2);
+  --success-soft: rgba(29, 125, 62, 0.10);
+  --warning-soft: rgba(118, 98, 2, 0.10);
+  --danger-soft: rgba(161, 1, 40, 0.09);
+  --info-soft: rgba(65, 99, 159, 0.10);
+
+  --focus-ring: var(--accent);
+
+  /* Chart series, the same eight hues stepped for light. Aqua, yellow and magenta fall
+     under 3:1 on white, so any chart that uses them shows direct labels or offers
+     the table view. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  --chart-grid: var(--border-soft);
+  --chart-axis: var(--border-strong);
+}

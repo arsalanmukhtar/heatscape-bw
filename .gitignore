@@ -1,0 +1,23 @@
+# Local-only material (proposal, prototypes, prompt sources)
+misc/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and builds
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+
+# Claude personal overrides
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

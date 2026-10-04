@@ -1,0 +1,201 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Expose the design tokens to Tailwind so components use classes such as bg-surface,
+   text-muted or border-border instead of raw colours. Radius utilities are removed. */
+@theme inline {
+  --radius-*: initial;
+
+  --text-2xs: var(--fs-2xs);
+  --text-2xs--line-height: 1rem;
+  --text-xs: var(--fs-xs);
+  --text-sm: var(--fs-sm);
+  --text-md: var(--fs-md);
+  --text-md--line-height: 1.25rem;
+  --text-lg: var(--fs-lg);
+  --text-xl: var(--fs-xl);
+  --text-2xl: var(--fs-2xl);
+
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-map-ground: var(--map-ground);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-raised: var(--surface-raised);
+  --color-field: var(--field);
+  --color-hover: var(--hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-soft: var(--border-soft);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-2: var(--accent-2);
+  --color-on-accent: var(--on-accent);
+  --color-nav: var(--nav-bg);
+  --color-nav-text: var(--nav-text);
+  --color-nav-muted: var(--nav-muted);
+  --color-nav-border: var(--nav-border);
+  --color-nav-border-strong: var(--nav-border-strong);
+  --color-nav-field: var(--nav-field);
+  --color-nav-hover: var(--nav-hover);
+  --color-group: var(--group-bg);
+  --color-layer-on: var(--layer-on);
+  --color-layer-off: var(--layer-off);
+  --color-level-unknown: var(--level-unknown);
+  --color-level-normal: var(--level-normal);
+  --color-level-moderate: var(--level-moderate);
+  --color-level-high: var(--level-high);
+  --color-level-severe: var(--level-severe);
+  --color-level-screening: var(--level-screening);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+}
+
+@layer base {
+  /* Square throughout, including third-party UI such as the Mapbox controls. */
+  *,
+  *::before,
+  *::after {
+    border-radius: 0 !important;
+    border-color: var(--border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: var(--focus-ring-w) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+
+  /* Thin scrollbars that widen to a grabbable thumb on hover. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    border-width: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
+  }
+}
+
+/* Section labels in capitals. */
+@utility label-caps {
+  font-size: var(--fs-2xs);
+  line-height: 1rem;
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Panel and dock open/close animation; switched off while a resize handle is dragged. */
+@utility layout-transition {
+  transition-property: width, height;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+}
+
+/* Square range slider: accent fill up to the value, square thumb. */
+.hs-range {
+  --val: 50%;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+.hs-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(to right, var(--accent) var(--val), var(--border-strong) var(--val));
+}
+.hs-range::-moz-range-track {
+  height: 4px;
+  background: var(--border-strong);
+}
+.hs-range::-moz-range-progress {
+  height: 4px;
+  background: var(--accent);
+}
+.hs-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  background: var(--accent);
+  border: 2px solid var(--surface-strong);
+}
+.hs-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 2px solid var(--surface-strong);
+}
+
+/* Map placeholder grid when no Mapbox token is configured. */
+.map-placeholder {
+  background-color: var(--map-ground);
+  background-image:
+    linear-gradient(var(--map-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--map-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Mapbox attribution follows the theme. */
+.mapboxgl-ctrl-attrib {
+  font-family: var(--font-sans);
+}
