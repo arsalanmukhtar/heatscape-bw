@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { MapProvider } from 'react-map-gl/mapbox';
 import { LuPanelRightOpen } from 'react-icons/lu';
 import { BottomDock } from './components/BottomDock';
+import { CopilotPanel } from './components/CopilotPanel';
 import { InspectorPanel } from './components/InspectorPanel';
 import { LayersPanel } from './components/LayersPanel';
 import { LeftRail } from './components/LeftRail';
@@ -20,10 +21,17 @@ const SECTIONS = {
   settings: SettingsPanel,
 };
 
+// Right panel views: content, title and default width token.
+const VIEWS = {
+  inspector: { Panel: InspectorPanel, title: t.inspector.title, expand: t.inspector.expand, width: 'var(--panel-w)' },
+  copilot: { Panel: CopilotPanel, title: t.copilot.title, expand: t.copilot.expand, width: 'var(--panel-copilot-w)' },
+};
+
 export default function App() {
   const layout = useLayout();
   const narrow = useMediaQuery('(max-width: 1023px)');
   const Section = SECTIONS[layout.leftSection] ?? LayersPanel;
+  const view = VIEWS[layout.rightView] ?? VIEWS.inspector;
 
   // "[" left panel, "]" inspector, "`" attribute table, Esc closes a floating panel.
   useEffect(() => {
@@ -69,24 +77,24 @@ export default function App() {
             <button
               type="button"
               onClick={layout.toggleRight}
-              aria-label={t.inspector.expand}
-              title={t.inspector.expand}
+              aria-label={view.expand}
+              title={view.expand}
               className="flex w-8 shrink-0 flex-col items-center gap-3 border-l border-border bg-surface pt-3 text-muted hover:bg-hover hover:text-text"
             >
               <LuPanelRightOpen size={15} />
-              <span className="label-caps [writing-mode:vertical-rl]">{t.inspector.title}</span>
+              <span className="label-caps [writing-mode:vertical-rl]">{view.title}</span>
             </button>
           )}
           <SidePanel
             side="right"
             open={layout.rightOpen}
             width={layout.rightW}
-            defaultWidth="var(--panel-w)"
+            defaultWidth={view.width}
             onResize={layout.setRightW}
             overlay={narrow}
-            label={t.inspector.title}
+            label={view.title}
           >
-            <InspectorPanel />
+            <view.Panel />
           </SidePanel>
 
           {narrow && (layout.leftOpen || layout.rightOpen) && (

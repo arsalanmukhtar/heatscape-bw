@@ -1,11 +1,17 @@
-import { LuCircleHelp, LuFileText, LuFilter, LuLayers, LuSettings } from 'react-icons/lu';
+import { LuCircleHelp, LuFileText, LuFilter, LuInfo, LuLayers, LuMessageSquareText, LuSettings } from 'react-icons/lu';
 import { t } from '../i18n';
 import { useLayout } from '../state/layout';
 
 export function LeftRail() {
-  const { leftOpen, leftSection, openSection } = useLayout();
+  const { leftOpen, leftSection, openSection, rightOpen, rightView, openRightView } = useLayout();
   const item = (id, label, icon) => (
     <RailButton key={id} label={label} active={leftOpen && leftSection === id} onClick={() => openSection(id)}>
+      {icon}
+    </RailButton>
+  );
+  // Right panel views (inspector, copilot) share the rail with the left sections.
+  const view = (id, label, icon) => (
+    <RailButton key={id} label={label} active={rightOpen && rightView === id} onClick={() => openRightView(id)}>
       {icon}
     </RailButton>
   );
@@ -16,6 +22,9 @@ export function LeftRail() {
         {item('layers', t.rail.layers, <LuLayers size={16} />)}
         {item('filters', t.rail.filters, <LuFilter size={16} />)}
         {item('reports', t.rail.reports, <LuFileText size={16} />)}
+        <span className="my-2 h-px w-6 bg-border" aria-hidden />
+        {view('inspector', t.rail.inspector, <LuInfo size={16} />)}
+        {view('copilot', t.rail.copilot, <LuMessageSquareText size={16} />)}
         <span className="my-2 h-px w-6 bg-border" aria-hidden />
         {item('settings', t.rail.settings, <LuSettings size={16} />)}
       </div>

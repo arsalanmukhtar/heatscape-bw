@@ -54,8 +54,9 @@ gateway/     nginx.conf
 | Item | State |
 |---|---|
 | GIS workspace screen (layers, map, attribute table, inspector) | Done, MOCK data |
+| Copilot panel (plan, tool steps, result, composer) | UI done, MOCK conversation; copilot API planned |
 | Backend health + database extensions check | Done |
-| Auth, workers, tiles, copilot | Planned (`docs/architecture.md`) |
+| Auth, workers, tiles, copilot API | Planned (`docs/architecture.md`) |
 
 ## Docs
 

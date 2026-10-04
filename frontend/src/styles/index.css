@@ -165,6 +165,19 @@
   transition-timing-function: ease-out;
 }
 
+/* Indeterminate progress: a short bar sweeping along a thin line (no spinners). */
+@keyframes hs-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+@utility progress-sweep {
+  animation: hs-progress 1.2s ease-in-out infinite;
+}
+
 /* Square range slider: accent fill up to the value, square thumb. */
 .hs-range {
   --val: 50%;

@@ -178,3 +178,30 @@ export const SEALING_POINTS = (() => {
   }
   return { type: 'FeatureCollection', features };
 })();
+
+export const USER = { initials: 'MA' };
+
+/*
+  MOCK copilot conversation: one question, the agent's plan, its tool calls and the
+  answer. Answer parts: plain strings, { b } bold, { em } emphasised probability.
+  Confidence: High | Medium | Low.
+*/
+export const COPILOT = {
+  sceneDate: '19 Jul 2022',
+  question: 'Which districts have more than 20% of residents aged 65+ living in blocks above 40 °C?',
+  plan: ['Select blocks with P(LST > 40 °C) ≥ 0.66', 'Join Zensus 2022 100 m grid (age 65+)', 'Aggregate by district', 'Rank by exposure percentage'],
+  estimate: '~20 s · 3.2k blocks',
+  tools: [
+    { name: 'spatial_sql', detail: 'Filter thermal anomalies > 40 °C' },
+    { name: 'zonal_stats', detail: 'Overlaying population grid' },
+    { name: 'aggregate', detail: 'Summing exposure per district' },
+  ],
+  answer: [{ b: 'Neckarstadt-West' }, ' and ', { b: 'Innenstadt' }, ' are very likely (', { em: '≥ 90%' }, ') above the threshold; ', { b: 'Jungbusch' }, ' is likely (66–90%).'],
+  rows: [
+    { district: 'Neckarstadt-West', share65: 24.2, confidence: 'High' },
+    { district: 'Innenstadt', share65: 21.8, confidence: 'High' },
+    { district: 'Jungbusch', share65: 20.4, confidence: 'Medium' },
+  ],
+  sources: 'Zensus 2022 · DWD · Model v2.4',
+  suggestions: ['Hottest blocks near schools', 'Compare 2018 vs 2022 sealing'],
+};

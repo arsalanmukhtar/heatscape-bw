@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LuBell, LuCalendar, LuChartLine, LuChevronDown, LuFileText, LuFlame, LuMap, LuMoon, LuSun } from 'react-icons/lu';
-import { REGION, SEASON } from '../data/mock';
+import { REGION, SEASON, USER } from '../data/mock';
 import { t } from '../i18n';
 import { useTheme } from '../state/theme';
 
@@ -89,7 +89,7 @@ export function TopNav() {
           aria-label={t.nav.account}
           className="ml-1 grid size-[30px] place-items-center border border-nav-border-strong bg-surface-raised text-2xs font-semibold text-nav-text"
         >
-          MA
+          {USER.initials}
         </button>
       </div>
     </header>

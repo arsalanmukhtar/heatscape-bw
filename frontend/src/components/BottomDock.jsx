@@ -3,6 +3,7 @@ import { LuArrowDown, LuArrowUp, LuChevronDown, LuChevronUp, LuShare } from 'rea
 import { BLOCKS } from '../data/mock';
 import { t } from '../i18n';
 import { DOCK_MIN, useLayout } from '../state/layout';
+import { downloadCsv } from '../lib/csv';
 import { useWorkspace } from '../state/workspace';
 import { ResizeHandle } from './ResizeHandle';
 
@@ -30,12 +31,6 @@ const COLUMNS = [
 
 const sortValue = (b, key) => (key === 'risk' ? RISK_ORDER[b.risk] : b[key]);
 
-function toCsv(rows) {
-  const header = COLUMNS.map((c) => c.label).join(',');
-  const lines = rows.map((b) => [b.id, `"${b.district}"`, b.avgTemp, b.peakTemp, b.sealing, b.greenCover, b.popDensity, b.risk].join(','));
-  return [header, ...lines].join('\n');
-}
-
 export function BottomDock() {
   const ref = useRef(null);
   const { dockOpen, dockH, setDockH, toggleDock, dragging } = useLayout();
@@ -54,12 +49,12 @@ export function BottomDock() {
   // Click cycles: descending → ascending → unsorted.
   const sortBy = (key) => setSort(sort?.key === key ? (sort.dir === 'desc' ? { key, dir: 'asc' } : null) : { key, dir: 'desc' });
 
-  const exportCsv = () => {
-    const url = URL.createObjectURL(new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' }));
-    const a = Object.assign(document.createElement('a'), { href: url, download: 'heatscape-blocks.csv' });
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportCsv = () =>
+    downloadCsv(
+      'heatscape-blocks.csv',
+      COLUMNS.map((c) => c.label),
+      rows.map((b) => [b.id, b.district, b.avgTemp, b.peakTemp, b.sealing, b.greenCover, b.popDensity, b.risk]),
+    );
 
   const height = dockOpen ? (dockH != null ? `${dockH}px` : 'var(--dock-open-h)') : 'var(--dock-bar-h)';
 

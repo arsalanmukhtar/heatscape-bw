@@ -13,6 +13,7 @@ export const useLayout = create()(
       leftOpen: true,
       leftSection: 'layers', // layers | filters | reports | settings
       rightOpen: true,
+      rightView: 'inspector', // inspector | copilot
       dockOpen: true,
       leftW: null,
       rightW: null,
@@ -26,6 +27,12 @@ export const useLayout = create()(
         else set({ leftOpen: true, leftSection: section });
       },
       toggleRight: () => set({ rightOpen: !get().rightOpen }),
+      // Same rule for the right panel views opened from the rail.
+      openRightView: (view) => {
+        const { rightOpen, rightView } = get();
+        if (rightOpen && rightView === view) set({ rightOpen: false });
+        else set({ rightOpen: true, rightView: view });
+      },
       toggleDock: () => set({ dockOpen: !get().dockOpen }),
       setLeftW: (leftW) => set({ leftW }),
       setRightW: (rightW) => set({ rightW }),
@@ -35,10 +42,11 @@ export const useLayout = create()(
     {
       name: 'hs-layout',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ leftOpen, leftSection, rightOpen, dockOpen, leftW, rightW, dockH }) => ({
+      partialize: ({ leftOpen, leftSection, rightOpen, rightView, dockOpen, leftW, rightW, dockH }) => ({
         leftOpen,
         leftSection,
         rightOpen,
+        rightView,
         dockOpen,
         leftW,
         rightW,

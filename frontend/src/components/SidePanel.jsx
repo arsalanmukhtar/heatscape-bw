@@ -44,10 +44,11 @@ export function SidePanel({ side, open, width, defaultWidth, onResize, overlay, 
   );
 }
 
-export function PanelHeader({ title, actions }) {
+export function PanelHeader({ title, meta, actions }) {
   return (
     <div className="flex h-11 shrink-0 items-center border-b border-border px-4">
       <h2 className="text-xs font-medium uppercase tracking-[var(--tracking-caps)] text-muted">{title}</h2>
+      {meta && <div className="ml-2.5 min-w-0">{meta}</div>}
       {actions && <div className="ml-auto flex items-center gap-1">{actions}</div>}
     </div>
   );
