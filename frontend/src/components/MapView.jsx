@@ -6,8 +6,9 @@ import { t } from '../i18n';
 import { cssVar, distanceKm } from '../lib/css';
 import { useTheme } from '../state/theme';
 import { useWorkspace } from '../state/workspace';
+import { Geocoder } from './Geocoder';
+import { MapAttribution } from './MapAttribution';
 import { MapControls } from './MapControls';
-import { MapLegend } from './MapLegend';
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const STYLES = { dark: 'mapbox://styles/mapbox/dark-v11', light: 'mapbox://styles/mapbox/light-v11' };
@@ -44,8 +45,9 @@ export function MapView() {
   return (
     <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden bg-map-ground">
       {TOKEN ? <LiveMap /> : <MapPlaceholder />}
+      <Geocoder disabled={!TOKEN} />
       <MapControls disabled={!TOKEN} />
-      <MapLegend />
+      {TOKEN && <MapAttribution />}
     </div>
   );
 }
@@ -112,6 +114,7 @@ function LiveMap() {
       mapboxAccessToken={TOKEN}
       initialViewState={{ longitude: REGION.center[0], latitude: REGION.center[1], zoom: 12.2 }}
       mapStyle={STYLES[resolved]}
+      attributionControl={false}
       style={{ width: '100%', height: '100%' }}
       cursor={tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}
       onClick={(e) => {

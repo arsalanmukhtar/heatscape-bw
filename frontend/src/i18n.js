@@ -58,6 +58,12 @@ const en = {
     placeholder: 'Map preview',
     placeholderHint: 'Set VITE_MAPBOX_TOKEN in the root .env to load the basemap.',
     clearMeasure: 'Clear',
+    attribution: 'Map attribution',
+    improveMap: 'Improve this map',
+    search: 'Search places',
+    searchPlaceholder: 'Search address or place',
+    searchEmpty: 'No results',
+    searchClear: 'Clear search',
   },
   table: {
     title: 'Attribute Table',

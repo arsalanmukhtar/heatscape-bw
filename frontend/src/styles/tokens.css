@@ -33,12 +33,7 @@
 
   /* Width of a scrollbar that takes layout space. Group headers bleed by this much
      so their wash reaches the panel edge rather than stopping short of the bar. */
-  --scrollbar-w: 2px;
-
-  /* The active indicator: a thick bar on the edge facing the button's placement,
-     shorter than the control so it reads as a marker rather than a border. */
-  --active-bar: 4px;
-  --active-bar-length: 44%;
+  --scrollbar-w: 4px;
 
   /* Freshness chips sit in a column at the right edge of a layer row. They are read
      as a set, so they share one width sized to the longest label rather than each
@@ -230,6 +225,14 @@
   --text-muted: #93a1b3;
   --text-faint: #6b7889;
 
+  /* Active rail button: subtle rust wash (above the hover tint), icon in full-strength text colour. */
+  --rail-active-bg: var(--accent-soft);
+  --rail-active-text: var(--text);
+
+  /* Scrollbar thumb: faint at rest, a step clearer on hover. */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.22);
+
   /* Rust. #bb4d00 is the base and is used as is in light; on a near black ground it
      reads as brown, so dark lifts the same hue to a brighter tint. Both are more
      saturated than the level scale on purpose, so an active control does not get
@@ -331,6 +334,14 @@
   --text: #16202c;
   --text-muted: #5b6b7f;
   --text-faint: #8494a6;
+
+  /* Active rail button: subtle rust wash (above the hover tint), icon in full-strength text colour. */
+  --rail-active-bg: var(--accent-soft);
+  --rail-active-text: var(--text);
+
+  /* Scrollbar thumb: faint at rest, a step clearer on hover. */
+  --scrollbar-thumb: rgba(16, 24, 40, 0.12);
+  --scrollbar-thumb-hover: rgba(16, 24, 40, 0.26);
 
   --accent: #bb4d00;
   --accent-soft: rgba(187, 77, 0, 0.11);

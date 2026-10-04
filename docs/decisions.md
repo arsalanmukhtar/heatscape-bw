@@ -14,8 +14,11 @@ Append-only. One line each: decision — reason.
 10. Uncertainty is stored and shown with every modelled value — core claim of the proposal.
 11. Claude does not run tests, builds or servers; it hands over a test list — the user tests.
 12. First screen region is Mannheim (approved screen); Stuttgart remains the primary study region in the proposal.
+13. Frontend dev in Docker uses `docker-compose.dev.yml` (Vite dev server, bind mount, polling) — HMR without rebuilds; default compose stays the static nginx build.
 
 ## Open
 
 - Map selection outline: accent (as in approved screen) or `--accent-2`.
 - Mock district "Waldfriedhof" is not a Mannheim district (Waldhof is).
+- Mapbox wordmark hidden on request; Mapbox terms require it on public deployments — restore before going public.
+- Map legend removed from the map; to be attached per layer inside the Layers panel (`MapLegend.jsx` kept for that).

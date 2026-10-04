@@ -27,11 +27,15 @@ docker compose up -d --build
 | `backend/` | Domain API | Python 3.12, FastAPI, asyncpg | internal 8000 |
 | `database/` | Spatial database | PostgreSQL 17 (bookworm), PostGIS 3, h3-pg | 127.0.0.1:15432 → 5432 |
 
-## Local frontend dev
+## Frontend dev (HMR)
 
-```powershell
-cd frontend; npm install; npm run dev    # http://localhost:5180, reads the root .env
-```
+| Mode | Command | URL |
+|---|---|---|
+| Docker (dev server + HMR behind gateway) | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend gateway` | http://localhost:8180 |
+| Back to static build | `docker compose up -d --build frontend` | http://localhost:8180 |
+| Host only | `cd frontend; npm install; npm run dev` (reads root `.env`) | http://localhost:5180 |
+
+- Docker dev mode: `npm install` changes need the `--build` command again.
 
 ## Layout
 

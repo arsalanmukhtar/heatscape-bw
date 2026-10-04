@@ -36,17 +36,10 @@ function RailButton({ label, active, onClick, children }) {
       title={label}
       aria-pressed={active}
       onClick={onClick}
-      className={`relative grid size-9 place-items-center transition-colors ${
-        active ? 'bg-surface-raised text-text' : 'text-muted hover:bg-hover hover:text-text'
+      className={`grid size-9 place-items-center border transition-colors ${
+        active ? 'border-accent-line bg-rail-active text-rail-active-text' : 'border-transparent text-muted hover:bg-hover hover:text-text'
       }`}
     >
-      {active && (
-        <span
-          aria-hidden
-          className="absolute -right-1.5 top-1/2 -translate-y-1/2 bg-accent"
-          style={{ width: 'var(--active-bar)', height: 'var(--active-bar-length)' }}
-        />
-      )}
       {children}
     </button>
   );

@@ -8,6 +8,8 @@ Source of truth: [`frontend/src/styles/tokens.css`](../frontend/src/styles/token
 - No circular spinners (use a thin progress line); no radio circles (use segmented controls).
 - Font: Urbanist; body 13px (`--fs-sm`); numbers in tables use `tabular-nums`.
 - Themes: `data-theme="dark|light"` on `<html>`; every component must work in both.
+- Scrollbars: global only (`index.css`), no end arrows, `--scrollbar-w` wide, faint `--scrollbar-thumb`; no per-component scrollbar styles.
+- Focus ring: keyboard only (`data-input` on `<html>`); a mouse click never leaves an outline.
 - Layout: top nav · left rail + panel · map (flex) + bottom dock · right panel. Sizes from tokens (`--nav-h`, `--panel-left-w`, `--panel-w`, `--dock-*`). Map calls `resize()` via ResizeObserver.
 
 ## Colour roles

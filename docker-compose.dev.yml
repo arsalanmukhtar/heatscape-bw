@@ -1,0 +1,14 @@
+# Dev override: frontend runs the Vite dev server with HMR behind the gateway.
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+      # Bind mounts from Windows do not emit file events; poll instead.
+      WATCH_POLLING: "true"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
