@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { useLayout } from '../state/layout';
 import { useWorkspace } from '../state/workspace';
 import { PanelHeader } from './SidePanel';
+import { ExpandButton, ExpandSlot } from './Expandable';
 import { TempChart } from './TempChart';
 
 const tempClass = (v) => (v >= 38 ? 'text-level-severe' : v >= 36 ? 'text-level-high' : v >= 34 ? 'text-level-moderate' : 'text-text');
@@ -79,20 +80,26 @@ export function InspectorPanel() {
         </section>
 
         <section className="mt-5 border border-border px-3 py-3">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center gap-2">
             <span className="text-sm text-text">{t.inspector.chartTitle}</span>
-            <span className="text-2xs text-muted">{SEASON.chartMonth}</span>
+            <span className="ml-auto text-2xs text-muted">{SEASON.chartMonth}</span>
+            <ExpandButton id="inspector-temp" className="-mr-1.5" />
           </div>
-          <TempChart
-            labels={t.inspector.weeks}
-            domain={[20, 40]}
-            ticks={[20, 30, 40]}
-            unit="°C"
-            series={[
-              { name: t.inspector.chartBlock(block.id), values: block.weekly.block, color: 'var(--series-2)' },
-              { name: t.inspector.chartCity, values: block.weekly.city, color: 'var(--text-muted)', dashed: true },
-            ]}
-          />
+          <ExpandSlot id="inspector-temp" title={`${t.inspector.chartTitle} · ${block.id}`}>
+            {(large) => (
+              <TempChart
+                large={large}
+                labels={t.inspector.weeks}
+                domain={[20, 40]}
+                ticks={[20, 30, 40]}
+                unit="°C"
+                series={[
+                  { name: t.inspector.chartBlock(block.id), values: block.weekly.block, color: 'var(--series-2)' },
+                  { name: t.inspector.chartCity, values: block.weekly.city, color: 'var(--text-muted)', dashed: true },
+                ]}
+              />
+            )}
+          </ExpandSlot>
         </section>
 
         <section className="mt-6">

@@ -106,6 +106,33 @@
     outline: none;
   }
 
+  /* Optical vertical centring. A line box carries uneven space above and below the
+     glyphs, so text beside an icon or inside a fixed-height control sits off centre.
+     Trimming the box to cap height and baseline centres the letters exactly. It only
+     works on an element wrapping the text, so text next to an icon goes in a <span>. */
+  :is(.items-center, .place-items-center) > :is(span, a, label):not(:has(*)),
+  button:not(:has(*)) {
+    text-box: trim-both cap alphabetic;
+  }
+
+  /* Beside an icon, mixed-case text is centred on its x-height instead: its visual mass
+     is the lowercase band, so cap centring leaves it looking ~0.1em low next to the icon.
+     Uppercase labels keep cap centring (their mass is the cap band). */
+  :is(.items-center, .place-items-center) > svg ~ :is(span, a, label):not(:has(*)):not(.uppercase, .uppercase *),
+  :is(.items-center, .place-items-center) > :is(span, a, label):not(:has(*)):has(~ svg):not(.uppercase, .uppercase *) {
+    text-box: trim-both ex alphabetic;
+  }
+
+  /* Number inputs without native spinners (they do not follow the square UI). */
+  input[type='number'] {
+    appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
   ::selection {
     background: var(--accent-soft);
   }
@@ -163,6 +190,38 @@
   transition-property: width, height;
   transition-duration: 180ms;
   transition-timing-function: ease-out;
+}
+
+/* Classification chip (labels, never numbers): text in the level colour on a tint of it.
+   Set the colour with style={{ '--chip': 'var(--level-high)' }}. */
+@utility level-chip {
+  /* Urbanist's ascent and descent are uneven, so flex centring leaves the text off
+     centre. Trim the line box to cap height and baseline (needs a block-level text
+     container, hence inline-block) and let equal padding centre it. */
+  display: inline-block;
+  padding: 5px 8px;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-box: trim-both cap alphabetic;
+  /* One width for every chip so chips line up wherever they repeat; text centred and
+     cut with an ellipsis rather than growing the chip. */
+  width: var(--level-chip-w);
+  text-align: center;
+  overflow: clip;
+  overflow-clip-margin: 0.3em;
+  text-overflow: ellipsis;
+  color: var(--chip);
+  background: color-mix(in srgb, var(--chip) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chip) 32%, transparent);
+}
+
+/* Trim a text box to cap height and baseline so it centres optically (for text the
+   global items-center rule does not reach, e.g. nested overlay spans). */
+@utility text-trim {
+  text-box: trim-both cap alphabetic;
 }
 
 /* Indeterminate progress: a short bar sweeping along a thin line (no spinners). */
@@ -226,4 +285,12 @@
 /* Attribution is rendered by MapAttribution; the Mapbox logo is hidden. */
 .mapboxgl-ctrl-logo {
   display: none !important;
+}
+
+/* Unlayered so it wins over the truncate utility: trimmed text that is also truncated
+   would clip descenders (g, y, p) at the trimmed baseline. overflow: clip keeps the
+   ellipsis while the clip margin leaves room for descenders. */
+:is(.items-center, .place-items-center) > :is(span, a, label).truncate:not(:has(*)) {
+  overflow: clip;
+  overflow-clip-margin: 0.3em;
 }

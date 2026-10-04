@@ -15,10 +15,31 @@ Append-only. One line each: decision — reason.
 11. Claude does not run tests, builds or servers; it hands over a test list — the user tests.
 12. First screen region is Mannheim (approved screen); Stuttgart remains the primary study region in the proposal.
 13. Frontend dev in Docker uses `docker-compose.dev.yml` (Vite dev server, bind mount, polling) — HMR without rebuilds; default compose stays the static nginx build.
+14. Scenario priority classes use the vulnerability ramp (`--vuln-2/4/5/7/9`); unstable ranks get the low-confidence hatch — priority is not temperature, so no heat hues.
+15. Confidence is shown everywhere with `ConfidencePips`: pip count (■■■ / ■■□ / ■□□) + word, coloured from its own scale `--conf-high/medium/low` (green / amber / rose, validated for CVD in both themes) — user asked for colour; never heat-level or job-status colours, so it cannot read as a temperature or a failure.
+16. Swipe compare uses a second non-interactive Mapbox map clipped beside the handle and synced to the main camera — Mapbox has no per-layer clipping.
+
+## UI overrides
+
+User removed or changed these. Snapshots never bring them back; only an explicit request does.
+
+- Map coordinates readout: removed.
+- Map scale: bare bracket bar + distance, bottom left, no box or background, 2 px strokes, ≤ 60 px.
+- Map legend: removed from the map (to live per layer in the Layers panel).
+- Mapbox wordmark and default attribution: replaced by the collapsible ⓘ attribution, bottom right.
+- Map projection: Web Mercator always (`MAP_PROJECTION`), never the Mapbox globe, on every basemap.
+- Map controls: compact 28 px buttons, top right, in order: collapse chevron, zoom ±, world / Baden-Württemberg extent, tools, basemap, compare; the chevron folds the column with a staggered slide (state persisted); no fullscreen or prev/next view buttons.
+- Basemap: chosen in the basemap map control (list: thumbnail square + name), saved in localStorage (`hs-basemap`); "Auto" follows the theme. Not in the Settings panel. Thumbnails go in `frontend/public/basemaps/` and are set in `BASEMAPS` (`lib/mapStyle.js`).
+- Geocoder: compact, top left; 5 results visible, then scroll.
+- Rail active state: soft accent background, no edge bar, icon in full text colour.
+- Top nav: as built (brand, region menu, view tabs, season, theme, notifications, account); no active-jobs meter or user name block.
+- Status and classification labels: square marks or tinted chips, never circles. Every chip one width (`--level-chip-w` 96 px; icon-only `--chip-compact-w` 36 px), content centred, icon + text centred together.
+- Left sections and the right panel: opening a section opens its wired right view (`SECTION_VIEW` in `state/layout.js`: layers → inspector, scenarios → ranking); a section without one collapses the right panel. New sections declare their view there.
+- Panel widths: every left panel section and every right panel view share one width, 352 px (22rem) (`--panel-w`, one saved drag width `panelW` for both sides); no per-section or per-view widths.
 
 ## Open
 
 - Map selection outline: accent (as in approved screen) or `--accent-2`.
 - Mock district "Waldfriedhof" is not a Mannheim district (Waldhof is).
 - Mapbox wordmark hidden on request; Mapbox terms require it on public deployments — restore before going public.
-- Map legend removed from the map; to be attached per layer inside the Layers panel (`MapLegend.jsx` kept for that).
+- Map legend: where in the Layers panel to attach it (`MapLegend.jsx` kept for that).

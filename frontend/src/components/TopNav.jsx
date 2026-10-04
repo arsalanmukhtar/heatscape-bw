@@ -47,7 +47,7 @@ export function TopNav() {
               }`}
             >
               {v.icon}
-              {v.label}
+              <span>{v.label}</span>
             </button>
           );
         })}
@@ -122,14 +122,15 @@ function RegionMenu({ value, onChange }) {
         aria-expanded={open}
         aria-label={t.nav.region}
         onClick={() => setOpen(!open)}
-        className="flex h-[30px] min-w-[120px] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-sm text-nav-text hover:border-nav-border-strong"
+        style={{ width: 'var(--region-menu-w)' }}
+        className="flex h-[30px] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-sm text-nav-text hover:border-nav-border-strong"
       >
-        <LuMap size={13} className="text-nav-muted" />
-        <span>{value}</span>
-        <LuChevronDown size={13} className="ml-auto text-nav-muted" />
+        <LuMap size={13} className="shrink-0 text-nav-muted" />
+        <span className="min-w-0 flex-1 truncate text-left">{value}</span>
+        <LuChevronDown size={13} className="shrink-0 text-nav-muted" />
       </button>
       {open && (
-        <ul role="listbox" className="absolute left-0 top-[calc(100%+4px)] z-50 w-full border border-border-strong bg-surface-strong py-1 shadow-[var(--shadow-glass)]">
+        <ul role="listbox" className="absolute left-0 top-[calc(100%+4px)] z-50 w-full border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)]">
           {REGIONS.map((r) => (
             <li key={r}>
               <button
@@ -140,9 +141,9 @@ function RegionMenu({ value, onChange }) {
                   onChange(r);
                   setOpen(false);
                 }}
-                className={`w-full px-3 py-1.5 text-left text-sm hover:bg-hover ${r === value ? 'text-accent' : 'text-text'}`}
+                className={`flex h-7 w-full items-center px-3 text-left text-xs text-text ${r === value ? 'bg-accent-soft font-semibold' : 'hover:bg-hover'}`}
               >
-                {r}
+                <span>{r}</span>
               </button>
             </li>
           ))}

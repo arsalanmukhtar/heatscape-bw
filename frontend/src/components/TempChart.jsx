@@ -1,14 +1,15 @@
 import { useId, useState } from 'react';
 
-const W = 170;
-const H = 104;
 const PAD = { l: 20, r: 6, t: 6, b: 18 };
 
 /**
  * Small line chart with a crosshair tooltip. One y-axis, recessive gridlines.
  * series: [{ name, values[], color, dashed? }] — the first series gets the area fill.
  */
-export function TempChart({ labels, series, domain, ticks, unit }) {
+export function TempChart({ labels, series, domain, ticks, unit, large = false }) {
+  // Larger internal size when expanded, so labels stay near their nominal size.
+  const W = large ? 640 : 170;
+  const H = large ? 260 : 104;
   const [hover, setHover] = useState(null);
   const gradientId = useId();
   const [lo, hi] = domain;

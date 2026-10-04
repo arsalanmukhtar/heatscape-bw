@@ -1,74 +1,43 @@
-import { useMemo, useRef } from 'react';
-import { LuArrowDown, LuArrowUp, LuChevronDown, LuChevronUp, LuShare } from 'react-icons/lu';
-import { BLOCKS } from '../data/mock';
+import { useRef } from 'react';
+import { LuChartColumn, LuChevronDown, LuChevronUp, LuChevronsDown, LuChevronsUp, LuHistory, LuTable2 } from 'react-icons/lu';
 import { t } from '../i18n';
 import { DOCK_MIN, useLayout } from '../state/layout';
-import { downloadCsv } from '../lib/csv';
-import { useWorkspace } from '../state/workspace';
+import { AttributeTable, AttributeTableActions, AttributeTableBadge } from './AttributeTable';
+import { ExpandButton, ExpandSlot } from './Expandable';
+import { JobsActions, JobsBadges, JobsView } from './JobsView';
 import { ResizeHandle } from './ResizeHandle';
+import { ScenarioCharts } from './ScenarioCharts';
 
-const RISK_ORDER = { Critical: 3, High: 2, Moderate: 1, Low: 0 };
-const RISK_CLASS = {
-  Critical: 'text-level-severe',
-  High: 'text-level-high',
-  Moderate: 'text-level-moderate',
-  Low: 'text-level-normal',
+// Dock tabs: label, icon, badges beside the tab, tab-specific actions and body.
+const TABS = {
+  table: { label: t.table.title, Icon: LuTable2, Badges: AttributeTableBadge, Actions: AttributeTableActions, Body: AttributeTable },
+  jobs: { label: t.jobs.title, Icon: LuHistory, Badges: JobsBadges, Actions: JobsActions, Body: JobsView },
+  charts: { label: t.charts.title, Icon: LuChartColumn, Badges: () => null, Actions: () => null, Body: ScenarioCharts },
 };
-
-const peakClass = (v) => (v >= 41 ? 'text-level-severe' : v >= 39 ? 'text-level-high' : v >= 36 ? 'text-level-moderate' : 'text-accent-2');
-const greenClass = (v) => (v >= 20 ? 'text-level-normal' : 'text-accent-2');
-
-const COLUMNS = [
-  { key: 'id', label: t.table.columns.id },
-  { key: 'district', label: t.table.columns.district },
-  { key: 'avgTemp', label: t.table.columns.avgTemp },
-  { key: 'peakTemp', label: t.table.columns.peakTemp },
-  { key: 'sealing', label: t.table.columns.sealing },
-  { key: 'greenCover', label: t.table.columns.greenCover },
-  { key: 'popDensity', label: t.table.columns.popDensity },
-  { key: 'risk', label: t.table.columns.risk },
-];
-
-const sortValue = (b, key) => (key === 'risk' ? RISK_ORDER[b.risk] : b[key]);
 
 export function BottomDock() {
   const ref = useRef(null);
-  const { dockOpen, dockH, setDockH, toggleDock, dragging } = useLayout();
-  const { selectedId, select, sort, setSort } = useWorkspace();
-
-  const rows = useMemo(() => {
-    if (!sort) return BLOCKS;
-    const dir = sort.dir === 'asc' ? 1 : -1;
-    return [...BLOCKS].sort((a, b) => {
-      const x = sortValue(a, sort.key);
-      const y = sortValue(b, sort.key);
-      return (x < y ? -1 : x > y ? 1 : 0) * dir;
-    });
-  }, [sort]);
-
-  // Click cycles: descending → ascending → unsorted.
-  const sortBy = (key) => setSort(sort?.key === key ? (sort.dir === 'desc' ? { key, dir: 'asc' } : null) : { key, dir: 'desc' });
-
-  const exportCsv = () =>
-    downloadCsv(
-      'heatscape-blocks.csv',
-      COLUMNS.map((c) => c.label),
-      rows.map((b) => [b.id, b.district, b.avgTemp, b.peakTemp, b.sealing, b.greenCover, b.popDensity, b.risk]),
-    );
-
-  const height = dockOpen ? (dockH != null ? `${dockH}px` : 'var(--dock-open-h)') : 'var(--dock-bar-h)';
+  const { dockOpen, dockMax, dockH, setDockH, toggleDock, toggleDockMax, dockTab, setDockTab, dragging } = useLayout();
+  const tab = TABS[dockTab] ?? TABS.table;
+  // The dock tab in focus view is drawn by one stable overlay slot, whichever tab is active,
+  // so browsing other tabs (or swapping the focused one) never remounts the overlay.
+  const expanded = useLayout((s) => s.expanded);
+  const focusedId = expanded?.startsWith('dock-') ? expanded.slice(5) : null;
+  const focused = focusedId ? TABS[focusedId] : null;
+  // Maximised, the dock takes the whole map area (the map shrinks to nothing but stays mounted).
+  const height = dockMax ? '100%' : dockOpen ? (dockH != null ? `${dockH}px` : 'var(--dock-open-h)') : 'var(--dock-bar-h)';
 
   return (
     <section
       ref={ref}
-      aria-label={t.table.title}
+      aria-label={tab.label}
       className={`relative flex shrink-0 flex-col border-t border-border bg-surface ${dragging ? '' : 'layout-transition'}`}
       style={{ height }}
     >
-      {dockOpen && (
+      {dockOpen && !dockMax && (
         <ResizeHandle
           edge="top"
-          label={`Resize ${t.table.title}`}
+          label={`Resize ${tab.label}`}
           getSize={() => ref.current?.getBoundingClientRect().height ?? 0}
           onResize={(h) => {
             const max = (ref.current?.parentElement?.getBoundingClientRect().height ?? 800) - 160;
@@ -78,17 +47,40 @@ export function BottomDock() {
         />
       )}
 
-      <div className="flex shrink-0 items-center gap-3 border-b border-border px-4" style={{ height: 'var(--dock-bar-h)' }}>
-        <h2 className="text-xs font-medium uppercase tracking-[var(--tracking-caps)] text-text">{t.table.title}</h2>
-        <span className="border border-border px-1.5 py-0.5 text-2xs tabular-nums text-muted">{t.table.rows(rows.length)}</span>
+      <div className="flex shrink-0 items-stretch border-b border-border pr-4" style={{ height: 'var(--dock-bar-h)' }}>
+        <div role="tablist" aria-label="Dock" className="flex items-stretch">
+          {Object.entries(TABS).map(([id, { label, Icon, Badges }]) => {
+            const active = id === dockTab;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setDockTab(id)}
+                className={`flex items-center gap-2 border-r border-border px-4 leading-none ${
+                  active ? 'bg-rail-active font-semibold text-rail-active-text' : 'font-medium text-muted hover:bg-hover hover:text-text'
+                }`}
+              >
+                <Icon size={13} className="shrink-0" aria-hidden />
+                <span className="text-xs uppercase leading-none tracking-[var(--tracking-caps)]">{label}</span>
+                <Badges />
+              </button>
+            );
+          })}
+        </div>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" onClick={() => sortBy('peakTemp')} className="flex h-7 items-center gap-1 px-2 text-xs text-muted hover:bg-hover hover:text-text">
-            {t.table.sort}
-            {sort && (sort.dir === 'desc' ? <LuArrowDown size={11} /> : <LuArrowUp size={11} />)}
-          </button>
-          <button type="button" onClick={exportCsv} className="flex h-7 items-center gap-1.5 px-2 text-xs text-accent hover:bg-hover">
-            <LuShare size={12} />
-            {t.table.exportCsv}
+          {dockOpen && <tab.Actions />}
+          {dockOpen && <ExpandButton id={`dock-${dockTab}`} />}
+          <button
+            type="button"
+            onClick={toggleDockMax}
+            aria-label={dockMax ? t.table.restore : t.table.maximize}
+            title={dockMax ? t.table.restore : t.table.maximize}
+            aria-pressed={dockMax}
+            className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text"
+          >
+            {dockMax ? <LuChevronsDown size={15} /> : <LuChevronsUp size={15} />}
           </button>
           <button
             type="button"
@@ -102,56 +94,17 @@ export function BottomDock() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto" inert={!dockOpen}>
-        <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-[1] bg-surface-strong">
-            <tr className="border-b border-border">
-              {COLUMNS.map((c) => {
-                const active = sort?.key === c.key;
-                return (
-                  <th
-                    key={c.key}
-                    scope="col"
-                    aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
-                    className="h-8 px-3 text-left font-medium first:pl-4"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => sortBy(c.key)}
-                      className={`flex items-center gap-1 text-2xs uppercase tracking-[var(--tracking-caps)] ${active ? 'text-text' : 'text-muted hover:text-text'}`}
-                    >
-                      {c.label}
-                      {active && (sort.dir === 'desc' ? <LuArrowDown size={10} /> : <LuArrowUp size={10} />)}
-                    </button>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b) => {
-              const selected = b.id === selectedId;
-              return (
-                <tr
-                  key={b.id}
-                  onClick={() => select(b.id)}
-                  aria-selected={selected}
-                  className={`h-[29px] cursor-pointer border-b border-border-soft tabular-nums ${selected ? 'bg-accent-soft' : 'hover:bg-hover'}`}
-                >
-                  <td className={`px-3 pl-4 ${selected ? 'text-text' : 'text-muted'}`}>{b.id}</td>
-                  <td className="px-3 text-text">{b.district}</td>
-                  <td className="px-3 text-text">{b.avgTemp.toFixed(1)}</td>
-                  <td className={`px-3 ${peakClass(b.peakTemp)}`}>{b.peakTemp.toFixed(1)}</td>
-                  <td className="px-3 text-text">{b.sealing}%</td>
-                  <td className={`px-3 ${greenClass(b.greenCover)}`}>{b.greenCover}%</td>
-                  <td className="px-3 text-text">{b.popDensity.toLocaleString('en-US')}</td>
-                  <td className={`px-3 ${RISK_CLASS[b.risk]}`}>{b.risk}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="flex min-h-0 flex-1 flex-col" role="tabpanel" inert={!dockOpen}>
+        <ExpandSlot id={`dock-${dockTab}`} title={tab.label} placeholderOnly>
+          {(large) => <tab.Body large={large} />}
+        </ExpandSlot>
       </div>
+
+      {focused && (
+        <ExpandSlot key="dock-focus" id={`dock-${focusedId}`} title={focused.label} actions={<focused.Actions />} overlayOnly>
+          {(large) => <focused.Body large={large} />}
+        </ExpandSlot>
+      )}
     </section>
   );
 }

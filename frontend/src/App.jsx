@@ -3,11 +3,14 @@ import { MapProvider } from 'react-map-gl/mapbox';
 import { LuPanelRightOpen } from 'react-icons/lu';
 import { BottomDock } from './components/BottomDock';
 import { CopilotPanel } from './components/CopilotPanel';
+import { GeoprocessingPanel } from './components/GeoprocessingPanel';
 import { InspectorPanel } from './components/InspectorPanel';
 import { LayersPanel } from './components/LayersPanel';
 import { LeftRail } from './components/LeftRail';
 import { MapView } from './components/MapView';
 import { FiltersPanel, ReportsPanel, SettingsPanel } from './components/SecondaryPanels';
+import { RankingPanel } from './components/RankingPanel';
+import { ScenariosPanel } from './components/ScenariosPanel';
 import { SidePanel } from './components/SidePanel';
 import { TopNav } from './components/TopNav';
 import { t } from './i18n';
@@ -16,15 +19,18 @@ import { useLayout } from './state/layout';
 
 const SECTIONS = {
   layers: LayersPanel,
+  geoprocessing: GeoprocessingPanel,
+  scenarios: ScenariosPanel,
   filters: FiltersPanel,
   reports: ReportsPanel,
   settings: SettingsPanel,
 };
 
-// Right panel views: content, title and default width token.
+// Right panel views: content and title. All share one width (--panel-w).
 const VIEWS = {
-  inspector: { Panel: InspectorPanel, title: t.inspector.title, expand: t.inspector.expand, width: 'var(--panel-w)' },
-  copilot: { Panel: CopilotPanel, title: t.copilot.title, expand: t.copilot.expand, width: 'var(--panel-copilot-w)' },
+  inspector: { Panel: InspectorPanel, title: t.inspector.title, expand: t.inspector.expand },
+  copilot: { Panel: CopilotPanel, title: t.copilot.title, expand: t.copilot.expand },
+  ranking: { Panel: RankingPanel, title: t.ranking.title, expand: t.ranking.expand },
 };
 
 export default function App() {
@@ -59,9 +65,9 @@ export default function App() {
           <SidePanel
             side="left"
             open={layout.leftOpen}
-            width={layout.leftW}
-            defaultWidth="var(--panel-left-w)"
-            onResize={layout.setLeftW}
+            width={layout.panelW}
+            defaultWidth="var(--panel-w)"
+            onResize={layout.setPanelW}
             overlay={narrow}
             label={t.layers.title}
           >
@@ -88,9 +94,9 @@ export default function App() {
           <SidePanel
             side="right"
             open={layout.rightOpen}
-            width={layout.rightW}
-            defaultWidth={view.width}
-            onResize={layout.setRightW}
+            width={layout.panelW}
+            defaultWidth="var(--panel-w)"
+            onResize={layout.setPanelW}
             overlay={narrow}
             label={view.title}
           >

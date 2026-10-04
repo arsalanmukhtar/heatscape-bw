@@ -12,18 +12,18 @@
 */
 
 :root {
-  /* Layout geometry, matched to the approved workspace screen: a 48px navigation bar
-     level with the rail, a narrow 240px layer panel on the left, the 320px inspector on
-     the right, and a dock tall enough for its bar plus four table rows. */
+  /* Layout geometry: a 48px navigation bar level with the rail, one 352px (22rem) width for every
+     left panel section and every right panel view (symmetric workspace), and a dock tall
+     enough for its bar plus four table rows. */
   --nav-h: 48px;
   --rail-w: 48px;
-  --panel-left-w: 240px;
-  --panel-w: 320px;
-  --panel-copilot-w: 420px;
+  --panel-w: 352px;
+  --region-menu-w: 148px; /* fixed so the nav does not shift when the region changes */
   --legend-w: 172px;
   --legend-tab-w: 34px;
   --dock-bar-h: 38px;
   --dock-open-h: 188px;
+  --dock-logs-w: 380px;
   --dock-cur: var(--dock-bar-h);
 
   /* Square throughout. Surfaces sit flush against the viewport edges and the
@@ -44,7 +44,8 @@
   /* Level chips read as a column in the distribution list and in the level column of
      the attribute table, so they share a width there too. Wide enough for SCREENING,
      the longest of the six labels, at the small size. */
-  --level-chip-w: 88px;
+  --level-chip-w: 96px; /* every chip; fits the longest label ("12 of 128 rows") */
+  --chip-compact-w: 36px; /* icon-only chips (e.g. confidence pips in narrow columns) */
 
   /* The vertical variant runs down the right edge of a layer row, edge to edge, so the
      chips of a group stack into one unbroken column. The row carries no vertical
@@ -278,6 +279,12 @@
   --level-severe: #c1566b;
   --level-screening: #6d8fd6;
 
+  /* Confidence of modelled results (rank stability, copilot answers): its own scale,
+     separate from heat levels and job states. Always paired with pip count and a word. */
+  --conf-high: #33a172;
+  --conf-medium: #b88320;
+  --conf-low: #d45d80;
+
   --shadow-glass: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 18px 38px -24px rgba(0, 0, 0, 0.85);
   --glow: 0 0 0 1px rgba(232, 112, 31, 0.28), 0 0 22px rgba(232, 112, 31, 0.16);
   --glow-soft: 0 0 18px rgba(232, 112, 31, 0.10);
@@ -376,6 +383,12 @@
   --level-high: #b96745;
   --level-severe: #a9455a;
   --level-screening: #41639f;
+
+  /* Confidence of modelled results (rank stability, copilot answers): its own scale,
+     separate from heat levels and job states. Always paired with pip count and a word. */
+  --conf-high: #12875b;
+  --conf-medium: #a66400;
+  --conf-low: #c8346a;
 
   --shadow-glass: 0 0 0 1px rgba(16, 24, 40, 0.05), 0 16px 34px -26px rgba(16, 24, 40, 0.45);
   --glow: 0 0 0 1px rgba(187, 77, 0, 0.24), 0 0 18px rgba(187, 77, 0, 0.12);

@@ -179,7 +179,7 @@ export const SEALING_POINTS = (() => {
   return { type: 'FeatureCollection', features };
 })();
 
-export const USER = { initials: 'MA' };
+export const USER = { initials: 'MA', name: 'M. Arsalan' };
 
 /*
   MOCK copilot conversation: one question, the agent's plan, its tool calls and the
@@ -205,3 +205,81 @@ export const COPILOT = {
   sources: 'Zensus 2022 · DWD · Model v2.4',
   suggestions: ['Hottest blocks near schools', 'Compare 2018 vs 2022 sealing'],
 };
+
+/* MOCK geoprocessing tools until the backend process registry exists. icon: key into
+   the icon map in GeoprocessingPanel. */
+export const GP_TOOLS = [
+  { id: 'zonal', name: 'Zonal Statistics', category: 'Analysis', icon: 'zonal', short: 'Zonal' },
+  { id: 'hvi', name: 'Heat Vulnerability Index', category: 'Vulnerability', icon: 'hvi', short: 'HVI' },
+  { id: 'lst', name: 'Land Surface Temp Calc', category: 'Climate', icon: 'lst', short: 'LST' },
+  { id: 'sealing', name: 'Urban Sealing Ratio', category: 'Infrastructure', icon: 'sealing', short: 'Sealing' },
+  { id: 'coldair', name: 'Cold Air Corridor Analysis', category: 'Climate', icon: 'coldair', short: 'ColdAir' },
+];
+
+/*
+  MOCK jobs. status: running | done | error | queued; durationSec counts up while running;
+  progress/total drive the simulated zone loop. Logs: { time, level (INFO|EXEC|ERROR|DONE), msg }.
+*/
+export const JOBS = [
+  {
+    id: 'JOB-8842', name: 'Mannheim_Innenstadt_Zonal', tool: 'Zonal Statistics', region: 'Innenstadt', status: 'running', durationSec: 165, started: '14:22:01', progress: 24, total: 48,
+    logs: [
+      { time: '14:22:01', level: 'INFO', msg: "Initializing GP tool 'Zonal Statistics'" },
+      { time: '14:22:02', level: 'INFO', msg: 'Loading input raster LST_MA_2023_08...' },
+      { time: '14:22:05', level: 'INFO', msg: 'Validating geometries for zone data...' },
+      { time: '14:22:08', level: 'EXEC', msg: 'Processing zone 12/48 (Jungbusch)...' },
+      { time: '14:23:45', level: 'EXEC', msg: 'Processing zone 24/48 (Neckarstadt-West)...' },
+    ],
+  },
+  {
+    id: 'JOB-8839', name: 'LST_Extraction_V01', tool: 'Land Surface Temp Calc', region: 'Mannheim', status: 'done', durationSec: 732, started: '14:05:44', progress: 1, total: 1,
+    logs: [
+      { time: '14:05:44', level: 'INFO', msg: "Initializing GP tool 'Land Surface Temp Calc'" },
+      { time: '14:05:51', level: 'EXEC', msg: 'Reading Landsat 9 scene LC09_196026_20230812...' },
+      { time: '14:17:56', level: 'DONE', msg: 'Output written: LST_MA_2023_08.tif (COG)' },
+    ],
+  },
+  {
+    id: 'JOB-8836', name: 'Sealing_Analysis_East', tool: 'Urban Sealing Ratio', region: 'Neckarstadt-Ost', status: 'error', durationSec: 310, started: '13:55:12', progress: 0, total: 1,
+    logs: [
+      { time: '13:55:12', level: 'INFO', msg: "Initializing GP tool 'Urban Sealing Ratio'" },
+      { time: '13:55:20', level: 'EXEC', msg: 'Intersecting parcels with imperviousness grid...' },
+      { time: '14:00:22', level: 'ERROR', msg: 'Invalid geometry in input layer (ring self-intersection, feature 1184)' },
+    ],
+  },
+  {
+    id: 'JOB-8843', name: 'Vulnerability_Index_City', tool: 'Heat Vulnerability Index', region: 'Baden-Württemberg', status: 'queued', durationSec: 0, started: '14:30:00', progress: 0, total: 48,
+    logs: [],
+  },
+];
+
+/*
+  MOCK scenario inputs per block (until LGL parcels and the feasibility layer exist):
+  protected = heritage or protected-area flag, parcelArea in m², feasibility 0–100
+  (ownership, utilities, cost). Derived from the block id so they never change.
+*/
+export function scenarioAttrs(b) {
+  const rand = rng([...b.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7));
+  return {
+    protected: rand() < 0.12,
+    parcelArea: Math.round((1500 + rand() * 22000) / 100) * 100,
+    feasibility: Math.round(25 + rand() * 70),
+  };
+}
+
+/* MOCK saved scenarios. params: goal desealing | greening | both; area 'all' or a district;
+   weights in raw slider points (normalised for display and scoring). */
+export const SCENARIOS = [
+  {
+    id: 'sc-1', name: 'Inner-city heat relief 2030', region: REGION.name, createdBy: USER.name, status: 'Shared',
+    params: { goal: 'both', area: 'all', weights: { heat: 35, vulnerable: 25, sealing: 20, green: 15, feasibility: 5 }, excludeProtected: true, minParcel: 500, deseal: 40, canopy: 25 },
+  },
+  {
+    id: 'sc-2', name: 'Innenstadt de-sealing', region: REGION.name, createdBy: 'J. Weber', status: 'Draft',
+    params: { goal: 'desealing', area: 'Innenstadt', weights: { heat: 40, vulnerable: 20, sealing: 30, green: 5, feasibility: 5 }, excludeProtected: true, minParcel: 1000, deseal: 50, canopy: 0 },
+  },
+  {
+    id: 'sc-3', name: 'Green corridors Käfertal', region: REGION.name, createdBy: 'S. Becker', status: 'Draft',
+    params: { goal: 'greening', area: 'Käfertal', weights: { heat: 25, vulnerable: 25, sealing: 10, green: 30, feasibility: 10 }, excludeProtected: false, minParcel: 500, deseal: 0, canopy: 30 },
+  },
+];

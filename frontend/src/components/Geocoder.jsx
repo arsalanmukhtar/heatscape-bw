@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { LuSearch, LuX } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
 import { REGION } from '../data/mock';
 import { t } from '../i18n';
 import { geocode } from '../lib/geocode';
+import { SearchField } from './SearchField';
 
 /** Compact place search; the list shows five rows and scrolls for the rest. */
 export function Geocoder({ disabled }) {
@@ -68,33 +68,29 @@ export function Geocoder({ disabled }) {
 
   return (
     <div className="absolute left-3 top-3 z-20 w-64" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}>
-      <div className="flex h-8 items-center gap-2 border border-border-strong bg-surface-strong px-2 shadow-[var(--shadow-glass)] backdrop-blur-md focus-within:border-accent-line">
-        <LuSearch size={13} className="shrink-0 text-muted" aria-hidden />
-        <input
-          type="text"
-          role="combobox"
-          aria-label={t.map.search}
-          aria-expanded={showList}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          placeholder={t.map.searchPlaceholder}
-          disabled={disabled}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKeyDown}
-          className="min-w-0 flex-1 bg-transparent text-xs text-text outline-none placeholder:text-faint disabled:opacity-50"
-        />
-        {query && (
-          <button type="button" aria-label={t.map.searchClear} onClick={() => setQuery('')} className="text-muted hover:text-text">
-            <LuX size={12} />
-          </button>
-        )}
-      </div>
+      <SearchField
+        value={query}
+        onChange={(v) => {
+          setQuery(v);
+          setOpen(true);
+        }}
+        placeholder={t.map.searchPlaceholder}
+        onClear={() => setQuery('')}
+        clearLabel={t.map.searchClear}
+        iconSize={13}
+        className="h-8 border-border-strong bg-surface-strong shadow-[var(--shadow-glass)] backdrop-blur-md"
+        inputProps={{
+          role: 'combobox',
+          'aria-label': t.map.search,
+          'aria-expanded': showList,
+          'aria-controls': listId,
+          'aria-autocomplete': 'list',
+          'aria-activedescendant': active >= 0 ? `${listId}-${active}` : undefined,
+          disabled,
+          onFocus: () => setOpen(true),
+          onKeyDown,
+        }}
+      />
       {showList && (
         <ul ref={listRef} id={listId} role="listbox" className="max-h-50 overflow-y-auto border border-t-0 border-border-strong bg-surface-strong shadow-[var(--shadow-glass)] backdrop-blur-md">
           {results.length === 0 ? (

@@ -16,10 +16,14 @@ import {
 import { COPILOT, REGION, USER } from '../data/mock';
 import { t } from '../i18n';
 import { downloadCsv } from '../lib/csv';
+import { useSort } from '../lib/useSort';
 import { useCopilot } from '../state/copilot';
 import { useLayout } from '../state/layout';
 import { useWorkspace } from '../state/workspace';
 import { Checkbox } from './Checkbox';
+import { ConfidencePips } from './ConfidencePips';
+import { ExpandButton, ExpandSlot } from './Expandable';
+import { SortTh } from './SortTh';
 import { PanelHeader } from './SidePanel';
 
 const iconBtn = 'grid size-7 place-items-center text-muted hover:bg-hover hover:text-text disabled:opacity-40 disabled:hover:bg-transparent';
@@ -220,42 +224,26 @@ function ResultCard() {
         )}
       </p>
 
-      <table className="mt-4 w-full border border-border text-xs">
-        <thead className="bg-field">
-          <tr className="h-9 text-left">
-            <th className="label-caps px-3 font-medium">{t.copilot.columns.district}</th>
-            <th className="label-caps px-3 text-right font-medium">{t.copilot.columns.share65}</th>
-            <th className="label-caps px-3 text-right font-medium">{t.copilot.columns.confidence}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {COPILOT.rows.map((r) => (
-            <tr key={r.district} className="h-9 border-t border-border">
-              <td className="px-3 text-text">{r.district}</td>
-              <td className="px-3 text-right font-semibold tabular-nums text-text">{r.share65.toFixed(1)}%</td>
-              <td className="px-3">
-                <span className="flex items-center justify-end gap-1.5 text-2xs text-muted">
-                  <ConfidenceMark level={r.confidence} />
-                  {t.copilot.confidence[r.confidence]}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="mt-4 flex justify-end">
+        <ExpandButton id="copilot-result" className="-mr-1.5" />
+      </div>
+      <ExpandSlot id="copilot-result" title={t.copilot.title}>
+        {() => <ResultTable />}
+      </ExpandSlot>
+
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" disabled title={t.copilot.comingNext} className={outlineBtn}>
           <LuMap size={13} />
-          {t.copilot.addLayer}
+          <span>{t.copilot.addLayer}</span>
         </button>
         <button type="button" disabled title={t.copilot.comingNext} className={outlineBtn}>
           <LuFileText size={13} />
-          {t.copilot.addReport}
+          <span>{t.copilot.addReport}</span>
         </button>
         <button type="button" onClick={exportCsv} className={outlineBtn}>
           <LuDownload size={13} />
-          {t.copilot.export}
+          <span>{t.copilot.export}</span>
         </button>
       </div>
 
@@ -269,10 +257,38 @@ function ResultCard() {
   );
 }
 
-/* Confidence is shown by fill, not colour: solid high, outlined medium, dashed low. */
-function ConfidenceMark({ level }) {
-  const cls = level === 'High' ? 'bg-muted' : level === 'Medium' ? 'border border-muted' : 'border border-dashed border-muted';
-  return <span className={`size-2 shrink-0 ${cls}`} aria-hidden />;
+
+const CONF_ORDER = { High: 3, Medium: 2, Low: 1 };
+const resultValue = (r, key) => (key === 'confidence' ? CONF_ORDER[r.confidence] : r[key]);
+
+function ResultTable() {
+  const { resultSort, setResultSort } = useCopilot();
+  const { rows, sort, sortBy } = useSort(COPILOT.rows, resultValue, { state: resultSort, setState: setResultSort });
+  const c = t.copilot.columns;
+  return (
+    <table className="w-full border border-border text-xs">
+      <thead className="bg-field">
+        <tr className="h-9">
+          <SortTh label={c.district} sortKey="district" sort={sort} onSort={sortBy} className="px-3" />
+          <SortTh label={c.share65} sortKey="share65" sort={sort} onSort={sortBy} align="right" className="px-3" />
+          <SortTh label={c.confidence} sortKey="confidence" sort={sort} onSort={sortBy} align="right" className="px-3" />
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.district} className="h-9 border-t border-border">
+            <td className="px-3 text-text">{r.district}</td>
+            <td className="px-3 text-right font-semibold tabular-nums text-text">{r.share65.toFixed(1)}%</td>
+            <td className="px-3">
+              <span className="flex justify-end">
+                <ConfidencePips level={r.confidence} label={t.copilot.confidence[r.confidence]} />
+              </span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 function Composer() {
@@ -345,11 +361,11 @@ function Composer() {
       <div className="mt-3 flex gap-5">
         <label className="flex cursor-pointer items-center gap-2 text-2xs uppercase tracking-[var(--tracking-caps)] text-muted">
           <Checkbox checked={useExtent} onChange={toggleExtent} label={t.copilot.useExtent} />
-          {t.copilot.useExtent}
+          <span>{t.copilot.useExtent}</span>
         </label>
         <label className="flex cursor-pointer items-center gap-2 text-2xs uppercase tracking-[var(--tracking-caps)] text-muted">
           <Checkbox checked={useSelection} onChange={toggleSelection} label={t.copilot.useSelection} />
-          {t.copilot.useSelection}
+          <span>{t.copilot.useSelection}</span>
         </label>
       </div>
     </div>

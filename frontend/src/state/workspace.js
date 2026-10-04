@@ -6,6 +6,7 @@ export const useWorkspace = create()((set, get) => ({
   selectedId: 'M-14',
   tools: { select: true, measure: false, grid: false },
   sort: null, // { key, dir: 'asc' | 'desc' } or null
+  tableFilter: '',
   toggleLayer: (id) => set({ layers: { ...get().layers, [id]: !get().layers[id] } }),
   setSealingOpacity: (sealingOpacity) => set({ sealingOpacity }),
   select: (selectedId) => set({ selectedId }),
@@ -22,4 +23,5 @@ export const useWorkspace = create()((set, get) => ({
     set({ tools });
   },
   setSort: (sort) => set({ sort }),
+  setTableFilter: (tableFilter) => set({ tableFilter }),
 }));

@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { LuInfo } from 'react-icons/lu';
 import { PANEL_MAX, PANEL_MIN, useLayout } from '../state/layout';
 import { ResizeHandle } from './ResizeHandle';
 
@@ -44,12 +45,39 @@ export function SidePanel({ side, open, width, defaultWidth, onResize, overlay, 
   );
 }
 
-export function PanelHeader({ title, meta, actions }) {
+/* Panel header. info: panel-specific note (caveats, disclaimers) shown from an ⓘ button
+   left of the actions, on hover or keyboard focus, instead of a strip inside the panel. */
+export function PanelHeader({ title, meta, actions, info }) {
   return (
     <div className="flex h-11 shrink-0 items-center border-b border-border px-4">
       <h2 className="text-xs font-medium uppercase tracking-[var(--tracking-caps)] text-muted">{title}</h2>
       {meta && <div className="ml-2.5 min-w-0">{meta}</div>}
-      {actions && <div className="ml-auto flex items-center gap-1">{actions}</div>}
+      {(actions || info) && (
+        <div className="ml-auto flex items-center gap-1">
+          {info && <PanelInfo text={info} />}
+          {actions}
+        </div>
+      )}
     </div>
+  );
+}
+
+function PanelInfo({ text }) {
+  return (
+    <span className="group relative">
+      <button
+        type="button"
+        aria-label={text}
+        className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text group-hover:text-text"
+      >
+        <LuInfo size={14} />
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute right-0 top-full z-40 mt-1 w-64 translate-y-1 border border-border-strong bg-surface-strong px-3 py-2.5 text-xs leading-relaxed text-text opacity-0 shadow-[var(--shadow-glass)] transition-[opacity,transform,visibility] duration-150 ease-out group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-has-[:focus-visible]:visible group-has-[:focus-visible]:translate-y-0 group-has-[:focus-visible]:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
   );
 }

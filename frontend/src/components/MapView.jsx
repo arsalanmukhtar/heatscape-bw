@@ -1,53 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MapGL, { Layer, Marker, Source, useMap } from 'react-map-gl/mapbox';
 import { LuX } from 'react-icons/lu';
-import { AIR_GRID, BLOCKS, FACILITIES, REGION, SEALING_POINTS, SURFACE_GRID, TEMP_DOMAIN, blockBounds, blockById } from '../data/mock';
+import { AIR_GRID, BLOCKS, FACILITIES, REGION, SEALING_POINTS, SURFACE_GRID, blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
 import { cssVar, distanceKm } from '../lib/css';
+import { MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage, heatStops } from '../lib/mapStyle';
+import { candidateFootprint } from '../lib/scenario';
+import { useMapResize } from '../lib/useMapResize';
+import { useLayout } from '../state/layout';
+import { useMapStyleUrl } from '../state/basemap';
+import { useActiveRanking, useScenarios } from '../state/scenarios';
 import { useTheme } from '../state/theme';
 import { useWorkspace } from '../state/workspace';
+import { CompareSwipe } from './CompareSwipe';
+import { MAP_OVERLAY_ID } from './Expandable';
 import { Geocoder } from './Geocoder';
 import { MapAttribution } from './MapAttribution';
 import { MapControls } from './MapControls';
-
-const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-const STYLES = { dark: 'mapbox://styles/mapbox/dark-v11', light: 'mapbox://styles/mapbox/light-v11' };
-
-/** Heat ramp stops spread evenly over the legend domain (28–42 °C). */
-function heatStops() {
-  const [lo, hi] = TEMP_DOMAIN;
-  return Array.from({ length: 9 }, (_, i) => [lo + ((hi - lo) * i) / 8, cssVar(`--heat-${i + 1}`)]).flat();
-}
+import { MapScale } from './MapScale';
 
 export function MapView() {
   const containerRef = useRef(null);
   const { main } = useMap();
 
-  // Keep the canvas matched to its container while panels and the dock animate.
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || !main) return;
-    let frame = 0;
-    const resize = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => main.resize());
-    };
-    const ro = new ResizeObserver(resize);
-    ro.observe(el);
-    document.addEventListener('transitionend', resize);
-    return () => {
-      ro.disconnect();
-      document.removeEventListener('transitionend', resize);
-      cancelAnimationFrame(frame);
-    };
-  }, [main]);
+  const ranking = useActiveRanking();
+  const compare = useScenarios((x) => x.compare);
+  useMapResize(containerRef, main);
 
   return (
     <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden bg-map-ground">
       {TOKEN ? <LiveMap /> : <MapPlaceholder />}
+      {TOKEN && compare && ranking && <CompareSwipe ranking={ranking} />}
       <Geocoder disabled={!TOKEN} />
-      <MapControls disabled={!TOKEN} />
+      <MapControls disabled={!TOKEN} canCompare={!!ranking} />
+      {TOKEN && <MapScale />}
       {TOKEN && <MapAttribution />}
+      {/* Expanded tables and charts render here, above map and controls (see Expandable). */}
+      <div id={MAP_OVERLAY_ID} className="pointer-events-none absolute inset-0 z-30" />
     </div>
   );
 }
@@ -55,6 +44,7 @@ export function MapView() {
 function LiveMap() {
   const { main } = useMap();
   const resolved = useTheme((s) => s.resolved);
+  const styleUrl = useMapStyleUrl();
   const { layers, sealingOpacity, selectedId, select, tools } = useWorkspace();
   const [measure, setMeasure] = useState([]);
   const selected = blockById(selectedId);
@@ -71,9 +61,31 @@ function LiveMap() {
       line: cssVar('--map-line'),
       text: cssVar('--text'),
       surface: cssVar('--surface-strong'),
+      // Priority classes 1–5 on the vulnerability ramp (light → dark = low → high priority).
+      priority: [2, 4, 5, 7, 9].map((k) => cssVar(`--vuln-${k}`)),
     }),
     [resolved],
   );
+
+  // Scenario priority: shown while the scenario workspace (left panel or ranking view) is in use.
+  const ranking = useActiveRanking();
+  const scenarioContext = useLayout((s) => s.leftSection === 'scenarios' || s.rightView === 'ranking');
+  const candidates = useMemo(() => (ranking ? { type: 'FeatureCollection', features: ranking.rows.map(candidateFootprint) } : null), [ranking]);
+
+  // The hatch image is dropped on every style change (theme switch), so re-add it on demand.
+  useEffect(() => {
+    const map = main?.getMap();
+    if (!map) return;
+    const onMissing = (e) => e.id === 'unc-hatch' && addHatchImage(map);
+    const onLoad = () => addHatchImage(map);
+    map.on('styleimagemissing', onMissing);
+    map.on('style.load', onLoad);
+    if (map.isStyleLoaded()) addHatchImage(map);
+    return () => {
+      map.off('styleimagemissing', onMissing);
+      map.off('style.load', onLoad);
+    };
+  }, [main]);
 
   // Fly to a block when it is picked from the table (not on first load).
   useEffect(() => {
@@ -113,7 +125,8 @@ function LiveMap() {
       id="main"
       mapboxAccessToken={TOKEN}
       initialViewState={{ longitude: REGION.center[0], latitude: REGION.center[1], zoom: 12.2 }}
-      mapStyle={STYLES[resolved]}
+      mapStyle={styleUrl}
+      projection={MAP_PROJECTION}
       attributionControl={false}
       style={{ width: '100%', height: '100%' }}
       cursor={tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}
@@ -160,6 +173,36 @@ function LiveMap() {
           }}
         />
       </Source>
+
+      {candidates && (
+        <Source id="priority" type="geojson" data={candidates}>
+          <Layer
+            id="priority-fill"
+            type="fill"
+            beforeId="hospitals"
+            layout={{ visibility: vis(scenarioContext) }}
+            paint={{
+              'fill-color': ['match', ['get', 'priority'], 1, palette.priority[0], 2, palette.priority[1], 3, palette.priority[2], 4, palette.priority[3], palette.priority[4]],
+              'fill-opacity': 0.88,
+            }}
+          />
+          <Layer
+            id="priority-hatch"
+            type="fill"
+            beforeId="hospitals"
+            filter={['==', ['get', 'unstable'], true]}
+            layout={{ visibility: vis(scenarioContext) }}
+            paint={{ 'fill-pattern': 'unc-hatch' }}
+          />
+          <Layer
+            id="priority-line"
+            type="line"
+            beforeId="hospitals"
+            layout={{ visibility: vis(scenarioContext) }}
+            paint={{ 'line-color': palette.surface, 'line-width': 1 }}
+          />
+        </Source>
+      )}
 
       <Source id="facilities" type="geojson" data={facilities}>
         <Layer
