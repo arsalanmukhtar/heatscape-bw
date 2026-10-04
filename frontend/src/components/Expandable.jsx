@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuExpand, LuFocus, LuShrink } from 'react-icons/lu';
+import { LuExpand, LuShrink } from 'react-icons/lu';
 import { t } from '../i18n';
 import { useLayout } from '../state/layout';
 
@@ -9,6 +9,10 @@ export const MAP_OVERLAY_ID = 'map-overlay';
 /* Mounted slots per id. A view restores only when its last slot unmounts, so the dock can
    hand an expanded tab from its body slot to an overlay-only slot without closing it. */
 const mounted = new Map();
+
+// Placeholder crossfade: default state fades out, hover/focus state fades in.
+const SWAP_OUT = 'transition-opacity duration-200 ease-out group-hover:opacity-0 group-focus-visible:opacity-0';
+const SWAP_IN = 'opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-visible:opacity-100';
 
 /*
   Universal expand for compact elements (tables, charts). Put ExpandButton in the element's
@@ -96,17 +100,21 @@ export function ExpandSlot({ id, title, actions, overlayOnly = false, placeholde
           className="flex min-h-10 flex-1 items-center justify-center gap-3 border border-dashed border-border-strong bg-field px-3"
           style={{ height: inlineHeight.current || undefined }}
         >
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-text">
-            <LuFocus size={13} className="shrink-0 text-accent" aria-hidden />
-            <span>{t.expand.focused}</span>
-          </span>
+          {/* One text control: IN FOCUS crossfades to an orange RESTORE on hover or focus. Both
+              words share a grid cell (centred), so the swap never shifts the layout; all caps,
+              so cap-height trimming centres them exactly. */}
           <button
             type="button"
             onClick={close}
-            className="flex h-7 items-center gap-1.5 border border-border-strong px-2.5 text-xs text-text hover:bg-hover"
+            aria-label={t.expand.close}
+            className="group grid cursor-pointer place-items-center text-xs font-bold uppercase tracking-[var(--tracking-caps)]"
           >
-            <LuShrink size={12} aria-hidden />
-            <span>{t.expand.restore}</span>
+            <span className={`${SWAP_OUT} text-trim col-start-1 row-start-1 text-text`} aria-hidden>
+              {t.expand.focused}
+            </span>
+            <span className={`${SWAP_IN} text-trim col-start-1 row-start-1 text-accent`} aria-hidden>
+              {t.expand.restore}
+            </span>
           </button>
         </div>
       )}

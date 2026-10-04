@@ -46,7 +46,7 @@ const en = {
   expand: {
     open: 'Expand view',
     close: 'Restore view',
-    focused: 'In focus view',
+    focused: 'In Focus',
     restore: 'Restore',
   },
   sort: {
