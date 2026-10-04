@@ -4,7 +4,7 @@ services:
   gateway:
     build: ./gateway
     ports:
-      - "${GATEWAY_PORT:-8080}:80"
+      - "${GATEWAY_PORT:-8180}:80"
     depends_on:
       - frontend
     restart: unless-stopped
@@ -34,7 +34,11 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-heatscape}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@database:5432/${POSTGRES_DB:-heatscape}
+      POSTGRES_HOST: database
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-heatscape}
+      POSTGRES_USER: ${POSTGRES_USER:-heatscape}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     depends_on:
       database:
         condition: service_healthy
@@ -51,6 +55,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-heatscape}
       POSTGRES_USER: ${POSTGRES_USER:-heatscape}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    # Localhost only, for DB tools (DBeaver, psql).
+    ports:
+      - "127.0.0.1:${DB_PORT:-15432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

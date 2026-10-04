@@ -11,25 +11,26 @@ docker compose up -d --build
 
 | What | URL |
 |---|---|
-| App | http://localhost:8080 |
-| API docs (Swagger) | http://localhost:8080/api/docs |
-| Health (middleware) | http://localhost:8080/healthz |
-| Health (backend / database) | http://localhost:8080/api/health · /api/health/db |
+| App | http://localhost:8180 |
+| API docs (Swagger) | http://localhost:8180/api/docs |
+| Health (middleware) | http://localhost:8180/healthz |
+| Health (backend / database) | http://localhost:8180/api/health · /api/health/db |
+| Database (DBeaver/psql, localhost only) | `jdbc:postgresql://localhost:15432/heatscape` · user `heatscape` · password from `.env` |
 
 ## Services
 
 | Folder | Service | Stack | Port |
 |---|---|---|---|
-| `gateway/` | Reverse proxy, only public entry | nginx | 8080 → 80 |
+| `gateway/` | Reverse proxy, only public entry | nginx | 8180 → 80 |
 | `frontend/` | Web app | React 19, Vite, Tailwind v4 (JSX), Mapbox GL | internal 80 |
 | `middleware/` | BFF, `/api` proxy | Node 22, Fastify | internal 3000 |
 | `backend/` | Domain API | Python 3.12, FastAPI, asyncpg | internal 8000 |
-| `database/` | Spatial database | PostgreSQL 17, PostGIS 3.5, h3-pg | internal 5432 |
+| `database/` | Spatial database | PostgreSQL 17 (bookworm), PostGIS 3, h3-pg | 127.0.0.1:15432 → 5432 |
 
 ## Local frontend dev
 
 ```powershell
-cd frontend; npm install; npm run dev    # http://localhost:5173, reads the root .env
+cd frontend; npm install; npm run dev    # http://localhost:5180, reads the root .env
 ```
 
 ## Layout

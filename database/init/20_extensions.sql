@@ -1,4 +1,4 @@
--- Runs once, on first start with an empty volume (after the image's own PostGIS setup).
+-- Runs once, on first start with an empty volume.
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS h3;
 CREATE EXTENSION IF NOT EXISTS h3_postgis CASCADE;

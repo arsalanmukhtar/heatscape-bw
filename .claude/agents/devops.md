@@ -8,7 +8,7 @@ Scope: `*/Dockerfile`, `docker-compose.yml`, `gateway/`, `.env.example`.
 
 ## Conventions
 - One service per top-level folder with its own `Dockerfile` and `.dockerignore`.
-- Only `gateway` publishes a host port (`GATEWAY_PORT`); everything else stays on the compose network.
+- Only `gateway` publishes a public host port (`GATEWAY_PORT`). Exception: `database` on `127.0.0.1:${DB_PORT}` for local DB tools. Nothing else is published.
 - Pin base images to a major/minor tag; multi-stage builds for anything compiled.
 - Every long-running service has a healthcheck; dependants use `condition: service_healthy`.
 - Gateway routes are defined only in `gateway/nginx.conf`, resolving upstreams lazily (Docker DNS) so partial stacks start.
