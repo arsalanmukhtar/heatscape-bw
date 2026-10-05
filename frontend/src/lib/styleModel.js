@@ -1,0 +1,238 @@
+import { TEMP_DOMAIN } from '../data/mock';
+import { computeBreaks, percentile, stats, uniqueValues } from './classify';
+import { fieldValues, LAYERS } from './layers';
+
+/*
+  Layer style model (JSON, saved per layer). One object per layer holds every setting;
+  only the parts relevant to its geometry and renderer are used.
+
+  Class lists: { value } (categorized, paletted) or { from, to } (graduated), plus
+  color (null = from the ramp), label (null = automatic), visible.
+*/
+export const RENDERERS = {
+  point: ['single', 'categorized', 'graduated', 'graduatedSize', 'heatmap', 'cluster'],
+  line: ['single', 'categorized', 'graduated', 'graduatedSize'],
+  polygon: ['single', 'categorized', 'graduated'],
+  continuous: ['pseudocolor', 'gray'],
+  classified: ['paletted', 'pseudocolor'],
+  dem: ['hillshade'],
+};
+
+export const renderersFor = (def) => RENDERERS[def.geometry === 'raster' ? def.kind : def.geometry];
+
+// Settings whose change rebuilds the class list.
+export const RECLASSIFY_KEYS = ['renderer', 'field', 'normalizeBy', 'method', 'classCount', 'sdInterval', 'interval', 'rangeMode', 'rangeMin', 'rangeMax'];
+
+const BASE = {
+  renderer: 'single',
+  opacity: 1,
+  minZoom: 0,
+  maxZoom: 24,
+  showLegend: true,
+  point: {
+    marker: 'circle',
+    badge: true,
+    size: 10,
+    fill: 'var(--accent)',
+    fillOpacity: 1,
+    stroke: 'var(--surface-strong)',
+    strokeWidth: 1.5,
+    strokeOpacity: 1,
+    glyph: '#ffffff',
+    rotation: 0,
+    offsetX: 0,
+    offsetY: 0,
+    blur: 0,
+  },
+  line: {
+    color: 'var(--accent)',
+    width: 1.5,
+    opacity: 1,
+    dash: 'solid',
+    customDash: '4 2',
+    cap: 'round',
+    join: 'round',
+    offset: 0,
+    blur: 0,
+    casing: false,
+    casingColor: 'var(--surface-strong)',
+    casingWidth: 1.5,
+  },
+  polygon: {
+    fill: 'var(--accent)',
+    fillOpacity: 0.7,
+    noFill: false,
+    pattern: 'solid',
+    patternSpacing: 8,
+    patternWidth: 1,
+    patternBackground: false,
+    outline: 'var(--surface-strong)',
+    outlineWidth: 0,
+    outlineOpacity: 1,
+    outlineDash: 'solid',
+    extrude: false,
+    extrudeField: null,
+    extrudeScale: 10,
+    extrudeBase: 0,
+  },
+  // Categorized / graduated.
+  field: null,
+  normalizeBy: null,
+  method: 'equal',
+  classCount: 5,
+  sdInterval: 1,
+  interval: 1,
+  rangeMode: 'data', // data | manual
+  rangeMin: 0,
+  rangeMax: 100,
+  precision: 1,
+  ramp: { id: 'YlOrRd', invert: false, stops: null },
+  continuous: false,
+  classes: [],
+  showOther: true,
+  otherColor: '#9aa3ad',
+  // Graduated size (diameter px for points, width px for lines).
+  sizeMin: 2,
+  sizeMax: 14,
+  heatmap: { radius: 18, intensity: 1, weightField: null, opacity: 0.85 },
+  cluster: { radius: 40, maxZoom: 14, color: 'var(--accent)', showCount: true },
+  raster: {
+    statsMode: 'data', // data | cut | manual
+    min: 0,
+    max: 1,
+    interpolation: 'linear', // linear | discrete
+    classCount: 9,
+    nodata: '#00000000',
+    brightnessMin: 0,
+    brightnessMax: 1,
+    contrast: 0,
+    saturation: 0,
+    hue: 0,
+    resampling: 'linear',
+  },
+  hillshade: { exaggeration: 0.5, direction: 335, anchor: 'viewport', shadow: '#000000', highlight: '#ffffff', accent: '#000000' },
+};
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+// Today's map look, per layer: Reset brings these back.
+const OVERRIDES = {
+  surfaceTemp: {
+    renderer: 'graduated',
+    field: 't',
+    method: 'equal',
+    classCount: 9,
+    rangeMode: 'manual',
+    rangeMin: TEMP_DOMAIN[0],
+    rangeMax: TEMP_DOMAIN[1],
+    ramp: { id: 'heat', invert: false, stops: null },
+    continuous: true,
+    polygon: { fillOpacity: 0.72, outlineWidth: 0 },
+  },
+  airTemp: {
+    renderer: 'graduated',
+    field: 't',
+    method: 'equal',
+    classCount: 9,
+    rangeMode: 'manual',
+    rangeMin: TEMP_DOMAIN[0],
+    rangeMax: TEMP_DOMAIN[1],
+    ramp: { id: 'heat', invert: false, stops: null },
+    continuous: true,
+    line: { width: 1.2, opacity: 0.9 },
+  },
+  blocks: { polygon: { fill: 'var(--accent)', fillOpacity: 0.12, outline: 'var(--accent)', outlineWidth: 1 } },
+  sealing: {
+    renderer: 'graduatedSize',
+    field: 'sealing',
+    rangeMode: 'manual',
+    rangeMin: 0,
+    rangeMax: 100,
+    sizeMin: 1,
+    sizeMax: 8,
+    point: { fill: 'var(--seal-4)', fillOpacity: 0.65, strokeWidth: 0 },
+  },
+  hospitals: { point: { fill: 'var(--level-high)', size: 12, strokeWidth: 2 } },
+  water: { point: { fill: 'var(--accent-2)', size: 12, strokeWidth: 2 } },
+  lstRaster: {
+    renderer: 'pseudocolor',
+    opacity: 0.8,
+    ramp: { id: 'heat', invert: false, stops: null },
+    raster: { statsMode: 'manual', min: TEMP_DOMAIN[0], max: TEMP_DOMAIN[1] },
+  },
+  hazardRaster: { renderer: 'paletted', opacity: 0.75, ramp: { id: 'YlOrRd', invert: false, stops: null }, raster: { resampling: 'nearest' } },
+  hillshade: { renderer: 'hillshade' },
+};
+
+/** Deep merge for plain objects; arrays and scalars from `over` replace those in `base`. */
+export function deepMerge(base, over) {
+  if (over == null) return clone(base);
+  const out = clone(base);
+  for (const [k, v] of Object.entries(over)) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && base?.[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) out[k] = deepMerge(base[k], v);
+    else if (v !== undefined) out[k] = clone(v);
+  }
+  return out;
+}
+
+/** Numeric range [min, max] used for raster stretching. */
+export function rasterRange(def, style) {
+  const r = style.raster;
+  if (r.statsMode === 'manual') return [r.min, r.max];
+  const s = stats(fieldValues(def));
+  return r.statsMode === 'cut' ? [percentile(s.sorted, 0.02), percentile(s.sorted, 0.98)] : [s.min, s.max];
+}
+
+/** The class list a style should have for its current settings (colours and labels reset). */
+export function buildClasses(def, style) {
+  if (def.geometry === 'raster') {
+    if (style.renderer === 'paletted') {
+      const known = def.raster.classes;
+      const values = known?.map((k) => k.value) ?? uniqueValues(fieldValues(def)).map((u) => u.value).sort((a, b) => a - b);
+      return values.map((value) => ({ value, color: null, label: known?.find((k) => k.value === value)?.label ?? null, visible: true }));
+    }
+    return [];
+  }
+  if (!style.field) return [];
+  if (style.renderer === 'categorized') {
+    const rows = fieldValues(def, style.field);
+    const raw = def.fields.find((f) => f.key === style.field)?.type === 'number' ? rows : (def.data?.features ?? []).map((f) => f.properties[style.field]);
+    return uniqueValues(raw).map(({ value }) => ({ value, color: null, label: null, visible: true }));
+  }
+  if (style.renderer === 'graduated') {
+    const values = fieldValues(def, style.field, style.normalizeBy);
+    const manual = style.method === 'manual' && style.classes.length ? [style.classes[0].from, ...style.classes.map((c) => c.to)] : null;
+    const breaks = computeBreaks(values, style.method, style.classCount, {
+      range: style.rangeMode === 'manual' ? [style.rangeMin, style.rangeMax] : null,
+      sdInterval: style.sdInterval,
+      interval: style.interval,
+      manual,
+    });
+    return breaks.slice(0, -1).map((from, i) => ({ from, to: breaks[i + 1], color: null, label: null, visible: true }));
+  }
+  return [];
+}
+
+/** Default style of a layer (today's look), with its classes built. */
+export function defaultStyle(def) {
+  const style = deepMerge(BASE, OVERRIDES[def.id]);
+  if (!style.field && def.fields) style.field = (def.fields.find((f) => f.type === 'number' && f.kind !== 'coord') ?? def.fields[1] ?? def.fields[0])?.key ?? null;
+  style.classes = buildClasses(def, style);
+  return style;
+}
+
+export const DEFAULT_STYLES = Object.fromEntries(LAYERS.map((def) => [def.id, defaultStyle(def)]));
+
+/** A saved or imported style made safe for its layer: missing settings filled from the defaults. */
+export function normalizeStyle(def, saved) {
+  const base = DEFAULT_STYLES[def.id];
+  if (!saved || typeof saved !== 'object') return clone(base);
+  const style = deepMerge(base, saved);
+  if (!renderersFor(def).includes(style.renderer)) style.renderer = base.renderer;
+  if (def.fields && style.field && !def.fields.some((f) => f.key === style.field)) {
+    style.field = base.field;
+    style.classes = buildClasses(def, style);
+  }
+  if (!Array.isArray(style.classes)) style.classes = buildClasses(def, style);
+  return style;
+}

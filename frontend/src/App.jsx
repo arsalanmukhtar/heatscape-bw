@@ -12,6 +12,7 @@ import { FiltersPanel, ReportsPanel, SettingsPanel } from './components/Secondar
 import { RankingPanel } from './components/RankingPanel';
 import { ScenariosPanel } from './components/ScenariosPanel';
 import { SidePanel } from './components/SidePanel';
+import { SymbologyPanel } from './components/symbology/SymbologyPanel';
 import { TopNav } from './components/TopNav';
 import { t } from './i18n';
 import { useMediaQuery } from './lib/useMediaQuery';
@@ -31,6 +32,7 @@ const VIEWS = {
   inspector: { Panel: InspectorPanel, title: t.inspector.title, expand: t.inspector.expand },
   copilot: { Panel: CopilotPanel, title: t.copilot.title, expand: t.copilot.expand },
   ranking: { Panel: RankingPanel, title: t.ranking.title, expand: t.ranking.expand },
+  symbology: { Panel: SymbologyPanel, title: t.symbology.title, expand: t.symbology.expand },
 };
 
 export default function App() {

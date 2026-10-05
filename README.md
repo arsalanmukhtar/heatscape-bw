@@ -57,6 +57,7 @@ gateway/     nginx.conf
 | Copilot panel (plan, tool steps, result, composer) | UI done, MOCK conversation; copilot API planned |
 | Geoprocessing panel, Jobs History dock tab + logs, map scale bar | UI done, MOCK tools and simulated jobs; process/job API planned |
 | Scenarios workspace (editor, ranking with rank stability, priority map + swipe compare, charts tab) | UI done, ranking computed in browser from MOCK blocks; scenarios/ranking API planned |
+| Layers panel (per-layer legend, table, zoom, toggles) + Symbology panel, Style tab (renderers, ramps, markers/icons, patterns, rasters, hillshade; saved per layer) | UI done, MOCK vector and raster layers; Label and Query tabs next |
 | Backend health + database extensions check | Done |
 | Auth, workers, tiles, copilot API | Planned (`docs/architecture.md`) |
 

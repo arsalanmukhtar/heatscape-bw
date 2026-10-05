@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MapGL, { Layer, Marker, Source, useMap } from 'react-map-gl/mapbox';
 import { LuX } from 'react-icons/lu';
-import { AIR_GRID, BLOCKS, FACILITIES, REGION, SEALING_POINTS, SURFACE_GRID, blockBounds, blockById } from '../data/mock';
+import { BLOCKS, REGION, SURFACE_GRID, blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
 import { cssVar, distanceKm } from '../lib/css';
-import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage, heatStops } from '../lib/mapStyle';
+import { LAYERS } from '../lib/layers';
+import { addGeneratedImage } from '../lib/mapImages';
+import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage } from '../lib/mapStyle';
 import { MAP_CONTAINER_ID, SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { candidateFootprint } from '../lib/scenario';
+import { buildLayerSpec } from '../lib/symbology';
 import { useMapResize } from '../lib/useMapResize';
 import { useLayout } from '../state/layout';
 import { useMapStyleUrl } from '../state/basemap';
 import { useActiveRanking, useScenarios } from '../state/scenarios';
+import { useSymbology } from '../state/symbology';
 import { useTheme } from '../state/theme';
 import { useWorkspace } from '../state/workspace';
 import { CompareSwipe } from './CompareSwipe';
@@ -19,6 +23,10 @@ import { Geocoder, SearchPin } from './Geocoder';
 import { MapAttribution } from './MapAttribution';
 import { MapControls } from './MapControls';
 import { MapScale } from './MapScale';
+
+// Overlay layers stay above every data layer; the first of them anchors the draw order.
+const OVERLAY_ANCHOR = 'grid-line';
+const PRIORITY_IDS = ['priority-fill', 'priority-hatch', 'priority-line'];
 
 export function MapView() {
   const containerRef = useRef(null);
@@ -46,19 +54,16 @@ function LiveMap() {
   const { main } = useMap();
   const resolved = useTheme((s) => s.resolved);
   const styleUrl = useMapStyleUrl();
-  const { layers, sealingOpacity, selectedId, select, tools } = useWorkspace();
+  const { layers, selectedId, select, tools } = useWorkspace();
+  const { styles, order } = useSymbology();
   const [measure, setMeasure] = useState([]);
   const selected = blockById(selectedId);
   const firstSelection = useRef(true);
 
-  // Literal colours for Mapbox paint properties, re-read when the theme changes.
+  // Literal colours for the overlays' paint properties, re-read when the theme changes.
   const palette = useMemo(
     () => ({
-      heat: heatStops(),
       accent: cssVar('--accent'),
-      hospital: cssVar('--level-high'),
-      water: cssVar('--accent-2'),
-      seal: cssVar('--seal-4'),
       line: cssVar('--map-line'),
       text: cssVar('--text'),
       surface: cssVar('--surface-strong'),
@@ -68,17 +73,26 @@ function LiveMap() {
     [resolved],
   );
 
+  // Styleable layers, drawn from their symbology (lib/symbology.js). Token colours are
+  // resolved at build time, so the theme is a dependency.
+  const specs = useMemo(
+    () => Object.fromEntries(LAYERS.map((def) => [def.id, buildLayerSpec(def, styles[def.id], !!layers[def.id])])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [styles, layers, resolved],
+  );
+
   // Scenario priority: shown while the scenario workspace (left panel or ranking view) is in use.
   const ranking = useActiveRanking();
   const scenarioContext = useLayout((s) => s.leftSection === 'scenarios' || s.rightView === 'ranking');
   const showPriority = scenarioContext && layers.priority;
   const candidates = useMemo(() => (ranking ? { type: 'FeatureCollection', features: ranking.rows.map(candidateFootprint) } : null), [ranking]);
 
-  // The hatch image is dropped on every style change (theme switch), so re-add it on demand.
+  // Images are dropped on every style change (theme or basemap switch), so they are drawn on
+  // demand: the priority hatch and every generated marker and fill pattern (lib/mapImages.js).
   useEffect(() => {
     const map = main?.getMap();
     if (!map) return;
-    const onMissing = (e) => e.id === 'unc-hatch' && addHatchImage(map);
+    const onMissing = (e) => (e.id === 'unc-hatch' ? addHatchImage(map) : addGeneratedImage(map, e.id));
     const onLoad = () => addHatchImage(map);
     map.on('styleimagemissing', onMissing);
     map.on('style.load', onLoad);
@@ -88,6 +102,33 @@ function LiveMap() {
       map.off('style.load', onLoad);
     };
   }, [main]);
+
+  // Draw order: the data layers stack in the user's order (symbology store), all below the
+  // overlays (grid, selection, measure). Layers are added on top when created, so the order
+  // is re-applied after every style change; it only moves layers that are out of place.
+  const stack = useMemo(() => order.flatMap((id) => (id === 'priority' ? PRIORITY_IDS : (specs[id]?.layers.map((l) => l.id) ?? []))), [order, specs]);
+  useEffect(() => {
+    const map = main?.getMap();
+    if (!map) return;
+    const apply = () => {
+      let ids;
+      try {
+        ids = map.getStyle()?.layers?.map((l) => l.id);
+      } catch {
+        return;
+      }
+      if (!ids) return;
+      const pos = new Map(ids.map((id, i) => [id, i]));
+      const present = stack.filter((id) => pos.has(id));
+      const anchor = pos.has(OVERLAY_ANCHOR) ? OVERLAY_ANCHOR : undefined;
+      const limit = anchor ? pos.get(anchor) : Infinity;
+      const inPlace = present.every((id, i) => pos.get(id) < limit && (i === 0 || pos.get(present[i - 1]) < pos.get(id)));
+      if (!inPlace) present.forEach((id) => map.moveLayer(id, anchor));
+    };
+    apply();
+    map.on('styledata', apply);
+    return () => map.off('styledata', apply);
+  }, [main, stack]);
 
   // Fly to a block when it is picked from the table (not on first load).
   useEffect(() => {
@@ -106,14 +147,6 @@ function LiveMap() {
     const [[w, s], [e, n]] = blockBounds(selected);
     return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } };
   }, [selected]);
-
-  const facilities = useMemo(
-    () => ({
-      type: 'FeatureCollection',
-      features: FACILITIES.map((f) => ({ type: 'Feature', properties: { kind: f.kind, name: f.name }, geometry: { type: 'Point', coordinates: f.position } })),
-    }),
-    [],
-  );
 
   const measureKm = measure.slice(1).reduce((sum, p, i) => sum + distanceKm(measure[i], p), 0);
   const measureLine = useMemo(() => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: measure } }), [measure]);
@@ -146,83 +179,36 @@ function LiveMap() {
         if (nearest && nearest.km < 1.5) select(nearest.b.id);
       }}
     >
-      <Source id="surface" type="geojson" data={SURFACE_GRID}>
-        <Layer
-          id="surface-fill"
-          type="fill"
-          layout={{ visibility: vis(layers.surfaceTemp) }}
-          paint={{ 'fill-color': ['interpolate', ['linear'], ['get', 't'], ...palette.heat], 'fill-opacity': 0.72 }}
-        />
-        <Layer id="surface-grid" type="line" layout={{ visibility: vis(tools.grid) }} paint={{ 'line-color': palette.line, 'line-width': 0.5 }} />
-      </Source>
-
-      <Source id="air" type="geojson" data={AIR_GRID}>
-        <Layer
-          id="air-line"
-          type="line"
-          layout={{ visibility: vis(layers.airTemp) }}
-          paint={{ 'line-color': ['interpolate', ['linear'], ['get', 't'], ...palette.heat], 'line-width': 1.2, 'line-opacity': 0.9 }}
-        />
-      </Source>
-
-      <Source id="sealing" type="geojson" data={SEALING_POINTS}>
-        <Layer
-          id="sealing-dots"
-          type="circle"
-          layout={{ visibility: vis(layers.sealing && sealingOpacity > 0) }}
-          paint={{
-            'circle-color': palette.seal,
-            'circle-radius': ['interpolate', ['linear'], ['get', 'sealing'], 0, 0.5, 100, 4],
-            'circle-opacity': sealingOpacity / 100,
-          }}
-        />
-      </Source>
+      {LAYERS.map((def) => {
+        const spec = specs[def.id];
+        return (
+          <Source key={spec.sourceKey} id={spec.sourceId} {...spec.source}>
+            {spec.layers.map((l) => (
+              <Layer key={l.id} {...l} />
+            ))}
+          </Source>
+        );
+      })}
 
       {candidates && (
         <Source id="priority" type="geojson" data={candidates}>
           <Layer
             id="priority-fill"
             type="fill"
-            beforeId="hospitals"
             layout={{ visibility: vis(showPriority) }}
             paint={{
               'fill-color': ['match', ['get', 'priority'], 1, palette.priority[0], 2, palette.priority[1], 3, palette.priority[2], 4, palette.priority[3], palette.priority[4]],
               'fill-opacity': 0.88,
             }}
           />
-          <Layer
-            id="priority-hatch"
-            type="fill"
-            beforeId="hospitals"
-            filter={['==', ['get', 'unstable'], true]}
-            layout={{ visibility: vis(showPriority) }}
-            paint={{ 'fill-pattern': 'unc-hatch' }}
-          />
-          <Layer
-            id="priority-line"
-            type="line"
-            beforeId="hospitals"
-            layout={{ visibility: vis(showPriority) }}
-            paint={{ 'line-color': palette.surface, 'line-width': 1 }}
-          />
+          <Layer id="priority-hatch" type="fill" filter={['==', ['get', 'unstable'], true]} layout={{ visibility: vis(showPriority) }} paint={{ 'fill-pattern': 'unc-hatch' }} />
+          <Layer id="priority-line" type="line" layout={{ visibility: vis(showPriority) }} paint={{ 'line-color': palette.surface, 'line-width': 1 }} />
         </Source>
       )}
 
-      <Source id="facilities" type="geojson" data={facilities}>
-        <Layer
-          id="hospitals"
-          type="circle"
-          filter={['==', ['get', 'kind'], 'hospital']}
-          layout={{ visibility: vis(layers.hospitals) }}
-          paint={{ 'circle-color': palette.hospital, 'circle-radius': 6, 'circle-stroke-color': palette.surface, 'circle-stroke-width': 2 }}
-        />
-        <Layer
-          id="water"
-          type="circle"
-          filter={['==', ['get', 'kind'], 'water']}
-          layout={{ visibility: vis(layers.water) }}
-          paint={{ 'circle-color': palette.water, 'circle-radius': 6, 'circle-stroke-color': palette.surface, 'circle-stroke-width': 2 }}
-        />
+      {/* Overlays, always above the data layers; the grid line is the anchor they stack under. */}
+      <Source id="grid" type="geojson" data={SURFACE_GRID}>
+        <Layer id={OVERLAY_ANCHOR} type="line" layout={{ visibility: vis(tools.grid) }} paint={{ 'line-color': palette.line, 'line-width': 0.5 }} />
       </Source>
 
       <Source id="selection" type="geojson" data={selection}>

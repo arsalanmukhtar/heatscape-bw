@@ -18,6 +18,10 @@ Append-only. One line each: decision — reason.
 14. Scenario priority classes use the vulnerability ramp (`--vuln-2/4/5/7/9`); unstable ranks get the low-confidence hatch — priority is not temperature, so no heat hues.
 15. Confidence is shown everywhere with `ConfidencePips`: pip count (■■■ / ■■□ / ■□□) + word, coloured from its own scale `--conf-high/medium/low` (green / amber / rose, validated for CVD in both themes) — user asked for colour; never heat-level or job-status colours, so it cannot read as a temperature or a failure.
 16. Swipe compare uses a second non-interactive Mapbox map clipped beside the handle and synced to the main camera — Mapbox has no per-layer clipping.
+17. Layer symbology is a JSON style per layer (`lib/styleModel.js`) translated to Mapbox layers in one place (`lib/symbology.js`) and saved in localStorage (`hs-symbology`) until reset — styles must survive refreshes and browser restarts; one translator keeps map, legend and panel in step.
+18. Class breaks are computed on the full layer data, never on rendered features — breaks must not change while panning.
+19. Marker shapes, icon markers and fill patterns are drawn on a canvas on demand (`styleimagemissing`, parameters in the image id) — no sprite sheet, any colour/size combination, survives basemap and theme switches.
+20. MOCK rasters are PNG image sources with the value in the red channel, decoded by `raster-color-mix` and coloured by `raster-color` — client-side ramps and palettes without a tile server; real rasters move to rio-tiler colormap/rescale params later.
 
 ## UI overrides
 
@@ -25,7 +29,7 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 
 - Map coordinates readout: removed.
 - Map scale: bare bracket bar + distance, bottom left, no box or background, 2 px strokes, ≤ 60 px.
-- Map legend: removed from the map (to live per layer in the Layers panel).
+- Map legend: removed from the map; each layer's legend sits inside its row in the Layers panel, generated from its symbology.
 - Mapbox wordmark and default attribution: replaced by the collapsible ⓘ attribution, bottom right.
 - Map projection: Web Mercator always (`MAP_PROJECTION`), never the Mapbox globe, on every basemap. No style fog either (`MAP_FOG = null`): the styles' globe fog culls tiles on a flat map when zoomed out.
 - Map controls: compact 28 px buttons, top right, in order: collapse chevron, zoom ±, world / Baden-Württemberg extent, tools, basemap, compare; the chevron folds the column with a staggered slide (state persisted); no fullscreen or prev/next view buttons.
@@ -40,7 +44,8 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 
 ## Open
 
+- Multiband RGB rasters (band picker, per-band stretch) need the tile server (rio-tiler); not possible in Mapbox GL client-side.
+- Symbology passes still to come: Label tab (fonts, halos, placement, label classes, multiline expressions), Query tab (builder + SQL subset), rule-based renderer (reuses the SQL parser); optional QML/SLD import.
 - Map selection outline: accent (as in approved screen) or `--accent-2`.
 - Mock district "Waldfriedhof" is not a Mannheim district (Waldhof is).
 - Mapbox wordmark hidden on request; Mapbox terms require it on public deployments — restore before going public.
-- Map legend: where in the Layers panel to attach it (`MapLegend.jsx` kept for that).

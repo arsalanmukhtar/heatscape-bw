@@ -103,13 +103,14 @@ export function blockBounds(b) {
   ];
 }
 
+// capacity: hospital beds, or pumped water in m³/h.
 export const FACILITIES = [
-  { name: 'St. Vincent Hospital', kind: 'hospital', position: [8.4895, 49.4985] },
-  { name: 'Klinikum Süd', kind: 'hospital', position: [8.4705, 49.4555] },
-  { name: 'Klinik Käfertal', kind: 'hospital', position: [8.5205, 49.5155] },
-  { name: 'Pump Station 4', kind: 'water', position: [8.4605, 49.5057] },
-  { name: 'Pump Station 2', kind: 'water', position: [8.5505, 49.4705] },
-  { name: 'Pump Station 7', kind: 'water', position: [8.4405, 49.5355] },
+  { id: 'H-01', name: 'St. Vincent Hospital', kind: 'hospital', capacity: 420, position: [8.4895, 49.4985] },
+  { id: 'H-02', name: 'Klinikum Süd', kind: 'hospital', capacity: 860, position: [8.4705, 49.4555] },
+  { id: 'H-03', name: 'Klinik Käfertal', kind: 'hospital', capacity: 240, position: [8.5205, 49.5155] },
+  { id: 'W-04', name: 'Pump Station 4', kind: 'water', capacity: 1800, position: [8.4605, 49.5057] },
+  { id: 'W-02', name: 'Pump Station 2', kind: 'water', capacity: 1250, position: [8.5505, 49.4705] },
+  { id: 'W-07', name: 'Pump Station 7', kind: 'water', capacity: 950, position: [8.4405, 49.5355] },
 ];
 
 /** Nearest hospital and nearest water facility to a block. */
@@ -138,7 +139,9 @@ function heatAt(lon, lat, noise) {
   return Math.max(26, Math.min(43, t + noise));
 }
 
-function grid(scale, offset, seed) {
+export const heatClassFor = (t) => (t >= 38 ? 'Severe' : t >= 35 ? 'High' : t >= 32 ? 'Moderate' : 'Low');
+
+function grid(scale, offset, seed, prefix) {
   const rand = rng(seed);
   const features = [];
   const dLon = GRID.dLon * scale;
@@ -148,7 +151,7 @@ function grid(scale, offset, seed) {
       const t = round1(heatAt(lon + dLon / 2, lat + dLat / 2, (rand() - 0.5) * (scale > 1 ? 0.6 : 2.2)) + offset);
       features.push({
         type: 'Feature',
-        properties: { t },
+        properties: { id: `${prefix}-${String(features.length + 1).padStart(4, '0')}`, t, heatClass: heatClassFor(t) },
         geometry: {
           type: 'Polygon',
           coordinates: [[[lon, lat], [lon + dLon, lat], [lon + dLon, lat + dLat], [lon, lat + dLat], [lon, lat]]],
@@ -159,8 +162,8 @@ function grid(scale, offset, seed) {
   return { type: 'FeatureCollection', features };
 }
 
-export const SURFACE_GRID = grid(1, 0, 7);
-export const AIR_GRID = grid(4, -3.5, 11);
+export const SURFACE_GRID = grid(1, 0, 7, 'S');
+export const AIR_GRID = grid(4, -3.5, 11, 'A');
 
 /** Sealing points on a ~500 m grid, sized by sealed share. */
 export const SEALING_POINTS = (() => {
@@ -169,15 +172,56 @@ export const SEALING_POINTS = (() => {
   for (let lon = GRID.west; lon < GRID.east; lon += GRID.dLon * 2) {
     for (let lat = GRID.south; lat < GRID.north; lat += GRID.dLat * 2) {
       const heat = (heatAt(lon, lat, 0) - 26) / 17;
+      const sealing = Math.round(Math.max(5, Math.min(95, heat * 95 + (rand() - 0.5) * 20)));
       features.push({
         type: 'Feature',
-        properties: { sealing: Math.round(Math.max(5, Math.min(95, heat * 95 + (rand() - 0.5) * 20))) },
+        properties: {
+          id: `P-${String(features.length + 1).padStart(4, '0')}`,
+          sealing,
+          band: sealing >= 75 ? 'Very high' : sealing >= 50 ? 'High' : sealing >= 25 ? 'Medium' : 'Low',
+        },
         geometry: { type: 'Point', coordinates: [lon + GRID.dLon, lat + GRID.dLat] },
       });
     }
   }
   return { type: 'FeatureCollection', features };
 })();
+
+/*
+  MOCK rasters on a ~125 m grid over the study area. values: row-major from the north-west
+  corner, null = no data (the Rhine strip along the western edge).
+  LST_RASTER: land surface temperature, °C. HAZARD_RASTER: heat hazard class 1–5.
+*/
+function rasterGrid(seed, valueAt) {
+  const rand = rng(seed);
+  const dLon = GRID.dLon / 2;
+  const dLat = GRID.dLat / 2;
+  const cols = Math.round((GRID.east - GRID.west) / dLon);
+  const rows = Math.round((GRID.north - GRID.south) / dLat);
+  const values = new Array(cols * rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const lon = GRID.west + (c + 0.5) * dLon;
+      const lat = GRID.north - (r + 0.5) * dLat;
+      values[r * cols + c] = lon < 8.428 ? null : valueAt(heatAt(lon, lat, (rand() - 0.5) * 1.2));
+    }
+  }
+  return { bounds: [GRID.west, GRID.south, GRID.west + cols * dLon, GRID.north], cols, rows, values };
+}
+
+export const LST_RASTER = { ...rasterGrid(31, round1), unit: '°C' };
+export const HAZARD_CLASSES = [
+  { value: 1, label: 'Very low' },
+  { value: 2, label: 'Low' },
+  { value: 3, label: 'Moderate' },
+  { value: 4, label: 'High' },
+  { value: 5, label: 'Very high' },
+];
+export const HAZARD_RASTER = {
+  ...rasterGrid(37, (t) => (t >= 39.5 ? 5 : t >= 37 ? 4 : t >= 34.5 ? 3 : t >= 32 ? 2 : 1)),
+  unit: '',
+  classes: HAZARD_CLASSES,
+};
 
 export const USER = { initials: 'MA', name: 'M. Arsalan' };
 

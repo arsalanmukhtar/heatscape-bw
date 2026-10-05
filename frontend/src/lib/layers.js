@@ -1,0 +1,168 @@
+import {
+  AIR_GRID,
+  BLOCKS,
+  FACILITIES,
+  HAZARD_RASTER,
+  LST_RASTER,
+  SEALING_POINTS,
+  SURFACE_GRID,
+  blockBounds,
+} from '../data/mock';
+import { t } from '../i18n';
+
+/*
+  Map layers that can be styled. Each entry: id (also the visibility key in
+  workspace.layers), group, geometry (point | line | polygon | raster), label, and either
+  vector data (GeoJSON) with fields, or a raster (kind: continuous | classified | dem).
+  field.kind drives table cells: text | id | num | int | pct | temp | green | chip | coord.
+  Feature-level ids live in properties.id so tables, queries and styles share one key.
+*/
+const toFeature = (properties, geometry) => ({ type: 'Feature', properties, geometry });
+
+const BLOCKS_FC = {
+  type: 'FeatureCollection',
+  features: BLOCKS.map((b) => {
+    const [[w, s], [e, n]] = blockBounds(b);
+    const { center, weekly, ...props } = b;
+    return toFeature(props, { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] });
+  }),
+};
+
+const facilities = (kind) => ({
+  type: 'FeatureCollection',
+  features: FACILITIES.filter((f) => f.kind === kind).map(({ position, ...props }) => toFeature(props, { type: 'Point', coordinates: position })),
+});
+
+const c = t.layers.fields;
+const COORDS = [
+  { key: 'lon', label: c.lon, kind: 'coord', type: 'number' },
+  { key: 'lat', label: c.lat, kind: 'coord', type: 'number' },
+];
+const GRID_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 't', label: c.temp, kind: 'temp', type: 'number' },
+  { key: 'heatClass', label: c.heatClass, kind: 'chip', type: 'string' },
+  ...COORDS,
+];
+const FACILITY_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 'name', label: c.name, kind: 'text', type: 'string' },
+  { key: 'kind', label: c.kind, kind: 'text', type: 'string' },
+  { key: 'capacity', label: c.capacity, kind: 'int', type: 'number' },
+  ...COORDS,
+];
+
+export const LAYER_GROUPS = [
+  { id: 'heat', label: t.layers.heatIslands },
+  { id: 'urban', label: t.layers.urban },
+  { id: 'infrastructure', label: t.layers.infrastructure },
+  { id: 'raster', label: t.layers.rasters },
+];
+
+export const LAYERS = [
+  { id: 'surfaceTemp', group: 'heat', geometry: 'polygon', label: t.layers.surfaceTemp, data: SURFACE_GRID, fields: GRID_FIELDS },
+  { id: 'airTemp', group: 'heat', geometry: 'line', label: t.layers.airTemp, data: AIR_GRID, fields: GRID_FIELDS },
+  {
+    id: 'blocks',
+    group: 'urban',
+    geometry: 'polygon',
+    label: t.layers.blocks,
+    data: BLOCKS_FC,
+    fields: [
+      { key: 'id', label: t.table.columns.id, kind: 'id', type: 'string' },
+      { key: 'district', label: t.table.columns.district, kind: 'text', type: 'string' },
+      { key: 'avgTemp', label: t.table.columns.avgTemp, kind: 'num', type: 'number' },
+      { key: 'peakTemp', label: t.table.columns.peakTemp, kind: 'temp', type: 'number' },
+      { key: 'lstDay', label: c.lstDay, kind: 'num', type: 'number' },
+      { key: 'sealing', label: t.table.columns.sealing, kind: 'pct', type: 'number' },
+      { key: 'greenCover', label: t.table.columns.greenCover, kind: 'green', type: 'number' },
+      { key: 'popDensity', label: t.table.columns.popDensity, kind: 'int', type: 'number' },
+      { key: 'vulnerability', label: c.vulnerability, kind: 'int', type: 'number' },
+      { key: 'risk', label: t.table.columns.risk, kind: 'chip', type: 'string' },
+    ],
+  },
+  {
+    id: 'sealing',
+    group: 'urban',
+    geometry: 'point',
+    label: t.layers.sealing,
+    data: SEALING_POINTS,
+    fields: [
+      { key: 'id', label: c.id, kind: 'id', type: 'string' },
+      { key: 'sealing', label: t.table.columns.sealing, kind: 'pct', type: 'number' },
+      { key: 'band', label: c.band, kind: 'text', type: 'string' },
+      ...COORDS,
+    ],
+  },
+  { id: 'hospitals', group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, data: facilities('hospital'), fields: FACILITY_FIELDS },
+  { id: 'water', group: 'infrastructure', geometry: 'point', label: t.layers.water, data: facilities('water'), fields: FACILITY_FIELDS },
+  { id: 'lstRaster', group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
+  { id: 'hazardRaster', group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
+  { id: 'hillshade', group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },
+];
+
+export const layerById = (id) => LAYERS.find((l) => l.id === id);
+
+/** Draw order, bottom to top. 'priority' is the scenario overlay, kept in the stack so data can sit above or below it. */
+export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'blocks', 'airTemp', 'priority', 'sealing', 'hospitals', 'water'];
+
+// Centre of a feature's coordinates (good enough for points and grid cells).
+function centerOf(geometry) {
+  const pts = geometry.type === 'Point' ? [geometry.coordinates] : geometry.coordinates.flat(geometry.type === 'Polygon' ? 1 : 0);
+  const ring = geometry.type === 'Polygon' ? pts.slice(0, -1) : pts;
+  const sum = ring.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]);
+  return [sum[0] / ring.length, sum[1] / ring.length];
+}
+
+const rowCache = new Map();
+
+/** Attribute rows of a vector layer: properties plus lon/lat of the feature centre. */
+export function layerRows(def) {
+  if (!def?.data) return [];
+  if (!rowCache.has(def.id)) {
+    rowCache.set(
+      def.id,
+      def.data.features.map((f) => {
+        const [lon, lat] = centerOf(f.geometry);
+        return { ...f.properties, lon: +lon.toFixed(5), lat: +lat.toFixed(5) };
+      }),
+    );
+  }
+  return rowCache.get(def.id);
+}
+
+/** Numeric fields of a layer (for graduated renderers, normalisation, weights). */
+export const numericFields = (def) => (def?.fields ?? []).filter((f) => f.type === 'number' && f.kind !== 'coord');
+/** Fields that make sense as categories. */
+export const categoryFields = (def) => (def?.fields ?? []).filter((f) => f.kind !== 'coord');
+
+/** Values of a field across the whole layer; normalizeBy divides by a second field. */
+export function fieldValues(def, field, normalizeBy) {
+  if (def?.raster) return def.raster.values.filter((v) => v != null);
+  return layerRows(def).map((r) => {
+    const v = Number(r[field]);
+    if (!normalizeBy) return v;
+    const d = Number(r[normalizeBy]);
+    return d ? v / d : NaN;
+  });
+}
+
+/** [[west, south], [east, north]] of a layer, for zoom to layer. */
+export function layerBounds(def) {
+  if (def?.raster) {
+    const [w, s, e, n] = def.raster.bounds;
+    return [[w, s], [e, n]];
+  }
+  if (!def?.data) return [[8.42, 49.43], [8.6, 49.56]];
+  let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (c) => {
+    if (typeof c[0] === 'number') {
+      w = Math.min(w, c[0]);
+      e = Math.max(e, c[0]);
+      s = Math.min(s, c[1]);
+      n = Math.max(n, c[1]);
+    } else c.forEach(visit);
+  };
+  def.data.features.forEach((f) => visit(f.geometry.coordinates));
+  return [[w, s], [e, n]];
+}

@@ -18,7 +18,7 @@ export const useLayout = create()(
       leftOpen: true,
       leftSection: 'layers', // layers | geoprocessing | scenarios | filters | reports | settings
       rightOpen: true,
-      rightView: 'inspector', // inspector | copilot | ranking
+      rightView: 'inspector', // inspector | copilot | ranking | symbology
       dockOpen: true,
       dockTab: 'table', // table | jobs | charts
       dockMax: false, // dock fills the map area (not persisted)
@@ -43,6 +43,8 @@ export const useLayout = create()(
         if (rightOpen && rightView === view) set({ rightOpen: false });
         else set({ rightOpen: true, rightView: view });
       },
+      // Open a right view without toggling (e.g. Symbology from a layer row).
+      showRightView: (view) => set({ rightOpen: true, rightView: view }),
       toggleDock: () => set({ dockOpen: !get().dockOpen, dockMax: false }),
       // Universal expand: one element at a time; it also restores a maximised dock so the map shows.
       toggleExpanded: (id) => set({ expanded: get().expanded === id ? null : id, dockMax: false }),
