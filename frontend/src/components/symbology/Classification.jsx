@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LuArrowRightLeft, LuPlus, LuRefreshCw, LuTrash2 } from 'react-icons/lu';
+import { LuArrowRightLeft, LuEye, LuEyeOff, LuPlus, LuRefreshCw, LuTrash2 } from 'react-icons/lu';
 import { t } from '../../i18n';
 import { fmtNum, METHODS, stats } from '../../lib/classify';
 import { categoryFields, fieldValues, layerRows, numericFields } from '../../lib/layers';
@@ -9,7 +9,6 @@ import { rasterRange } from '../../lib/styleModel';
 import { classColors } from '../../lib/symbology';
 import { matchesSearch } from '../../lib/search';
 import { useSymbology } from '../../state/symbology';
-import { Checkbox } from '../Checkbox';
 import { Check, ColorField, Field, NumberField, Section, Segmented, Select, TextField } from '../controls';
 import { SearchBar } from '../SearchBar';
 
@@ -138,8 +137,8 @@ export function ClassList({ def, id, style }) {
     <div className="flex flex-col gap-1.5">
       {style.classes.length > SEARCH_FROM && <SearchBar value={query} onChange={setQuery} placeholder={s.searchClasses} className="w-full" />}
       <div className="flex h-6 items-center gap-1.5 border-b border-border text-2xs uppercase tracking-[var(--tracking-caps)] text-muted">
-        <span className="w-4 shrink-0" />
-        <span className="w-5 shrink-0" />
+        <span className="w-7 shrink-0" />
+        <span className="w-7 shrink-0" />
         <span className={graduated ? 'w-[116px] shrink-0' : 'w-16 shrink-0'}>{graduated ? s.range : s.value}</span>
         <span className="min-w-0 flex-1">{s.label}</span>
         <span className="w-9 shrink-0 text-right">{s.count}</span>
@@ -147,8 +146,20 @@ export function ClassList({ def, id, style }) {
       <ul className="flex max-h-72 flex-col overflow-y-auto">
         {rows.map(({ c, i }) => (
           <li key={i} className="flex h-8 items-center gap-1.5">
-            <Checkbox checked={c.visible} onChange={() => updateClass(id, i, { visible: !c.visible })} label={s.showClass} />
-            <ColorField value={colors[i]} onChange={(c) => updateClass(id, i, { color: c })} label={s.classColor} compact size="size-5" />
+            {/* Visibility as an eye in a 28 px cell (same box as the swatch and inputs); a hidden
+                class shows a crossed eye and the rest of its row fades. */}
+            <button
+              type="button"
+              onClick={() => updateClass(id, i, { visible: !c.visible })}
+              aria-pressed={c.visible}
+              aria-label={s.showClass}
+              title={c.visible ? s.hideClass : s.showClass}
+              className={`grid size-7 shrink-0 place-items-center border border-border bg-field transition-colors duration-150 hover:text-accent ${c.visible ? 'text-text' : 'text-faint'}`}
+            >
+              {c.visible ? <LuEye size={14} /> : <LuEyeOff size={14} />}
+            </button>
+            <span className={`flex min-w-0 flex-1 items-center gap-1.5 transition-opacity duration-150 ${c.visible ? '' : 'opacity-40'}`}>
+            <ColorField value={colors[i]} onChange={(c) => updateClass(id, i, { color: c })} label={s.classColor} compact />
             {graduated ? (
               <span className="flex w-[116px] shrink-0 items-center gap-1">
                 <NumberField value={+c.from.toFixed(style.precision + 1)} step="any" label={s.from} className="w-[54px]" onChange={(v) => updateClass(id, i, { from: v })} />
@@ -161,6 +172,7 @@ export function ClassList({ def, id, style }) {
             )}
             <TextField value={c.label ?? ''} placeholder={autoLabel(style, c, raster ? '' : '')} label={s.label} className="min-w-0 flex-1" onChange={(v) => updateClass(id, i, { label: v === '' ? null : v })} />
             <span className="w-9 shrink-0 text-right text-2xs tabular-nums text-muted">{counts[i]}</span>
+            </span>
           </li>
         ))}
       </ul>

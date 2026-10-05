@@ -1,6 +1,8 @@
 /* UI strings, kept out of JSX so German can be added as a second locale. */
 const en = {
   appName: 'Heatscape BW',
+  appBrand: 'Heatscape',
+  appRegion: 'BW',
   nav: {
     region: 'Region',
     gisView: 'GIS View',
@@ -202,6 +204,7 @@ const en = {
     label: 'Legend label',
     count: 'Count',
     showClass: 'Show class',
+    hideClass: 'Hide class',
     classColor: 'Class colour',
     from: 'From',
     to: 'To',

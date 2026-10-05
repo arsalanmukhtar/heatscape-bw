@@ -228,7 +228,7 @@ export function TextField({ value, onChange, label, placeholder, className = 'w-
 export function Check({ checked, onChange, label, hint }) {
   return (
     <label className="flex h-7 cursor-pointer items-center gap-2" title={hint}>
-      <Checkbox checked={checked} onChange={() => onChange(!checked)} label={label} />
+      <Checkbox checked={checked} onChange={() => onChange(!checked)} label={label} size="md" />
       <span className="text-xs text-text">{label}</span>
     </label>
   );

@@ -19,12 +19,17 @@ export function TopNav() {
   ];
 
   return (
-    <header className="flex shrink-0 items-center border-b border-nav-border bg-nav px-4 text-nav-text" style={{ height: 'var(--nav-h)' }}>
-      <div className="flex items-center gap-2.5">
-        <span className="grid size-6 place-items-center bg-accent text-on-accent">
-          <LuFlame size={14} />
+    <header className="flex shrink-0 items-center border-b border-nav-border bg-nav pr-4 text-nav-text" style={{ height: 'var(--nav-h)' }}>
+      {/* Brand: the mark fills the nav cell above the left rail (rail width × nav height, solid
+          accent), so its right edge continues the rail's border line; the name follows. */}
+      <div className="flex items-center gap-4 self-stretch" aria-label={t.appName}>
+        <span className="grid shrink-0 place-items-center self-stretch bg-accent text-on-accent" style={{ width: 'var(--rail-w)' }} aria-hidden>
+          <LuFlame size={20} strokeWidth={2.25} />
         </span>
-        <span className="whitespace-nowrap text-[15px] font-semibold tracking-[0.01em]">{t.appName}</span>
+        <span className="flex items-baseline gap-1.5 whitespace-nowrap" aria-hidden>
+          <span className="text-base font-bold tracking-[-0.01em] text-nav-text">{t.appBrand}</span>
+          <span className="text-xs font-bold uppercase tracking-[var(--tracking-caps)] text-accent">{t.appRegion}</span>
+        </span>
       </div>
 
       <span className="mx-4 h-6 w-px bg-nav-border lg:mx-6" aria-hidden />
