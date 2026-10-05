@@ -263,6 +263,72 @@
   animation: hs-pop-in 150ms ease-out;
 }
 
+/* Rich text (report editor and pages): paragraphs and square-bulleted / numbered lists.
+   On pages, running text is justified with hyphenation (the page carries lang); tables
+   are not affected. */
+.report-rich p {
+  margin-bottom: 0.6em;
+}
+.report-rich ul,
+.report-rich ol {
+  margin-bottom: 0.6em;
+  padding-left: 1.4em;
+}
+.report-rich ul {
+  list-style: square;
+}
+.report-rich ol {
+  list-style: decimal;
+}
+.report-rich li + li {
+  margin-top: 0.25em;
+}
+.report-rich > :last-child,
+.report-rich p:last-child {
+  margin-bottom: 0;
+}
+.report-page .report-rich p,
+.report-page .report-rich li {
+  text-align: justify;
+  hyphens: auto;
+}
+
+/* Report Builder pages: a hairline and soft shadow on the canvas (not in print). The print
+   copy (.report-print, rendered only while the print dialog is open) is all that prints:
+   one A4 page per sheet, no margins, colours as shown. */
+.report-sheet {
+  outline: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-glass);
+}
+.report-print {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: var(--report-page) !important;
+  }
+  body > :not(.report-print) {
+    display: none !important;
+  }
+  .report-print {
+    display: block;
+  }
+  .report-print .report-page {
+    width: 210mm !important;
+    height: 297mm !important;
+    break-after: page;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
 /* Square range slider: accent fill up to the value, square thumb. */
 .hs-range {
   --val: 50%;

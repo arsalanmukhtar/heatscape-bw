@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { LuBell, LuCalendar, LuChartLine, LuChevronDown, LuFileText, LuFlame, LuMap, LuMoon, LuSun } from 'react-icons/lu';
 import { REGION, SEASON, USER } from '../data/mock';
 import { t } from '../i18n';
+import { useLayout } from '../state/layout';
 import { useTheme } from '../state/theme';
 
 const REGIONS = ['Mannheim', 'Stuttgart', 'Karlsruhe'];
 
 export function TopNav() {
   const [region, setRegion] = useState(REGION.name);
-  const [view, setView] = useState('gis');
+  const { view, setView } = useLayout();
   const { resolved, toggle } = useTheme();
   const themeLabel = resolved === 'dark' ? t.nav.themeToLight : t.nav.themeToDark;
 

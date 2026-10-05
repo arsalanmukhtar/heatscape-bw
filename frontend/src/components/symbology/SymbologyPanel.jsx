@@ -3,6 +3,7 @@ import { LuArrowDown, LuArrowUp, LuCopy, LuDownload, LuFilter, LuImage, LuMapPin
 import { VscCollapseAll } from 'react-icons/vsc';
 import { t } from '../../i18n';
 import { LAYERS, layerById } from '../../lib/layers';
+import { saveFile } from '../../lib/saveFile';
 import { renderersFor } from '../../lib/styleModel';
 import { useLayout } from '../../state/layout';
 import { useSymbology } from '../../state/symbology';
@@ -171,12 +172,7 @@ function StyleFileSection({ def }) {
 
   const exportStyle = () => {
     const body = JSON.stringify({ format: 'heatscape-style', version: 1, layer: def.id, geometry: def.geometry, kind: def.kind ?? null, style: styles[def.id] }, null, 2);
-    const url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${def.id}-style.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    saveFile(`${def.id}-style.json`, new Blob([body], { type: 'application/json' }));
   };
 
   const onFile = async (e) => {

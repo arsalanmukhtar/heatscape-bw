@@ -1,5 +1,6 @@
 import { toBlob } from 'html-to-image';
 import { create } from 'zustand';
+import { pickSaveFile, writeSaveFile } from './saveFile';
 
 export const MAP_CONTAINER_ID = 'map-container';
 
@@ -14,24 +15,6 @@ const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
 
 /**
- * Asks for folder and file name (File System Access API, Chromium). Runs first, while the
- * click still counts as a user gesture. Returns null if the user cancels, undefined where
- * the API is missing (a normal download with the default name is used instead).
- */
-async function pickFile(name) {
-  if (!window.showSaveFilePicker) return undefined;
-  try {
-    return await window.showSaveFilePicker({
-      suggestedName: name,
-      types: [{ description: 'PNG image', accept: { 'image/png': ['.png'] } }],
-    });
-  } catch (e) {
-    if (e.name === 'AbortError') return null;
-    throw e;
-  }
-}
-
-/**
  * Saves the map container as a PNG: basemap and data layers (map canvases need
  * preserveDrawingBuffer), markers, scale, attribution and other DOM overlays.
  */
@@ -39,7 +22,7 @@ export async function captureMap() {
   const node = document.getElementById(MAP_CONTAINER_ID);
   if (!node || useSnapshot.getState().capturing) return;
   const name = `heatscape-map-${stamp()}.png`;
-  const file = await pickFile(name);
+  const file = await pickSaveFile(name);
   if (file === null) return;
   useSnapshot.getState().setCapturing(true);
   try {
@@ -50,19 +33,36 @@ export async function captureMap() {
       pixelRatio: window.devicePixelRatio || 1,
       filter: (el) => !(el instanceof HTMLElement && el.dataset.snapshot === 'exclude'),
     });
-    if (file) {
-      const out = await file.createWritable();
-      await out.write(blob);
-      await out.close();
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    }
+    await writeSaveFile(file, blob, name);
   } finally {
     useSnapshot.getState().setCapturing(false);
   }
+}
+
+const VIEW_MAX_W = 1600;
+
+/**
+ * The current map view for a report: the WebGL canvas (basemap and data layers; DOM
+ * markers are left out) as a JPEG of at most VIEW_MAX_W px, plus the camera so the report
+ * can draw its own scale bar and north arrow. Returns null if the map has not drawn yet.
+ */
+export function captureMapView(map) {
+  const canvas = map?.getCanvas();
+  if (!canvas?.width || !canvas.clientWidth) return null;
+  const k = Math.min(1, VIEW_MAX_W / canvas.width);
+  const out = document.createElement('canvas');
+  out.width = Math.round(canvas.width * k);
+  out.height = Math.round(canvas.height * k);
+  out.getContext('2d').drawImage(canvas, 0, 0, out.width, out.height);
+  const { lng, lat } = map.getCenter();
+  return {
+    image: out.toDataURL('image/jpeg', 0.85),
+    width: out.width,
+    height: out.height,
+    cssWidth: canvas.clientWidth, // map width on screen, for the scale at print size
+    center: [lng, lat],
+    zoom: map.getZoom(),
+    bearing: map.getBearing(),
+    at: new Date().toISOString(),
+  };
 }

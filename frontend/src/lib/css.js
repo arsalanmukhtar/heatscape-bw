@@ -4,6 +4,20 @@ export function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+/** CSS colours (tokens or var() expressions) resolved in the light theme, as rgb() strings.
+    Printed output (reports, PDFs, DOCX) is always light, whatever the app theme. */
+export function resolveLight(values) {
+  const el = document.createElement('span');
+  el.dataset.theme = 'light';
+  document.body.appendChild(el);
+  const out = values.map((v) => {
+    el.style.color = v;
+    return getComputedStyle(el).color;
+  });
+  el.remove();
+  return out;
+}
+
 /** Great-circle distance in kilometres between two [lon, lat] points. */
 export function distanceKm([lon1, lat1], [lon2, lat2]) {
   const rad = Math.PI / 180;

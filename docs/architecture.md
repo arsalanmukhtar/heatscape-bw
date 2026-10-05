@@ -14,6 +14,7 @@ Browser ──► gateway (nginx) ──► /        frontend (static React buil
 | middleware | BFF: proxy `/api`, auth sessions, SSE/WebSocket hub, rate limits | Query the database or hold domain logic |
 | backend | Domain API, spatial/non-spatial queries, process registry (OGC API – Processes) | Run long jobs in the request (use workers) |
 | database | PostGIS, h3-pg, app data | Be reachable from outside the compose network |
+| translate | LibreTranslate (EN/DE models), called only by the backend (`POST /api/translate`) | Be reachable from the browser or the internet |
 
 ## Planned services
 

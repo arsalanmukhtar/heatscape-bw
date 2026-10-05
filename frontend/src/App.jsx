@@ -10,7 +10,10 @@ import { LeftRail } from './components/LeftRail';
 import { MapView } from './components/MapView';
 import { EffectPanel } from './components/measures/EffectPanel';
 import { MeasuresPanel } from './components/measures/MeasuresPanel';
-import { FiltersPanel, ReportsPanel, SettingsPanel } from './components/SecondaryPanels';
+import { ReportOutline } from './components/report/ReportOutline';
+import { ReportProps } from './components/report/ReportProps';
+import { ReportWorkspace } from './components/report/ReportWorkspace';
+import { FiltersPanel, SettingsPanel } from './components/SecondaryPanels';
 import { RankingPanel } from './components/RankingPanel';
 import { ScenariosPanel } from './components/ScenariosPanel';
 import { SidePanel } from './components/SidePanel';
@@ -18,7 +21,10 @@ import { SymbologyPanel } from './components/symbology/SymbologyPanel';
 import { TopNav } from './components/TopNav';
 import { t } from './i18n';
 import { useMediaQuery } from './lib/useMediaQuery';
+import { takeSharedReport } from './lib/reportExport';
+import { handleShortcut } from './lib/shortcuts';
 import { useLayout } from './state/layout';
+import { useReports } from './state/reports';
 
 const SECTIONS = {
   layers: LayersPanel,
@@ -26,7 +32,7 @@ const SECTIONS = {
   scenarios: ScenariosPanel,
   measures: MeasuresPanel,
   filters: FiltersPanel,
-  reports: ReportsPanel,
+  reports: ReportOutline,
   settings: SettingsPanel,
 };
 
@@ -37,6 +43,7 @@ const VIEWS = {
   ranking: { Panel: RankingPanel, title: t.ranking.title, expand: t.ranking.expand },
   symbology: { Panel: SymbologyPanel, title: t.symbology.title, expand: t.symbology.expand },
   effect: { Panel: EffectPanel, title: t.effect.title, expand: t.effect.expand },
+  report: { Panel: ReportProps, title: t.report.propsTitle, expand: t.report.expand },
 };
 
 export default function App() {
@@ -45,15 +52,21 @@ export default function App() {
   const Section = SECTIONS[layout.leftSection] ?? LayersPanel;
   const view = VIEWS[layout.rightView] ?? VIEWS.inspector;
 
-  // "[" left panel, "]" inspector, "`" attribute table, Esc closes a floating panel.
+  // A shared report link (#report=…) opens that report in the Reports view.
+  useEffect(() => {
+    const shared = takeSharedReport();
+    if (!shared) return;
+    useReports.getState().loadShared(shared);
+    useLayout.getState().setView('reports');
+  }, []);
+
+  // Keyboard shortcuts (lib/shortcuts.js, listed in Settings); Esc closes a floating panel.
   useEffect(() => {
     const onKey = (e) => {
+      if (handleShortcut(e)) return;
       if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
       const s = useLayout.getState();
-      if (e.key === '[') s.toggleLeft();
-      else if (e.key === ']') s.toggleRight();
-      else if (e.key === '`') s.toggleDock();
-      else if (e.key === 'Escape' && narrow) {
+      if (e.key === 'Escape' && narrow) {
         if (s.rightOpen) s.toggleRight();
         else if (s.leftOpen) s.toggleLeft();
       }
@@ -80,9 +93,11 @@ export default function App() {
             <Section />
           </SidePanel>
 
-          <main className="flex min-w-0 flex-1 flex-col">
+          {/* The Report Builder covers map and dock; the map stays mounted and sized under it. */}
+          <main className="relative flex min-w-0 flex-1 flex-col">
             <MapView />
             <BottomDock />
+            {layout.view === 'reports' && <ReportWorkspace />}
           </main>
 
           {!layout.rightOpen && !narrow && (

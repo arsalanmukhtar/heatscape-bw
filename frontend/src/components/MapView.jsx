@@ -9,6 +9,7 @@ import { addGeneratedImage } from '../lib/mapImages';
 import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage } from '../lib/mapStyle';
 import { MAP_CONTAINER_ID, SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { candidateFootprint } from '../lib/scenario';
+import { setShortcutMap } from '../lib/shortcuts';
 import { buildLayerSpec } from '../lib/symbology';
 import { useMapResize } from '../lib/useMapResize';
 import { useLayout } from '../state/layout';
@@ -72,6 +73,11 @@ function LiveMap() {
   const [snapAt, setSnapAt] = useState(null); // ruler: vertex under the pointer
   const selected = blockById(selectedId);
   const firstSelection = useRef(true);
+
+  useEffect(() => {
+    setShortcutMap(main ?? null);
+    return () => setShortcutMap(null);
+  }, [main]);
 
   // Literal colours for the overlays' paint properties, re-read when the theme changes.
   const palette = useMemo(

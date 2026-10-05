@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "docx": "^9.8.1",
     "html-to-image": "^1.11.13",
     "mapbox-gl": "^3.32.0",
     "react": "^19.3.0",

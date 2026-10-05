@@ -1,7 +1,8 @@
 import { LuFileSpreadsheet, LuPrinter } from 'react-icons/lu';
 import { t } from '../../i18n';
 import { downloadCsv } from '../../lib/csv';
-import { MEASURE_TYPES } from '../../lib/measures';
+import { resolveLight } from '../../lib/css';
+import { MEASURE_STATUSES, MEASURE_TYPES } from '../../lib/measures';
 import { filterMeasures, useAllMeasures, useMeasures } from '../../state/measures';
 import { fmtEffect, fmtInt } from './format';
 
@@ -61,15 +62,27 @@ const csvRow = (x) => [
 
 const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap';
+
 /*
-  Printable report for adaptation reporting (the browser's "Save as PDF"). A plain
-  document in system colours (CanvasText/GrayText) so it prints in black on white
-  whatever the app theme.
+  Printable report for adaptation reporting (the browser's "Save as PDF" asks where to
+  save). Printed from a hidden frame with zero page margins, so the browser adds no
+  date / URL lines; the page padding gives the margins instead. Urbanist, light-theme
+  token colours (type swatches, status chips) whatever the app theme.
 */
 function printReport(rows) {
   const tt = totals(rows);
-  const win = window.open('', '_blank');
-  if (!win) return;
+  const [paper, ink, muted, line, raised, ...rest] = resolveLight([
+    'var(--report-page)',
+    'var(--text)',
+    'var(--text-muted)',
+    'var(--border-strong)',
+    'var(--surface-raised)',
+    ...MEASURE_TYPES.map((x) => x.color),
+    ...MEASURE_STATUSES.map((x) => x.color),
+  ]);
+  const typeColor = Object.fromEntries(MEASURE_TYPES.map((x, i) => [x.id, rest[i]]));
+  const statusColor = Object.fromEntries(MEASURE_STATUSES.map((x, i) => [x.id, rest[MEASURE_TYPES.length + i]]));
   const tiles = [
     [s.tiles.measures, fmtInt(tt.count)],
     [s.tiles.desealed, `${fmtInt(tt.desealed)} m²`],
@@ -77,28 +90,43 @@ function printReport(rows) {
     [s.tiles.residents, fmtInt(tt.residents)],
     [s.tiles.cost, `${fmtInt(tt.cost)} EUR`],
   ];
-  win.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(s.reportTitle)}</title>
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(s.reportTitle)}</title>
+<link rel="stylesheet" href="${FONT_CSS}">
 <style>
-  body { font: 11px/1.4 'Urbanist', system-ui, sans-serif; color: CanvasText; background: Canvas; margin: 24px; }
-  h1 { font-size: 18px; margin: 0 0 2px; } p.meta { color: GrayText; margin: 0 0 16px; }
-  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
-  .tile { border: 1px solid GrayText; padding: 8px; } .tile b { display: block; font-size: 16px; }
-  table { width: 100%; border-collapse: collapse; } th, td { border-bottom: 1px solid GrayText; padding: 4px 6px; text-align: left; vertical-align: top; }
-  th { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; } td.n { text-align: right; font-variant-numeric: tabular-nums; }
-  p.note { color: GrayText; margin-top: 12px; } @page { size: A4 landscape; margin: 12mm; }
+  @page { size: A4 landscape; margin: 0; }
+  * { box-sizing: border-box; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body { font: 11px/1.45 'Urbanist', system-ui, sans-serif; color: ${ink}; background: ${paper}; margin: 0; padding: 12mm 14mm; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 2px; } p.meta { color: ${muted}; margin: 0 0 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+  .tile { border: 1px solid ${line}; background: ${raised}; padding: 8px 10px; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: ${muted}; }
+  .tile b { display: block; margin-top: 3px; font-size: 17px; letter-spacing: 0; text-transform: none; color: ${ink}; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; } th, td { border-bottom: 1px solid ${line}; padding: 5px 6px; text-align: left; vertical-align: middle; }
+  th { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: ${muted}; } td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .type { display: inline-flex; align-items: center; gap: 6px; } .sw { width: 9px; height: 9px; flex: none; }
+  .chip { display: inline-block; padding: 2px 6px; font-size: 10px; border: 1px solid; }
+  p.note { color: ${muted}; margin-top: 12px; text-align: justify; hyphens: auto; }
 </style></head><body>
 <h1>${esc(s.reportTitle)}</h1><p class="meta">${esc(s.reportMeta(new Date().toLocaleDateString('en-GB'), rows.length))}</p>
 <div class="tiles">${tiles.map(([k, v]) => `<div class="tile">${esc(k)}<b>${esc(v)}</b></div>`).join('')}</div>
 <table><thead><tr>${[s.col.name, s.col.type, s.col.status, s.col.district, s.col.completed, s.col.area, s.col.cost, s.col.funding, s.col.effect].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
 ${rows
-  .map(
-    (x) =>
-      `<tr><td>${esc(x.name)}</td><td>${esc(t.measures.types[x.type])}</td><td>${esc(t.measures.statuses[x.status])}</td><td>${esc(x.district)}</td><td>${esc(x.completed ?? x.target ?? '')}</td><td class="n">${esc(fmtInt(x.area))}</td><td class="n">${esc(fmtInt(x.cost))}</td><td>${esc(x.funding)}</td><td class="n">${esc(fmtEffect(x).text)}${x.effect ? ` (${esc(x.effect.confidence)})` : ''}</td></tr>`,
-  )
+  .map((x) => {
+    const sc = statusColor[x.status];
+    return `<tr><td>${esc(x.name)}</td><td><span class="type"><span class="sw" style="background:${typeColor[x.type]}"></span>${esc(t.measures.types[x.type])}</span></td><td><span class="chip" style="color:${sc};border-color:${sc};background:color-mix(in srgb, ${sc} 12%, ${paper})">${esc(t.measures.statuses[x.status])}</span></td><td>${esc(x.district)}</td><td>${esc(x.completed ?? x.target ?? '')}</td><td class="n">${esc(fmtInt(x.area))}</td><td class="n">${esc(fmtInt(x.cost))}</td><td>${esc(x.funding)}</td><td class="n">${esc(fmtEffect(x).text)}${x.effect ? ` (${esc(x.effect.confidence)})` : ''}</td></tr>`;
+  })
   .join('')}
-</tbody></table><p class="note">${esc(s.reportNote)}</p>
-<script>window.onload = () => { window.focus(); window.print(); };</script></body></html>`);
-  win.document.close();
+</tbody></table><p class="note">${esc(s.reportNote)}</p></body></html>`;
+
+  const frame = Object.assign(document.createElement('iframe'), { title: s.reportTitle, srcdoc: html });
+  Object.assign(frame.style, { position: 'fixed', width: '0', height: '0', border: '0', visibility: 'hidden' });
+  frame.onload = async () => {
+    const win = frame.contentWindow;
+    await win.document.fonts.ready;
+    win.addEventListener('afterprint', () => frame.remove(), { once: true });
+    win.focus();
+    win.print();
+  };
+  document.body.appendChild(frame);
 }
 
 export function MeasuresSummaryActions() {

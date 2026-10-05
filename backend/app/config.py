@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     postgres_db: str = "heatscape"
     postgres_user: str = "heatscape"
     postgres_password: str = ""
+    # Self-hosted LibreTranslate (report text EN <-> DE).
+    translate_url: str = "http://translate:5000"
+    translate_timeout_s: float = 60.0
 
 
 settings = Settings()

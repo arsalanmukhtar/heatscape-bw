@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.db import create_pool
-from app.routers import health
+from app.routers import health, translate
 
 
 @asynccontextmanager
@@ -25,3 +25,4 @@ app = FastAPI(
 )
 
 app.include_router(health.router, prefix="/api")
+app.include_router(translate.router, prefix="/api")

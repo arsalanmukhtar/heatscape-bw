@@ -469,3 +469,26 @@ export const SCENARIOS = [
     params: { goal: 'greening', area: 'Käfertal', weights: { heat: 25, vulnerable: 25, sealing: 10, green: 30, feasibility: 10 }, excludeProtected: false, minParcel: 500, deseal: 0, canopy: 30 },
   },
 ];
+
+/*
+  MOCK report content (Report Builder) until the reports API renders from the database.
+  Headline indicators for the season analysis: median with 90 % interval and confidence.
+  Data sources: real dataset names and licences; versions and dates are illustrative.
+*/
+export const DATA_VERSION = '2025.09-mock';
+export const REPORT_INDICATORS = [
+  { id: 'lstHot', med: 38.4, lo: 37.6, hi: 39.3, unit: '°C', digits: 1, confidence: 'High' },
+  { id: 'uhi', med: 4.1, lo: 3.3, hi: 4.9, unit: 'K', digits: 1, confidence: 'Medium' },
+  { id: 'sealedCritical', med: 61, lo: 58, hi: 64, unit: '%', digits: 0, confidence: 'High' },
+  { id: 'greenCritical', med: 14, lo: 11, hi: 17, unit: '%', digits: 0, confidence: 'Medium' },
+  { id: 'residentsExposed', med: 48200, lo: 41500, hi: 55100, unit: '', digits: 0, confidence: 'Medium' },
+  { id: 'heatDays', med: 23, lo: 19, hi: 27, unit: 'd', digits: 0, confidence: 'Low' },
+];
+export const REPORT_SOURCES = [
+  { id: 'landsat', name: 'Landsat 8/9 Collection 2 Level-2 Surface Temperature', provider: 'USGS', licence: 'Public domain', version: 'C2 L2, scenes Jun–Aug 2025' },
+  { id: 'sentinel2', name: 'Sentinel-2 L2A (sealing, NDVI)', provider: 'Copernicus / ESA', licence: 'Copernicus open licence', version: 'L2A, 2025' },
+  { id: 'dwd', name: 'DWD station observations (air temperature, heat days)', provider: 'Deutscher Wetterdienst', licence: 'CC BY 4.0', version: 'CDC, 2025' },
+  { id: 'zensus', name: 'Zensus 2022 100 m grid (population, age)', provider: 'Destatis', licence: 'dl-de/by-2-0', version: '2022' },
+  { id: 'alkis', name: 'ALKIS land use and LoD2 buildings', provider: 'LGL Baden-Württemberg', licence: 'dl-de/by-2-0', version: '2025' },
+  { id: 'osm', name: 'OpenStreetMap (basemap, facilities)', provider: 'OpenStreetMap contributors', licence: 'ODbL', version: '2025-08' },
+];

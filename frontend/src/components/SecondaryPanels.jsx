@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { t } from '../i18n';
-import { useTheme } from '../state/theme';
+import { matchesSearch } from '../lib/search';
+import { comboKeys, SHORTCUT_GROUPS, SHORTCUTS } from '../lib/shortcuts';
+import { useLayout } from '../state/layout';
+import { useScenarios } from '../state/scenarios';
+import { useWorkspace } from '../state/workspace';
+import { Section } from './controls';
+import { SearchBar, SearchEmpty } from './SearchBar';
 import { PanelHeader } from './SidePanel';
 
 export function FiltersPanel() {
   return <EmptyPanel title={t.placeholder.filters} body={t.placeholder.filtersBody} />;
-}
-
-export function ReportsPanel() {
-  return <EmptyPanel title={t.placeholder.reports} body={t.placeholder.reportsBody} />;
 }
 
 function EmptyPanel({ title, body }) {
@@ -19,45 +22,58 @@ function EmptyPanel({ title, body }) {
   );
 }
 
+/*
+  Settings: every keyboard shortcut, grouped by where it acts (lib/shortcuts.js) and
+  searchable by name, group or key. Clicking a row runs it; toggles show when they are on.
+  The theme switch lives in the top nav (and on T).
+*/
 export function SettingsPanel() {
-  const { mode, setMode } = useTheme();
-  const modes = [
-    { id: 'dark', label: t.placeholder.dark },
-    { id: 'light', label: t.placeholder.light },
-    { id: 'system', label: t.placeholder.system },
-  ];
+  const [query, setQuery] = useState('');
+  // Subscribe to the stores the On marks read, so they stay current.
+  useLayout();
+  useWorkspace();
+  useScenarios((st) => st.compare);
+  const sc = t.shortcuts;
+  const groups = SHORTCUT_GROUPS.map((g) => ({
+    id: g,
+    items: SHORTCUTS.filter((x) => x.group === g && matchesSearch(query, [x.label, sc.groups[g], comboKeys(x.combo).join(' '), x.combo])),
+  })).filter((g) => g.items.length);
 
   return (
     <>
       <PanelHeader title={t.placeholder.settings} />
-      <div className="px-3 py-4">
-        <h3 className="label-caps mb-2 px-1">{t.placeholder.theme}</h3>
-        <div role="radiogroup" aria-label={t.placeholder.theme} className="grid grid-cols-3 border border-border">
-          {modes.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={mode === m.id}
-              onClick={() => setMode(m.id)}
-              className={`h-8 text-sm ${mode === m.id ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-text'}`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
-        <h3 className="label-caps mb-2 mt-6 px-1">{t.placeholder.shortcuts}</h3>
-        <dl className="flex flex-col gap-1.5 px-1 text-sm">
-          {t.placeholder.shortcutList.map(([key, label]) => (
-            <div key={key} className="flex items-center gap-3">
-              <dt>
-                <kbd className="grid size-6 place-items-center border border-border-strong bg-field font-[var(--font-mono)] text-xs text-text">{key}</kbd>
-              </dt>
-              <dd className="text-muted">{label}</dd>
-            </div>
-          ))}
-        </dl>
+      <div className="shrink-0 border-b border-border px-4 py-3">
+        <p className="label-caps mb-1">{sc.title}</p>
+        <p className="mb-2.5 text-xs leading-relaxed text-muted">{sc.hint}</p>
+        <SearchBar value={query} onChange={setQuery} placeholder={sc.search} size="md" className="w-full" />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {groups.length === 0 && <SearchEmpty>{sc.noMatch}</SearchEmpty>}
+        {groups.map((g) => (
+          <Section key={g.id} title={`${sc.groups[g.id]} · ${g.items.length}`}>
+            <ul className="-mx-2 flex flex-col">
+              {g.items.map((x) => (
+                <li key={x.id}>
+                  <button type="button" onClick={x.run} className="flex h-8 w-full items-center gap-2 px-2 text-left hover:bg-hover">
+                    <span className="min-w-0 flex-1 truncate text-xs text-text">{x.label}</span>
+                    {x.on?.() && (
+                      <span className="level-chip" style={{ '--chip': 'var(--success)', width: 'auto' }}>
+                        {sc.on}
+                      </span>
+                    )}
+                    <span className="flex shrink-0 items-center gap-1">
+                      {comboKeys(x.combo).map((k) => (
+                        <kbd key={k} className="grid h-6 min-w-6 place-items-center border border-border-strong bg-field px-1.5 font-mono text-2xs text-text">
+                          {k}
+                        </kbd>
+                      ))}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        ))}
       </div>
     </>
   );

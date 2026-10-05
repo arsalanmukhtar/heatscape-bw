@@ -39,6 +39,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-heatscape}
       POSTGRES_USER: ${POSTGRES_USER:-heatscape}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      TRANSLATE_URL: http://translate:5000
+    # No dependency on translate: the API starts without it; /api/translate returns 503
+    # until it is healthy (first start downloads the EN/DE models).
     depends_on:
       database:
         condition: service_healthy
@@ -47,6 +50,18 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+
+  translate:
+    build: ./translate
+    volumes:
+      - lt-models:/home/libretranslate/.local
+    healthcheck:
+      test: ["CMD-SHELL", "./venv/bin/python scripts/healthcheck.py"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
     restart: unless-stopped
 
   database:
@@ -69,3 +84,4 @@ services:
 
 volumes:
   pgdata:
+  lt-models:

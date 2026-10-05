@@ -47,6 +47,7 @@
   --level-chip-w: 96px; /* every chip; fits the longest label ("12 of 128 rows") */
   --chip-compact-w: 36px; /* icon-only chips (e.g. confidence pips in narrow columns) */
   --dock-chip-w: 76px; /* badges on the compact dock tabs */
+  --report-page: #ffffff; /* report pages are paper-white in both themes */
 
   /* The vertical variant runs down the right edge of a layer row, edge to edge, so the
      chips of a group stack into one unbroken column. The row carries no vertical

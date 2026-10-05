@@ -7,7 +7,7 @@ export const DOCK_MIN = 120;
 
 /* Right view wired to each left section. Opening a section opens its view; a section
    with no entry has no right panel, so opening it collapses the right panel. */
-export const SECTION_VIEW = { layers: 'inspector', scenarios: 'ranking', measures: 'effect' };
+export const SECTION_VIEW = { layers: 'inspector', scenarios: 'ranking', measures: 'effect', reports: 'report' };
 
 /* Sizes stay null until a handle is dragged; null means "use the token default"
    (--panel-w, --dock-open-h), so tokens.css remains the single source. The left and right
@@ -15,10 +15,11 @@ export const SECTION_VIEW = { layers: 'inspector', scenarios: 'ranking', measure
 export const useLayout = create()(
   persist(
     (set, get) => ({
+      view: 'gis', // gis | analytics | reports (top nav); reports shows the Report Builder over the map
       leftOpen: true,
       leftSection: 'layers', // layers | geoprocessing | scenarios | measures | filters | reports | settings
       rightOpen: true,
-      rightView: 'inspector', // inspector | copilot | ranking | symbology | effect
+      rightView: 'inspector', // inspector | copilot | ranking | symbology | effect | report
       dockOpen: true,
       dockTab: 'table', // table | jobs | charts | summary
       dockMax: false, // dock fills the map area (not persisted)
@@ -30,11 +31,24 @@ export const useLayout = create()(
       toggleLeft: () => set({ leftOpen: !get().leftOpen }),
       // Clicking the active rail icon collapses the panel; any other icon opens its section
       // together with its wired right view (or collapses the right panel if it has none).
+      // The Reports section is the Report Builder: opening it switches to the Reports view,
+      // any other section switches back to the map.
       openSection: (section) => {
         const { leftOpen, leftSection } = get();
         if (leftOpen && leftSection === section) return set({ leftOpen: false });
         const view = SECTION_VIEW[section];
-        set({ leftOpen: true, leftSection: section, ...(view ? { rightOpen: true, rightView: view } : { rightOpen: false }) });
+        set({
+          leftOpen: true,
+          leftSection: section,
+          view: section === 'reports' ? 'reports' : get().view === 'reports' ? 'gis' : get().view,
+          ...(view ? { rightOpen: true, rightView: view } : { rightOpen: false }),
+        });
+      },
+      // Top nav views. Leaving Reports puts the Layers section (and Inspector) back.
+      setView: (view) => {
+        if (view === 'reports') return set({ view, leftOpen: true, leftSection: 'reports', rightOpen: true, rightView: 'report' });
+        const away = get().leftSection === 'reports';
+        set({ view, ...(away ? { leftSection: 'layers', rightView: 'inspector' } : {}) });
       },
       toggleRight: () => set({ rightOpen: !get().rightOpen }),
       // Same rule for the right panel views opened from the rail.
@@ -60,7 +74,8 @@ export const useLayout = create()(
     {
       name: 'hs-layout',
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ leftOpen, leftSection, rightOpen, rightView, dockOpen, dockTab, mapControlsOpen, panelW, dockH }) => ({
+      partialize: ({ view, leftOpen, leftSection, rightOpen, rightView, dockOpen, dockTab, mapControlsOpen, panelW, dockH }) => ({
+        view,
         leftOpen,
         leftSection,
         rightOpen,
