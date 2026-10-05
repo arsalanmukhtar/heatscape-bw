@@ -1,4 +1,4 @@
-import { LuMap } from 'react-icons/lu';
+import { FaEarthAmericas } from 'react-icons/fa6';
 import { t } from '../i18n';
 import { BASEMAPS } from '../lib/mapStyle';
 import { useBasemap } from '../state/basemap';
@@ -18,7 +18,7 @@ export function BasemapButton({ open, disabled, onToggle }) {
         onClick={onToggle}
         className={`grid size-7 place-items-center transition-colors disabled:opacity-50 ${open ? 'bg-accent-soft text-accent' : 'text-text hover:bg-hover'}`}
       >
-        <LuMap size={13} />
+        <FaEarthAmericas size={13} />
       </button>
     </div>
   );

@@ -21,7 +21,7 @@ Scope: `frontend/` only.
 ## Guardrails
 - Rules in `docs/design-system.md` are mandatory: square corners, both themes, accent never on map data or charts, status vs level colours, uncertainty display.
 - Icon + text rows: `flex items-center`, text in its own `<span>` (never a bare text node beside an icon); see the vertical alignment rule in `docs/design-system.md`.
-- Every table: sortable (`useSort` + `SortTh`). Every compact table/chart: `ExpandButton` + `ExpandSlot` (see `docs/design-system.md`).
+- Every table: sortable (`useSort` + `SortTh`) and searchable (`SearchBar` + `useSearch`). Every compact table/chart: `ExpandButton` + `ExpandSlot` (see `docs/design-system.md`).
 - Keyboard access and ARIA on every control; honour `prefers-reduced-motion`.
 - Persist UI state in `localStorage` only via Zustand `persist` or try/catch.
 - No new dependency without a clear need; state why in the hand-off.

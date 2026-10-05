@@ -14,5 +14,6 @@ export async function geocode(query, { proximity, signal, limit = 10 } = {}) {
     place: f.properties.place_formatted ?? '',
     center: [f.properties.coordinates.longitude, f.properties.coordinates.latitude],
     bbox: f.properties.bbox,
+    type: f.properties.feature_type,
   }));
 }

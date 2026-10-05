@@ -64,7 +64,7 @@ export function PanelHeader({ title, meta, actions, info }) {
 
 function PanelInfo({ text }) {
   return (
-    <span className="group relative">
+    <span className="group relative flex">
       <button
         type="button"
         aria-label={text}

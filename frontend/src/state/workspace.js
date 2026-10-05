@@ -1,13 +1,17 @@
 import { create } from 'zustand';
 
 export const useWorkspace = create()((set, get) => ({
-  layers: { surfaceTemp: true, airTemp: true, hospitals: true, water: false },
+  // Map overlays toggled in the Layers panel (the analysis grid is tools.grid, shared with the map controls).
+  layers: { surfaceTemp: true, airTemp: true, hospitals: true, water: false, sealing: true, priority: true, selection: true },
   sealingOpacity: 65,
   selectedId: 'M-14',
   tools: { select: true, measure: false, grid: false },
   sort: null, // { key, dir: 'asc' | 'desc' } or null
   tableFilter: '',
   toggleLayer: (id) => set({ layers: { ...get().layers, [id]: !get().layers[id] } }),
+  // Hide or show every overlay at once, grid included.
+  setAllLayers: (on) =>
+    set({ layers: Object.fromEntries(Object.keys(get().layers).map((k) => [k, on])), tools: { ...get().tools, grid: on } }),
   setSealingOpacity: (sealingOpacity) => set({ sealingOpacity }),
   select: (selectedId) => set({ selectedId }),
   // Select and measure are exclusive pointer modes; the grid overlay toggles on its own.

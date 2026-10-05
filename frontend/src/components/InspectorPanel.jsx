@@ -1,4 +1,5 @@
-import { LuDroplet, LuHospital, LuPanelRightClose } from 'react-icons/lu';
+import { LuDroplet, LuHospital } from 'react-icons/lu';
+import { VscCollapseAll } from 'react-icons/vsc';
 import { REGION, SEASON, atRiskFacilities, blockById } from '../data/mock';
 import { t } from '../i18n';
 import { useLayout } from '../state/layout';
@@ -28,7 +29,7 @@ export function InspectorPanel() {
             title={t.inspector.collapse}
             className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text"
           >
-            <LuPanelRightClose size={15} />
+            <VscCollapseAll size={15} />
           </button>
         }
       />

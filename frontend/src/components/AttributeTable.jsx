@@ -4,7 +4,8 @@ import { BLOCKS } from '../data/mock';
 import { t } from '../i18n';
 import { downloadCsv } from '../lib/csv';
 import { useWorkspace } from '../state/workspace';
-import { FilterInput, matchesFilter } from './FilterInput';
+import { matchesSearch } from '../lib/search';
+import { SearchBar, SearchEmpty } from './SearchBar';
 import { SortTh } from './SortTh';
 
 const RISK_ORDER = { Critical: 3, High: 2, Moderate: 1, Low: 0 };
@@ -35,7 +36,7 @@ const sortValue = (b, key) => (key === 'risk' ? RISK_ORDER[b.risk] : b[key]);
 function useTableRows() {
   const { sort, setSort, tableFilter } = useWorkspace();
   const rows = useMemo(() => {
-    const kept = BLOCKS.filter((b) => matchesFilter(tableFilter, [b.id, b.district, b.avgTemp, b.peakTemp, b.sealing, b.greenCover, b.popDensity, b.risk]));
+    const kept = BLOCKS.filter((b) => matchesSearch(tableFilter, [b.id, b.district, b.avgTemp, b.peakTemp, b.sealing, b.greenCover, b.popDensity, b.risk]));
     if (!sort) return kept;
     const dir = sort.dir === 'asc' ? 1 : -1;
     return kept.sort((a, b) => {
@@ -70,7 +71,7 @@ export function AttributeTableActions() {
 
   return (
     <>
-      <FilterInput value={tableFilter} onChange={setTableFilter} label={t.table.filter} />
+      <SearchBar value={tableFilter} onChange={setTableFilter} placeholder={t.table.filter} className="mr-1 w-56" />
       <button type="button" onClick={() => sortBy('peakTemp')} className="flex h-7 items-center gap-1 px-2 text-xs text-muted hover:bg-hover hover:text-text">
         <span>{t.table.sort}</span>
         {sort && (sort.dir === 'desc' ? <LuArrowDown size={11} /> : <LuArrowUp size={11} />)}
@@ -88,7 +89,7 @@ export function AttributeTable() {
   const { selectedId, select } = useWorkspace();
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto">
       <table className="w-full border-collapse text-xs">
         <thead className="sticky top-0 z-[1] bg-surface-strong">
           <tr className="border-b border-border">
@@ -98,13 +99,6 @@ export function AttributeTable() {
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={COLUMNS.length} className="px-4 py-3 text-xs text-muted">
-                {t.filter.noMatch}
-              </td>
-            </tr>
-          )}
           {rows.map((b) => {
             const selected = b.id === selectedId;
             return (
@@ -131,6 +125,7 @@ export function AttributeTable() {
           })}
         </tbody>
       </table>
+      {rows.length === 0 && <SearchEmpty />}
     </div>
   );
 }

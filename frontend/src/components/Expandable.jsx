@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuExpand, LuShrink } from 'react-icons/lu';
+import { FiMinimize } from 'react-icons/fi';
+import { LuExpand } from 'react-icons/lu';
 import { t } from '../i18n';
 import { useLayout } from '../state/layout';
 
@@ -17,23 +18,24 @@ const SWAP_IN = 'opacity-0 transition-opacity duration-200 ease-out group-hover:
 /*
   Universal expand for compact elements (tables, charts). Put ExpandButton in the element's
   header and wrap its body in ExpandSlot with the same id. Expanded, the body moves into
-  an overlay that covers the map container edge to edge; the element's own button, the
-  placeholder's Restore button or Esc restores it. One element at a time.
+  an overlay that covers the map container edge to edge; the placeholder's RESTORE, the
+  overlay header's restore button or Esc restores it. One element at a time.
 */
-export function ExpandButton({ id, className = '' }) {
+export function ExpandButton({ id, className = '', keepSpace = true }) {
   const expanded = useLayout((s) => s.expanded === id);
   const toggle = useLayout((s) => s.toggleExpanded);
-  const label = expanded ? t.expand.close : t.expand.open;
+  // While expanded the placeholder's RESTORE and the overlay's restore button take over;
+  // keepSpace leaves an empty cell so the header row does not change height.
+  if (expanded) return keepSpace ? <span className={`size-7 shrink-0 ${className}`} aria-hidden /> : null;
   return (
     <button
       type="button"
       onClick={() => toggle(id)}
-      aria-label={label}
-      title={label}
-      aria-pressed={expanded}
-      className={`grid size-7 shrink-0 place-items-center hover:bg-hover ${expanded ? 'text-accent' : 'text-muted hover:text-text'} ${className}`}
+      aria-label={t.expand.open}
+      title={t.expand.open}
+      className={`grid size-7 shrink-0 place-items-center text-muted hover:bg-hover hover:text-text ${className}`}
     >
-      {expanded ? <LuShrink size={13} /> : <LuExpand size={13} />}
+      <LuExpand size={13} />
     </button>
   );
 }
@@ -133,7 +135,18 @@ export function ExpandSlot({ id, title, actions, overlayOnly = false, placeholde
             {/* Same height as PanelHeader (h-11) so its bottom border lines up with both side panels. */}
             <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4">
               <h2 className="text-xs font-medium uppercase tracking-[var(--tracking-caps)] text-text">{title}</h2>
-              {actions && <div className="ml-auto flex items-center gap-1">{actions}</div>}
+              <div className="-mr-1.5 ml-auto flex items-center gap-1">
+                {actions}
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-label={t.expand.close}
+                  title={t.expand.close}
+                  className="grid size-7 shrink-0 place-items-center text-muted hover:bg-hover hover:text-text"
+                >
+                  <FiMinimize size={14} />
+                </button>
+              </div>
             </header>
             <div className="flex min-h-0 flex-1 flex-col overflow-auto p-4">{children(true)}</div>
           </section>,

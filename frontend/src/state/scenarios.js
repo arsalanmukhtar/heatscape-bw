@@ -16,8 +16,10 @@ export const useScenarios = create()((set, get) => ({
   notes: {}, // `${scenarioId}:${blockId}` → text
   compare: false,
   swipe: 50, // % from the left where the scenario side starts
+  rankQuery: '', // ranking table search; survives the expanded view
   rankSort: null, // ranking table sort { key, dir }; kept here so it survives the expanded view
   setRankSort: (rankSort) => set({ rankSort }),
+  setRankQuery: (rankQuery) => set({ rankQuery }),
 
   active: () => get().scenarios.find((s) => s.id === get().activeId),
   select: (activeId) => set({ activeId }),

@@ -4,29 +4,32 @@ import { cssVar } from './css';
 export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 // Flat Web Mercator everywhere; Mapbox GL v3 would otherwise switch to a globe when zoomed out.
 export const MAP_PROJECTION = 'mercator';
-export const MAP_STYLES = { dark: 'mapbox://styles/mapbox/dark-v11', light: 'mapbox://styles/mapbox/light-v11' };
+/* No fog. Mapbox v11/standard styles ship globe fog (range from -1); on a flat map it fades and
+   culls tiles when zoomed out, so the basemap renders partly or vanishes. Passed as the map's
+   fog prop, which react-map-gl re-applies after every style load (basemap switch). */
+export const MAP_FOG = null;
 
 /*
-  Mapbox basemaps offered in the basemap control. 'auto' follows the UI theme (dark-v11 /
-  light-v11). thumb: path under public/ (e.g. '/basemaps/streets.png'); null shows an
-  empty square until thumbnails are supplied.
+  Mapbox basemaps offered in the basemap control; DEFAULT_BASEMAP is listed first.
+  thumb: path under public/ (e.g. '/basemaps/streets.png'); null shows an empty square
+  until thumbnails are supplied.
 */
+export const DEFAULT_BASEMAP = 'dark';
 export const BASEMAPS = [
-  { id: 'auto', url: null, thumb: null },
+  { id: 'dark', url: 'mapbox://styles/mapbox/dark-v11', thumb: null },
   { id: 'standard', url: 'mapbox://styles/mapbox/standard', thumb: null },
   { id: 'standard-satellite', url: 'mapbox://styles/mapbox/standard-satellite', thumb: null },
   { id: 'streets', url: 'mapbox://styles/mapbox/streets-v12', thumb: null },
   { id: 'outdoors', url: 'mapbox://styles/mapbox/outdoors-v12', thumb: null },
   { id: 'light', url: 'mapbox://styles/mapbox/light-v11', thumb: null },
-  { id: 'dark', url: 'mapbox://styles/mapbox/dark-v11', thumb: null },
   { id: 'satellite', url: 'mapbox://styles/mapbox/satellite-v9', thumb: null },
   { id: 'satellite-streets', url: 'mapbox://styles/mapbox/satellite-streets-v12', thumb: null },
   { id: 'navigation-day', url: 'mapbox://styles/mapbox/navigation-day-v1', thumb: null },
   { id: 'navigation-night', url: 'mapbox://styles/mapbox/navigation-night-v1', thumb: null },
 ];
 
-/** Style URL for a basemap id; 'auto' (or an unknown id) follows the resolved theme. */
-export const basemapUrl = (id, theme) => BASEMAPS.find((b) => b.id === id)?.url ?? MAP_STYLES[theme];
+/** Style URL for a basemap id; an unknown id (e.g. the removed 'auto') gets the default. */
+export const basemapUrl = (id) => (BASEMAPS.find((b) => b.id === id) ?? BASEMAPS.find((b) => b.id === DEFAULT_BASEMAP)).url;
 
 /** Heat ramp stops spread evenly over the legend domain (28–42 °C). */
 export function heatStops() {

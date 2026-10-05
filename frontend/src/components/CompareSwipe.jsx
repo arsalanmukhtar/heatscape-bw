@@ -3,7 +3,7 @@ import MapGL, { Layer, Source, useMap } from 'react-map-gl/mapbox';
 import { LuChevronsLeftRight } from 'react-icons/lu';
 import { SURFACE_GRID } from '../data/mock';
 import { t } from '../i18n';
-import { MAP_PROJECTION, MAPBOX_TOKEN, heatStops } from '../lib/mapStyle';
+import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN, heatStops } from '../lib/mapStyle';
 import { scenarioGrid } from '../lib/scenario';
 import { useMapResize } from '../lib/useMapResize';
 import { useMapStyleUrl } from '../state/basemap';
@@ -44,7 +44,7 @@ export function CompareSwipe({ ranking }) {
   return (
     <div ref={wrapRef} className="pointer-events-none absolute inset-0 z-[5]">
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${swipe}%)` }}>
-        <MapGL id="compare" mapboxAccessToken={MAPBOX_TOKEN} initialViewState={view} mapStyle={styleUrl} projection={MAP_PROJECTION} interactive={false} attributionControl={false} style={{ width: '100%', height: '100%' }}>
+        <MapGL id="compare" mapboxAccessToken={MAPBOX_TOKEN} initialViewState={view} mapStyle={styleUrl} projection={MAP_PROJECTION} fog={MAP_FOG} interactive={false} attributionControl={false} style={{ width: '100%', height: '100%' }}>
           <Source id="lst-scenario" type="geojson" data={grid}>
             <Layer id="lst-scenario-fill" type="fill" paint={{ 'fill-color': ['interpolate', ['linear'], ['get', 't'], ...stops], 'fill-opacity': 0.72 }} />
           </Source>

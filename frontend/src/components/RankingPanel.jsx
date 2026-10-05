@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { LuFileText, LuPanelRightClose, LuSave, LuShare2, LuTriangleAlert } from 'react-icons/lu';
+import { LuFileText, LuSave, LuShare2, LuTriangleAlert } from 'react-icons/lu';
+import { VscCollapseAll } from 'react-icons/vsc';
 import { t } from '../i18n';
+import { useSearch } from '../lib/search';
 import { useSort } from '../lib/useSort';
 import { useLayout } from '../state/layout';
 import { useActiveRanking, useScenarios } from '../state/scenarios';
@@ -8,6 +10,7 @@ import { useWorkspace } from '../state/workspace';
 import { ConfidencePips } from './ConfidencePips';
 import { ExpandButton, ExpandSlot } from './Expandable';
 import { SortTh } from './SortTh';
+import { SearchBar, SearchEmpty } from './SearchBar';
 import { PanelHeader } from './SidePanel';
 
 const RANGE_MAX = 40; // the rank-range bar shows ranks 1–40
@@ -40,7 +43,7 @@ export function RankingPanel() {
         }
         actions={
           <button type="button" onClick={toggleRight} aria-label={t.ranking.collapse} title={t.ranking.collapse} className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text">
-            <LuPanelRightClose size={15} />
+            <VscCollapseAll size={15} />
           </button>
         }
       />
@@ -98,6 +101,7 @@ function Ranking({ ranking, stale }) {
 }
 
 const CONF_ORDER = { High: 3, Medium: 2, Low: 1 };
+const rankSearch = (r) => [r.rank, r.id, r.district, r.score.toFixed(1), t.ranking.confidence[r.confidence]];
 const rankValue = (r, key) =>
   key === 'block' ? r.id : key === 'stability' ? r.rankHi - r.rankLo : key === 'confidence' ? CONF_ORDER[r.confidence] : r[key];
 
@@ -105,8 +109,9 @@ const rankValue = (r, key) =>
    confidence as pips. Large (expanded view): natural widths, range numbers and words shown. */
 function RankingTable({ rows: all, large }) {
   const { selectedId, select } = useWorkspace();
-  const { rankSort, setRankSort } = useScenarios();
-  const { rows, sort, sortBy } = useSort(all, rankValue, { state: rankSort, setState: setRankSort });
+  const { rankSort, setRankSort, rankQuery, setRankQuery } = useScenarios();
+  const found = useSearch(all, rankSearch, rankQuery);
+  const { rows, sort, sortBy } = useSort(found, rankValue, { state: rankSort, setState: setRankSort });
   const listRef = useRef(null);
   const c = t.ranking.columns;
 
@@ -116,10 +121,12 @@ function RankingTable({ rows: all, large }) {
   }, [selectedId]);
 
   return (
-    <div
-      ref={listRef}
-      className={large ? 'min-h-0 flex-1 overflow-auto border border-border' : 'mx-3 mt-1.5 max-h-72 overflow-y-auto overflow-x-hidden border border-border'}
-    >
+    <div className={large ? 'flex min-h-0 flex-1 flex-col' : 'mx-3 mt-1.5'}>
+      <SearchBar value={rankQuery} onChange={setRankQuery} placeholder={t.ranking.filter} className={large ? 'w-64' : 'w-full'} />
+      <div
+        ref={listRef}
+        className={`flex flex-col border border-border ${large ? 'mt-2 min-h-0 flex-1 overflow-auto' : 'mt-1.5 max-h-72 overflow-y-auto overflow-x-hidden'}`}
+      >
       <table className={`w-full border-collapse text-xs ${large ? '' : 'table-fixed'}`}>
         {!large && (
           <colgroup>
@@ -158,7 +165,7 @@ function RankingTable({ rows: all, large }) {
                 </td>
                 <td className="px-1.5 text-right text-text">{r.score.toFixed(1)}</td>
                 <td className="px-1.5">
-                  <RankRange rank={r.rank} lo={r.rankLo} hi={r.rankHi} showText={large} />
+                  <RankRange rank={r.rank} lo={r.rankLo} hi={r.rankHi} level={r.confidence} showText={large} />
                 </td>
                 <td className="px-1.5 text-right text-text">{r.pTop.toFixed(2)}</td>
                 <td className="pr-1.5">
@@ -171,20 +178,29 @@ function RankingTable({ rows: all, large }) {
           })}
         </tbody>
       </table>
+      {rows.length === 0 && <SearchEmpty />}
+      </div>
     </div>
   );
 }
 
 /* Rank range on a fixed 1–RANGE_MAX scale: segment = 5th–95th percentile, square = rank.
    Bar only in the panel (narrow column); showText adds the numbers in the expanded view. */
-function RankRange({ rank, lo, hi, showText = false }) {
+/* The range bar takes the confidence colour of its width class (the same classes that set
+   confidence: narrow = High, wide = Low), so stable and volatile ranks read at a glance. */
+const RANGE_COLOR = { High: 'var(--conf-high)', Medium: 'var(--conf-medium)', Low: 'var(--conf-low)' };
+
+function RankRange({ rank, lo, hi, level, showText = false }) {
   const pos = (v) => `${((Math.min(v, RANGE_MAX) - 1) / (RANGE_MAX - 1)) * 100}%`;
   const label = t.ranking.rangeLabel(rank, lo, hi);
   return (
     <span className="flex min-w-0 items-center gap-2" title={label}>
       <span className={`relative block h-2 shrink-0 ${showText ? 'w-32' : 'w-10'}`} role="img" aria-label={label}>
         <span className="absolute inset-x-0 top-1/2 h-px bg-border-strong" />
-        <span className="absolute top-1/2 h-1 -translate-y-1/2 bg-muted" style={{ left: pos(lo), right: `calc(100% - ${pos(hi)})` }} />
+        <span
+          className="absolute top-1/2 h-1 -translate-y-1/2"
+          style={{ left: pos(lo), right: `calc(100% - ${pos(hi)})`, background: RANGE_COLOR[level] ?? 'var(--text-muted)' }}
+        />
         <span className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 bg-text" style={{ left: pos(rank) }} />
       </span>
       {showText && (

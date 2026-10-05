@@ -7,15 +7,16 @@ import {
   LuHistory,
   LuMap,
   LuMousePointer2,
-  LuPanelRightClose,
   LuPaperclip,
   LuSendHorizontal,
   LuSettings,
   LuZap,
 } from 'react-icons/lu';
+import { VscCollapseAll } from 'react-icons/vsc';
 import { COPILOT, REGION, USER } from '../data/mock';
 import { t } from '../i18n';
 import { downloadCsv } from '../lib/csv';
+import { useSearch } from '../lib/search';
 import { useSort } from '../lib/useSort';
 import { useCopilot } from '../state/copilot';
 import { useLayout } from '../state/layout';
@@ -23,6 +24,7 @@ import { useWorkspace } from '../state/workspace';
 import { Checkbox } from './Checkbox';
 import { ConfidencePips } from './ConfidencePips';
 import { ExpandButton, ExpandSlot } from './Expandable';
+import { SearchBar, SearchEmpty } from './SearchBar';
 import { SortTh } from './SortTh';
 import { PanelHeader } from './SidePanel';
 
@@ -62,7 +64,7 @@ export function CopilotPanel() {
               <LuSettings size={14} />
             </button>
             <button type="button" onClick={toggleRight} aria-label={t.copilot.collapse} title={t.copilot.collapse} className={iconBtn}>
-              <LuPanelRightClose size={15} />
+              <VscCollapseAll size={15} />
             </button>
           </>
         }
@@ -228,7 +230,7 @@ function ResultCard() {
         <ExpandButton id="copilot-result" className="-mr-1.5" />
       </div>
       <ExpandSlot id="copilot-result" title={t.copilot.title}>
-        {() => <ResultTable />}
+        {(large) => <ResultTable large={large} />}
       </ExpandSlot>
 
 
@@ -259,13 +261,17 @@ function ResultCard() {
 
 
 const CONF_ORDER = { High: 3, Medium: 2, Low: 1 };
+const resultSearch = (r) => [r.district, r.share65.toFixed(1), t.copilot.confidence[r.confidence]];
 const resultValue = (r, key) => (key === 'confidence' ? CONF_ORDER[r.confidence] : r[key]);
 
-function ResultTable() {
-  const { resultSort, setResultSort } = useCopilot();
-  const { rows, sort, sortBy } = useSort(COPILOT.rows, resultValue, { state: resultSort, setState: setResultSort });
+function ResultTable({ large }) {
+  const { resultSort, setResultSort, resultQuery, setResultQuery } = useCopilot();
+  const found = useSearch(COPILOT.rows, resultSearch, resultQuery);
+  const { rows, sort, sortBy } = useSort(found, resultValue, { state: resultSort, setState: setResultSort });
   const c = t.copilot.columns;
   return (
+    <>
+    <SearchBar value={resultQuery} onChange={setResultQuery} placeholder={t.copilot.filter} className={large ? 'mb-2 w-64' : 'mb-2 w-full'} />
     <table className="w-full border border-border text-xs">
       <thead className="bg-field">
         <tr className="h-9">
@@ -288,6 +294,12 @@ function ResultTable() {
         ))}
       </tbody>
     </table>
+    {rows.length === 0 && (
+      <div className="flex border border-t-0 border-border">
+        <SearchEmpty />
+      </div>
+    )}
+    </>
   );
 }
 

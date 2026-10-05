@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { LuMaximize2, LuMinimize2, LuSquareCheck, LuSquareX, LuTerminal, LuTrash2 } from 'react-icons/lu';
 import { t } from '../i18n';
 import { useJobs } from '../state/jobs';
+import { useSearch } from '../lib/search';
 import { useSort } from '../lib/useSort';
-import { FilterInput, matchesFilter } from './FilterInput';
+import { SearchBar, SearchEmpty } from './SearchBar';
 import { SortTh } from './SortTh';
 
 const fmtDuration = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 const LEVEL_CLASS = { ERROR: 'text-danger', DONE: 'text-success' };
 const STATUS_ORDER = { running: 3, queued: 2, error: 1, done: 0 };
+const jobSearch = (j) => [j.id, j.name, j.tool, j.region, t.jobs.status[j.status], j.started];
 const jobValue = (j, key) => (key === 'status' ? STATUS_ORDER[j.status] : key === 'duration' ? j.durationSec : j[key]);
 
 export function JobsBadges() {
@@ -28,7 +30,7 @@ export function JobsActions() {
   const finished = jobs.some((j) => j.status === 'done' || j.status === 'error');
   return (
     <>
-      <FilterInput value={filter} onChange={setFilter} label={t.jobs.filter} />
+      <SearchBar value={filter} onChange={setFilter} placeholder={t.jobs.filter} className="mr-1 w-56" />
       <button
         type="button"
         onClick={clearFinished}
@@ -45,7 +47,7 @@ export function JobsActions() {
 
 export function JobsView() {
   const { jobs: all, selectedId, select, filter, sort: sortState, setSort } = useJobs();
-  const filtered = all.filter((j) => matchesFilter(filter, [j.id, j.name, j.tool, j.region, t.jobs.status[j.status], j.started]));
+  const filtered = useSearch(all, jobSearch, filter);
   const { rows: jobs, sort, sortBy } = useSort(filtered, jobValue, { state: sortState, setState: setSort });
   const job = all.find((j) => j.id === selectedId);
   const [logsWide, setLogsWide] = useState(false);
@@ -53,10 +55,7 @@ export function JobsView() {
   return (
     <div className="flex min-h-0 flex-1">
       {!logsWide && (
-        <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-          {jobs.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-muted">{all.length ? t.filter.noMatch : t.jobs.empty}</p>
-          ) : (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
             <table className="w-full border-collapse text-xs">
               <thead className="sticky top-0 z-[1] bg-surface-strong">
                 <tr className="h-8 border-b border-border text-left">
@@ -88,7 +87,7 @@ export function JobsView() {
                 })}
               </tbody>
             </table>
-          )}
+            {jobs.length === 0 && <SearchEmpty>{all.length ? t.filter.noMatch : t.jobs.empty}</SearchEmpty>}
         </div>
       )}
       {job && <LogsPane job={job} wide={logsWide} onToggleWide={() => setLogsWide(!logsWide)} />}

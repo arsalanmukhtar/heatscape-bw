@@ -27,10 +27,10 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 - Map scale: bare bracket bar + distance, bottom left, no box or background, 2 px strokes, ≤ 60 px.
 - Map legend: removed from the map (to live per layer in the Layers panel).
 - Mapbox wordmark and default attribution: replaced by the collapsible ⓘ attribution, bottom right.
-- Map projection: Web Mercator always (`MAP_PROJECTION`), never the Mapbox globe, on every basemap.
+- Map projection: Web Mercator always (`MAP_PROJECTION`), never the Mapbox globe, on every basemap. No style fog either (`MAP_FOG = null`): the styles' globe fog culls tiles on a flat map when zoomed out.
 - Map controls: compact 28 px buttons, top right, in order: collapse chevron, zoom ±, world / Baden-Württemberg extent, tools, basemap, compare; the chevron folds the column with a staggered slide (state persisted); no fullscreen or prev/next view buttons.
-- Basemap: chosen in the basemap map control (list: thumbnail square + name), saved in localStorage (`hs-basemap`); "Auto" follows the theme. Not in the Settings panel. Thumbnails go in `frontend/public/basemaps/` and are set in `BASEMAPS` (`lib/mapStyle.js`).
-- Geocoder: compact, top left; 5 results visible, then scroll.
+- Basemap: chosen in the basemap map control (list: thumbnail square + name), saved in localStorage (`hs-basemap`); Default Dark; no "Auto (theme)" entry (removed by request), a saved 'auto' falls back to Dark. Not in the Settings panel. Thumbnails go in `frontend/public/basemaps/` and are set in `BASEMAPS` (`lib/mapStyle.js`).
+- Geocoder: compact, top left; 5 results visible, then scroll. Picking fits the result extent (bbox, else a zoom by result type) and drops a yellow pin (short pin in a wide ground ring, soft ground shadow) once the map has arrived; clearing the search removes it.
 - Rail active state: soft accent background, no edge bar, icon in full text colour.
 - Top nav: as built (brand, region menu, view tabs, season, theme, notifications, account); no active-jobs meter or user name block.
 - Status and classification labels: square marks or tinted chips, never circles. Every chip one width (`--level-chip-w` 96 px; icon-only `--chip-compact-w` 36 px), content centred, icon + text centred together.

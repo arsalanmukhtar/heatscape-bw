@@ -71,7 +71,7 @@ export function BottomDock() {
         </div>
         <div className="ml-auto flex items-center gap-1">
           {dockOpen && <tab.Actions />}
-          {dockOpen && <ExpandButton id={`dock-${dockTab}`} />}
+          {dockOpen && <ExpandButton id={`dock-${dockTab}`} keepSpace={false} />}
           <button
             type="button"
             onClick={toggleDockMax}

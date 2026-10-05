@@ -4,7 +4,7 @@ import { LuX } from 'react-icons/lu';
 import { AIR_GRID, BLOCKS, FACILITIES, REGION, SEALING_POINTS, SURFACE_GRID, blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
 import { cssVar, distanceKm } from '../lib/css';
-import { MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage, heatStops } from '../lib/mapStyle';
+import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage, heatStops } from '../lib/mapStyle';
 import { candidateFootprint } from '../lib/scenario';
 import { useMapResize } from '../lib/useMapResize';
 import { useLayout } from '../state/layout';
@@ -14,7 +14,7 @@ import { useTheme } from '../state/theme';
 import { useWorkspace } from '../state/workspace';
 import { CompareSwipe } from './CompareSwipe';
 import { MAP_OVERLAY_ID } from './Expandable';
-import { Geocoder } from './Geocoder';
+import { Geocoder, SearchPin } from './Geocoder';
 import { MapAttribution } from './MapAttribution';
 import { MapControls } from './MapControls';
 import { MapScale } from './MapScale';
@@ -70,6 +70,7 @@ function LiveMap() {
   // Scenario priority: shown while the scenario workspace (left panel or ranking view) is in use.
   const ranking = useActiveRanking();
   const scenarioContext = useLayout((s) => s.leftSection === 'scenarios' || s.rightView === 'ranking');
+  const showPriority = scenarioContext && layers.priority;
   const candidates = useMemo(() => (ranking ? { type: 'FeatureCollection', features: ranking.rows.map(candidateFootprint) } : null), [ranking]);
 
   // The hatch image is dropped on every style change (theme switch), so re-add it on demand.
@@ -127,6 +128,7 @@ function LiveMap() {
       initialViewState={{ longitude: REGION.center[0], latitude: REGION.center[1], zoom: 12.2 }}
       mapStyle={styleUrl}
       projection={MAP_PROJECTION}
+      fog={MAP_FOG}
       attributionControl={false}
       style={{ width: '100%', height: '100%' }}
       cursor={tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}
@@ -165,7 +167,7 @@ function LiveMap() {
         <Layer
           id="sealing-dots"
           type="circle"
-          layout={{ visibility: vis(sealingOpacity > 0) }}
+          layout={{ visibility: vis(layers.sealing && sealingOpacity > 0) }}
           paint={{
             'circle-color': palette.seal,
             'circle-radius': ['interpolate', ['linear'], ['get', 'sealing'], 0, 0.5, 100, 4],
@@ -180,7 +182,7 @@ function LiveMap() {
             id="priority-fill"
             type="fill"
             beforeId="hospitals"
-            layout={{ visibility: vis(scenarioContext) }}
+            layout={{ visibility: vis(showPriority) }}
             paint={{
               'fill-color': ['match', ['get', 'priority'], 1, palette.priority[0], 2, palette.priority[1], 3, palette.priority[2], 4, palette.priority[3], palette.priority[4]],
               'fill-opacity': 0.88,
@@ -191,14 +193,14 @@ function LiveMap() {
             type="fill"
             beforeId="hospitals"
             filter={['==', ['get', 'unstable'], true]}
-            layout={{ visibility: vis(scenarioContext) }}
+            layout={{ visibility: vis(showPriority) }}
             paint={{ 'fill-pattern': 'unc-hatch' }}
           />
           <Layer
             id="priority-line"
             type="line"
             beforeId="hospitals"
-            layout={{ visibility: vis(scenarioContext) }}
+            layout={{ visibility: vis(showPriority) }}
             paint={{ 'line-color': palette.surface, 'line-width': 1 }}
           />
         </Source>
@@ -222,15 +224,19 @@ function LiveMap() {
       </Source>
 
       <Source id="selection" type="geojson" data={selection}>
-        <Layer id="selection-fill" type="fill" paint={{ 'fill-color': palette.accent, 'fill-opacity': 0.08 }} />
-        <Layer id="selection-line" type="line" paint={{ 'line-color': palette.accent, 'line-width': 2 }} />
+        <Layer id="selection-fill" type="fill" layout={{ visibility: vis(layers.selection) }} paint={{ 'fill-color': palette.accent, 'fill-opacity': 0.08 }} />
+        <Layer id="selection-line" type="line" layout={{ visibility: vis(layers.selection) }} paint={{ 'line-color': palette.accent, 'line-width': 2 }} />
       </Source>
 
-      <Marker longitude={west} latitude={north} anchor="bottom-left">
-        <span className="block whitespace-nowrap bg-accent px-2 py-1 text-2xs font-semibold text-on-accent">
-          Block {selected.id} · {selected.lstDay.toFixed(1)}°C
-        </span>
-      </Marker>
+      {layers.selection && (
+        <Marker longitude={west} latitude={north} anchor="bottom-left">
+          <span className="block whitespace-nowrap bg-accent px-2 py-1 text-2xs font-semibold text-on-accent">
+            Block {selected.id} · {selected.lstDay.toFixed(1)}°C
+          </span>
+        </Marker>
+      )}
+
+      <SearchPin />
 
       {lastPoint && (
         <>

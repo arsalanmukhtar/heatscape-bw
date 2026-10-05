@@ -15,6 +15,7 @@ const initial = () => ({
   draft: '',
   useExtent: true,
   useSelection: false,
+  resultQuery: '', // result table search; survives the expanded view
   resultSort: null, // result table sort { key, dir }; survives the expanded view
 });
 
@@ -24,6 +25,7 @@ export const useCopilot = create()((set, get) => ({
   ...initial(),
   setDraft: (draft) => set({ draft }),
   setResultSort: (resultSort) => set({ resultSort }),
+  setResultQuery: (resultQuery) => set({ resultQuery }),
   toggleExtent: () => set({ useExtent: !get().useExtent }),
   toggleSelection: () => set({ useSelection: !get().useSelection }),
   runPlan: () => {

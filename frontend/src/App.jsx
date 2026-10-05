@@ -88,7 +88,17 @@ export default function App() {
               className="flex w-8 shrink-0 flex-col items-center gap-3 border-l border-border bg-surface pt-3 text-muted hover:bg-hover hover:text-text"
             >
               <LuPanelRightOpen size={15} />
-              <span className="label-caps [writing-mode:vertical-rl]">{view.title}</span>
+              {/* Vertical label. Sideways text (writing-mode) cannot be cap-trimmed, so it sits
+                  off centre; instead an invisible sideways copy sizes the slot and the visible
+                  label is horizontal, cap-trimmed and rotated 90° about the slot's centre. */}
+              <span className="relative">
+                <span className="label-caps invisible block [writing-mode:vertical-rl]" aria-hidden>
+                  {view.title}
+                </span>
+                <span className="label-caps text-trim absolute left-1/2 top-1/2 block -translate-x-1/2 -translate-y-1/2 rotate-90 whitespace-nowrap" aria-hidden>
+                  {view.title}
+                </span>
+              </span>
             </button>
           )}
           <SidePanel
