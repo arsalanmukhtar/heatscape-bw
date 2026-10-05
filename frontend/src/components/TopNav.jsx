@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuBell, LuCalendar, LuChartLine, LuChevronDown, LuFileText, LuFlame, LuMap, LuMoon, LuSun } from 'react-icons/lu';
-import { REGION, SEASON, USER } from '../data/mock';
+import { LuBell, LuCalendar, LuChartLine, LuChevronDown, LuFileText, LuFlame, LuGlobe, LuLogIn, LuLogOut, LuMap, LuMoon, LuSettings, LuShieldCheck, LuSun, LuUser } from 'react-icons/lu';
+import { REGION, SEASON } from '../data/mock';
 import { t } from '../i18n';
+import { isAdmin, useSession } from '../state/auth';
 import { useLayout } from '../state/layout';
 import { useTheme } from '../state/theme';
 
@@ -21,17 +22,7 @@ export function TopNav() {
 
   return (
     <header className="flex shrink-0 items-center border-b border-nav-border bg-nav pr-4 text-nav-text" style={{ height: 'var(--nav-h)' }}>
-      {/* Brand: the mark fills the nav cell above the left rail (rail width × nav height, solid
-          accent), so its right edge continues the rail's border line; the name follows. */}
-      <div className="flex items-center gap-4 self-stretch" aria-label={t.appName}>
-        <span className="grid shrink-0 place-items-center self-stretch bg-accent text-on-accent" style={{ width: 'var(--rail-w)' }} aria-hidden>
-          <LuFlame size={20} strokeWidth={2.25} />
-        </span>
-        <span className="flex items-baseline gap-1.5 whitespace-nowrap" aria-hidden>
-          <span className="text-base font-bold tracking-[-0.01em] text-nav-text">{t.appBrand}</span>
-          <span className="text-xs font-bold uppercase tracking-[var(--tracking-caps)] text-accent">{t.appRegion}</span>
-        </span>
-      </div>
+      <Brand />
 
       <span className="mx-4 h-6 w-px bg-nav-border lg:mx-6" aria-hidden />
 
@@ -90,19 +81,31 @@ export function TopNav() {
           <LuBell size={15} />
         </button>
 
-        <button
-          type="button"
-          aria-label={t.nav.account}
-          className="ml-1 grid size-[30px] place-items-center border border-nav-border-strong bg-surface-raised text-2xs font-semibold text-nav-text"
-        >
-          {USER.initials}
-        </button>
+        <AccountMenu />
       </div>
     </header>
   );
 }
 
-function RegionMenu({ value, onChange }) {
+/* Brand: the mark fills the nav cell above the left rail (rail width × nav height, solid
+   accent), so its right edge continues the rail's border line; the name follows. Shared by
+   the workspace and the admin console. */
+export function Brand() {
+  return (
+    <div className="flex items-center gap-4 self-stretch" aria-label={t.appName}>
+      <span className="grid shrink-0 place-items-center self-stretch bg-accent text-on-accent" style={{ width: 'var(--rail-w)' }} aria-hidden>
+        <LuFlame size={20} strokeWidth={2.25} />
+      </span>
+      <span className="flex items-baseline gap-1.5 whitespace-nowrap" aria-hidden>
+        <span className="text-base font-bold tracking-[-0.01em] text-nav-text">{t.appBrand}</span>
+        <span className="text-xs font-bold uppercase tracking-[var(--tracking-caps)] text-accent">{t.appRegion}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Open state of a nav menu; closes on an outside click or Esc. */
+function useMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -119,6 +122,86 @@ function RegionMenu({ value, onChange }) {
       document.removeEventListener('keydown', esc);
     };
   }, [open]);
+
+  return { open, setOpen, ref };
+}
+
+/* Account menu: the signed-in user (session from the middleware), account settings, the
+   other apps (public portal; admin console only for the Admin role) and sign out. Signed
+   out: a sign-in link back to this page. Shared by the workspace and the admin console. */
+export function AccountMenu() {
+  const { open, setOpen, ref } = useMenu();
+  const { status, user, signOut } = useSession();
+  const here = `${location.pathname}${location.search}`;
+  const links = [
+    { href: '/portal', label: t.nav.portal, Icon: LuGlobe },
+    ...(isAdmin(user) ? [{ href: '/admin', label: t.nav.admin, Icon: LuShieldCheck }] : []),
+  ];
+  const item = 'flex h-8 w-full items-center gap-2 px-3 text-left text-xs text-text hover:bg-hover';
+  return (
+    <div ref={ref} className="relative ml-1">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={user ? `${t.nav.account}: ${user.name}` : t.nav.account}
+        title={user ? user.name : t.nav.account}
+        onClick={() => setOpen(!open)}
+        className={`grid size-[30px] place-items-center border bg-surface-raised text-2xs font-semibold text-nav-text ${open ? 'border-accent-line' : 'border-nav-border-strong hover:border-nav-text'}`}
+      >
+        {user ? <span>{user.initials}</span> : <LuUser size={14} className="text-nav-muted" aria-hidden />}
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-[calc(100%+4px)] z-50 w-60 border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)]">
+          {user ? (
+            <>
+              <div className="border-b border-border px-3 py-2">
+                <p className="truncate text-xs font-semibold text-text">{user.name}</p>
+                <p className="truncate text-2xs text-muted">{user.email}</p>
+              </div>
+              <a href="/account" role="menuitem" className={`${item} mt-1`}>
+                <LuSettings size={13} className="shrink-0 text-muted" aria-hidden />
+                <span>{t.nav.accountSettings}</span>
+              </a>
+            </>
+          ) : (
+            status !== 'loading' && (
+              <a href={`/signin?next=${encodeURIComponent(here)}`} role="menuitem" className={`${item} mt-1`}>
+                <LuLogIn size={13} className="shrink-0 text-muted" aria-hidden />
+                <span>{t.nav.signIn}</span>
+              </a>
+            )
+          )}
+          <p className="px-3 pb-1 pt-2 text-2xs uppercase tracking-[var(--tracking-caps)] text-muted">{t.nav.apps}</p>
+          {links.map(({ href, label, Icon }) => (
+            <a key={href} href={href} role="menuitem" className={item}>
+              <Icon size={13} className="shrink-0 text-muted" aria-hidden />
+              <span>{label}</span>
+            </a>
+          ))}
+          {user && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={async () => {
+                await signOut();
+                location.assign('/signin');
+              }}
+              className={`${item} mt-1 border-t border-border`}
+            >
+              <LuLogOut size={13} className="shrink-0 text-muted" aria-hidden />
+              <span>{t.nav.signOut}</span>
+            </button>
+          )}
+          <div className="h-1" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RegionMenu({ value, onChange }) {
+  const { open, setOpen, ref } = useMenu();
 
   return (
     <div ref={ref} className="relative">

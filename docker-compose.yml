@@ -21,6 +21,11 @@ services:
     environment:
       PORT: 3000
       BACKEND_URL: http://backend:8000
+      # MOCK sign-in users until Keycloak (middleware/src/users.js); empty password = cannot sign in.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@heatscape.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      PLANNER_EMAIL: ${PLANNER_EMAIL:-planner@heatscape.local}
+      PLANNER_PASSWORD: ${PLANNER_PASSWORD:-}
     depends_on:
       backend:
         condition: service_healthy

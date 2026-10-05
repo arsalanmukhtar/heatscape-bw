@@ -526,3 +526,173 @@ export function cellConfidence(id, center) {
   const edge = Math.min(1, Math.hypot((center[0] - 8.49) / 0.09, (center[1] - 49.49) / 0.065));
   return Math.max(0.2, Math.min(1, 1.05 - edge * 0.55 - rand() * 0.35));
 }
+
+/*
+  MOCK admin & operations data (until the ops API reads the scheduler, STAC, Keycloak and
+  the audit table). Times are ISO strings around the MOCK "now" ADMIN_NOW; durations in
+  seconds. Pipeline status: ok | running | failed | paused. Dataset names are real.
+*/
+export const ADMIN_NOW = '2025-09-01T09:00:00';
+// Full ISO (UTC) so the console reads every time the same way in any time zone.
+const at = (h) => new Date(new Date(ADMIN_NOW).getTime() + h * 3600e3).toISOString();
+
+export const PIPELINES = [
+  { id: 'landsat', name: 'Landsat 8/9 ST (Collection 2 L2)', source: 'USGS M2M API', schedule: 'Daily 04:00', lastRun: at(-5), nextRun: at(19), status: 'ok', records: 18, duration: 1260 },
+  { id: 'sentinel2', name: 'Sentinel-2 L2A', source: 'Copernicus Data Space', schedule: 'Daily 03:00', lastRun: at(-6), nextRun: at(18), status: 'ok', records: 46, duration: 2140 },
+  { id: 'sentinel3', name: 'Sentinel-3 SLSTR LST', source: 'Copernicus Data Space', schedule: 'Every 6 h', lastRun: at(-0.4), nextRun: at(5.6), status: 'running', records: 0, duration: 380 },
+  { id: 'dwd', name: 'DWD station observations', source: 'DWD Open Data (CDC)', schedule: 'Hourly', lastRun: at(-1), nextRun: at(0), status: 'failed', records: 0, duration: 41 },
+  { id: 'zensus', name: 'Zensus 2022 100 m grid', source: 'Destatis', schedule: 'Manual', lastRun: '2025-06-12T10:15', nextRun: null, status: 'ok', records: 31842, duration: 920 },
+  { id: 'lod2', name: 'LGL LoD2 buildings', source: 'LGL Baden-Württemberg', schedule: 'Monthly, 1st 02:00', lastRun: at(-7), nextRun: '2025-10-01T02:00', status: 'paused', records: 2194, duration: 3310 },
+];
+
+/** MOCK run history per pipeline: 14 runs, newest last. */
+export const PIPELINE_RUNS = Object.fromEntries(
+  PIPELINES.map((p, k) => {
+    const rand = rng(101 + k);
+    const runs = Array.from({ length: 14 }, (_, i) => {
+      const failed = (p.id === 'dwd' && (i === 13 || i === 9)) || rand() < 0.06;
+      return {
+        id: `${p.id}-${i + 1}`,
+        start: at(-(14 - i) * (p.id === 'dwd' ? 1 : p.id === 'sentinel3' ? 6 : 24)),
+        duration: Math.round(p.duration * (0.7 + rand() * 0.6)) || 60,
+        records: failed ? 0 : Math.round((p.records || 20) * (0.6 + rand() * 0.8)),
+        status: failed ? 'failed' : 'ok',
+      };
+    });
+    return [p.id, runs];
+  }),
+);
+
+export const ADMIN_ALERTS = [
+  { id: 'al-1', severity: 'critical', time: at(-1), source: 'DWD station observations', message: 'Ingestion failed: HTTP 503 from opendata.dwd.de (3 retries).' },
+  { id: 'al-2', severity: 'warning', time: at(-3.5), source: 'Landsat 8/9 ST', message: 'Cloud cover above 60 % on 2 of 3 new scenes; LST composite unchanged.' },
+  { id: 'al-3', severity: 'warning', time: at(-8), source: 'object storage', message: 'Bucket heatscape-cogs at 81 % of quota.' },
+  { id: 'al-4', severity: 'info', time: at(-20), source: 'Regions', message: 'Karlsruhe: validation step started (indicator checks 4 of 6).' },
+];
+
+export const ADMIN_KPIS = { datasets: 42, latestIngestion: at(-5), latestSource: 'Landsat 8/9 ST', runningJobs: 2, failed24h: 1, activeUsers7d: 38, copilot7d: 214 };
+
+// STAC collections: bbox [west, south, east, north]; temporal [start, end|null].
+export const STAC_COLLECTIONS = [
+  { id: 'landsat-c2-l2-st', title: 'Landsat 8/9 Surface Temperature', items: 1284, temporal: ['2013-04-11', null], bbox: [7.5, 47.5, 10.5, 49.8], licence: 'Public domain', version: 'C2 L2' },
+  { id: 'sentinel-2-l2a', title: 'Sentinel-2 L2A', items: 6412, temporal: ['2017-03-28', null], bbox: [7.5, 47.5, 10.5, 49.8], licence: 'Copernicus open licence', version: '05.10' },
+  { id: 'sentinel-3-slstr-lst', title: 'Sentinel-3 SLSTR LST', items: 3920, temporal: ['2018-10-01', null], bbox: [5.8, 47.2, 15.1, 55.1], licence: 'Copernicus open licence', version: '004' },
+  { id: 'heatscape-lst-composite', title: 'Heatscape summer LST composites', items: 36, temporal: ['2014-06-01', '2025-08-31'], bbox: [8.39, 49.4, 8.6, 49.59], licence: 'CC BY 4.0', version: '2025.09' },
+  { id: 'heatscape-sealing', title: 'Heatscape sealing degree (10 m)', items: 9, temporal: ['2017-01-01', '2025-01-01'], bbox: [8.39, 49.4, 8.6, 49.59], licence: 'CC BY 4.0', version: '2025.02' },
+  { id: 'lgl-lod2', title: 'LGL LoD2 buildings', items: 48, temporal: ['2024-01-01', null], bbox: [8.3, 49.0, 8.75, 49.6], licence: 'dl-de/by-2-0', version: '2025-08' },
+];
+
+// Regions in onboarding order; steps: aoi, sources, indicators, validation, publish.
+export const ADMIN_REGIONS = [
+  { id: 'mannheim', name: 'Mannheim', state: 'active', progress: 100, steps: { aoi: true, sources: true, indicators: true, validation: true, publish: true }, blocks: 128, users: 31 },
+  { id: 'karlsruhe', name: 'Karlsruhe', state: 'transfer', progress: 70, steps: { aoi: true, sources: true, indicators: true, validation: false, publish: false }, blocks: 141, users: 6 },
+  { id: 'stuttgart', name: 'Stuttgart', state: 'planned', progress: 20, steps: { aoi: true, sources: false, indicators: false, validation: false, publish: false }, blocks: 0, users: 2 },
+];
+
+export const ADMIN_ROLES = ['public', 'planner', 'partner', 'expert', 'admin'];
+// Permission → roles that hold it.
+export const ROLE_PERMISSIONS = [
+  { id: 'viewPortal', roles: ['public', 'planner', 'partner', 'expert', 'admin'] },
+  { id: 'viewWorkspace', roles: ['planner', 'partner', 'expert', 'admin'] },
+  { id: 'restrictedData', roles: ['partner', 'expert', 'admin'] },
+  { id: 'scenarios', roles: ['planner', 'expert', 'admin'] },
+  { id: 'measures', roles: ['planner', 'admin'] },
+  { id: 'reports', roles: ['planner', 'expert', 'admin'] },
+  { id: 'geoprocessing', roles: ['expert', 'admin'] },
+  { id: 'copilot', roles: ['planner', 'expert', 'admin'] },
+  { id: 'pipelines', roles: ['admin'] },
+  { id: 'users', roles: ['admin'] },
+];
+
+export const ADMIN_USERS = [
+  { id: 'u-01', name: 'M. Arsalan', email: 'm.arsalan@heatscape.example', role: 'admin', org: 'HEATSCAPE-BW', regions: ['Mannheim', 'Karlsruhe', 'Stuttgart'], lastActive: at(-0.1) },
+  { id: 'u-02', name: 'J. Weber', email: 'j.weber@mannheim.example', role: 'planner', org: 'Stadt Mannheim, FB Klima', regions: ['Mannheim'], lastActive: at(-2) },
+  { id: 'u-03', name: 'S. Becker', email: 's.becker@mannheim.example', role: 'planner', org: 'Stadt Mannheim, Stadtplanung', regions: ['Mannheim'], lastActive: at(-26) },
+  { id: 'u-04', name: 'A. Yilmaz', email: 'a.yilmaz@mannheim.example', role: 'planner', org: 'Stadt Mannheim, Gesundheitsamt', regions: ['Mannheim'], lastActive: at(-5) },
+  { id: 'u-05', name: 'K. Hoffmann', email: 'k.hoffmann@vrrn.example', role: 'partner', org: 'Verband Region Rhein-Neckar', regions: ['Mannheim'], lastActive: at(-50) },
+  { id: 'u-06', name: 'L. Schmidt', email: 'l.schmidt@karlsruhe.example', role: 'planner', org: 'Stadt Karlsruhe, Umweltamt', regions: ['Karlsruhe'], lastActive: at(-8) },
+  { id: 'u-07', name: 'P. Novak', email: 'p.novak@kit.example', role: 'expert', org: 'KIT, IMK', regions: ['Mannheim', 'Karlsruhe'], lastActive: at(-1.5) },
+  { id: 'u-08', name: 'R. Klein', email: 'r.klein@dwd.example', role: 'partner', org: 'DWD, Regionales Klimabüro', regions: ['Mannheim', 'Karlsruhe'], lastActive: at(-120) },
+  { id: 'u-09', name: 'T. Braun', email: 't.braun@consult.example', role: 'expert', org: 'Braun Umweltplanung', regions: ['Mannheim'], lastActive: at(-30) },
+  { id: 'u-10', name: 'E. Fischer', email: 'e.fischer@stuttgart.example', role: 'planner', org: 'Stadt Stuttgart, Amt für Umweltschutz', regions: ['Stuttgart'], lastActive: at(-72) },
+  { id: 'u-11', name: 'N. Wagner', email: 'n.wagner@mannheim.example', role: 'planner', org: 'Stadt Mannheim, Grünflächen', regions: ['Mannheim'], lastActive: at(-4) },
+  { id: 'u-12', name: 'Public (anonymous)', email: '—', role: 'public', org: 'Heat Portal', regions: ['Mannheim'], lastActive: at(-0.05) },
+];
+
+/** MOCK copilot usage, last 14 days: queries, cost (EUR), failed tool calls per day. */
+export const COPILOT_DAILY = (() => {
+  const rand = rng(77);
+  return Array.from({ length: 14 }, (_, i) => {
+    const day = new Date(new Date(ADMIN_NOW).getTime() - (13 - i) * 864e5).toISOString().slice(0, 10);
+    const weekend = [0, 6].includes(new Date(day).getDay());
+    const queries = Math.round((weekend ? 6 : 28) + rand() * (weekend ? 6 : 18));
+    return { day, queries, cost: +(queries * (0.018 + rand() * 0.01)).toFixed(2), failed: Math.round(rand() * 2.4) };
+  });
+})();
+export const COPILOT_TOP_QUESTIONS = [
+  { q: 'Which districts have the most residents over 65 in critical heat blocks?', n: 31 },
+  { q: 'Compare summer LST 2024 vs 2025 for Neckarstadt-West', n: 22 },
+  { q: 'Where would de-sealing schoolyards give the most cooling?', n: 18 },
+  { q: 'Show hospitals within 500 m of a high heat block', n: 14 },
+  { q: 'Summarise the effect of measures completed in 2023', n: 11 },
+];
+export const COPILOT_FAILED_CALLS = [
+  { id: 'fc-1', time: at(-2.2), tool: 'run_sql', error: 'statement timeout (5 s) on lst_block_daily', user: 'P. Novak' },
+  { id: 'fc-2', time: at(-27), tool: 'get_dwd_warnings', error: 'upstream 503 (DWD CAP feed)', user: 'J. Weber' },
+  { id: 'fc-3', time: at(-49), tool: 'run_process', error: 'process "zonal_stats" input out of region bounds', user: 'T. Braun' },
+];
+export const COPILOT_EVAL = { passRate: 0.924, cases: 118, runs: [0.88, 0.9, 0.89, 0.91, 0.9, 0.92, 0.915, 0.924] };
+
+// Services: built = deployed in docker-compose today (health checked live through the gateway;
+// post: body for services checked with a tiny real request); others planned.
+export const ADMIN_SERVICES = [
+  { id: 'web', name: 'web (frontend)', built: true, check: '/', version: '0.1.0' },
+  { id: 'bff', name: 'bff (middleware)', built: true, check: '/healthz', version: '0.1.0' },
+  { id: 'api', name: 'api (backend)', built: true, check: '/api/health', version: '0.1.0' },
+  { id: 'db', name: 'db (PostGIS)', built: true, check: '/api/health/db', version: 'PostgreSQL 17' },
+  { id: 'translate', name: 'translate (LibreTranslate)', built: true, check: '/api/translate', post: { text: 'ok', source: 'en', target: 'de', format: 'text' }, version: '1.6' },
+  { id: 'auth', name: 'auth (Keycloak)', built: false },
+  { id: 'workers', name: 'workers (Celery)', built: false },
+  { id: 'titiler', name: 'titiler (raster tiles)', built: false },
+  { id: 'stac', name: 'stac (pgstac)', built: false },
+  { id: 'redis', name: 'redis', built: false },
+  { id: 'storage', name: 'object storage', built: false },
+];
+
+export const AUDIT_LOG = [
+  { id: 'a-01', time: at(-0.2), user: 'M. Arsalan', action: 'pipeline.run', target: 'Sentinel-3 SLSTR LST', result: 'ok' },
+  { id: 'a-02', time: at(-1), user: 'system', action: 'pipeline.fail', target: 'DWD station observations', result: 'error' },
+  { id: 'a-03', time: at(-2), user: 'J. Weber', action: 'report.export', target: 'Heat action plan: evidence base (PDF)', result: 'ok' },
+  { id: 'a-04', time: at(-3), user: 'A. Yilmaz', action: 'measure.status', target: 'MS-003 Tree planting, Schönau-Nord → In progress', result: 'ok' },
+  { id: 'a-05', time: at(-5), user: 'system', action: 'pipeline.run', target: 'Landsat 8/9 ST', result: 'ok' },
+  { id: 'a-06', time: at(-7), user: 'M. Arsalan', action: 'pipeline.pause', target: 'LGL LoD2 buildings', result: 'ok' },
+  { id: 'a-07', time: at(-9), user: 'P. Novak', action: 'copilot.query', target: 'Compare summer LST 2024 vs 2025', result: 'ok' },
+  { id: 'a-08', time: at(-11), user: 'S. Becker', action: 'scenario.share', target: 'Green corridors Käfertal', result: 'ok' },
+  { id: 'a-09', time: at(-20), user: 'M. Arsalan', action: 'region.update', target: 'Karlsruhe: indicators configured', result: 'ok' },
+  { id: 'a-10', time: at(-26), user: 'unknown', action: 'auth.login', target: 'admin console', result: 'denied' },
+  { id: 'a-11', time: at(-30), user: 'M. Arsalan', action: 'user.role', target: 'T. Braun → Expert', result: 'ok' },
+  { id: 'a-12', time: at(-48), user: 'L. Schmidt', action: 'auth.login', target: 'workspace', result: 'ok' },
+  { id: 'a-13', time: at(-50), user: 'K. Hoffmann', action: 'data.download', target: 'heatscape-lst-composite 2025 (COG)', result: 'ok' },
+  { id: 'a-14', time: at(-72), user: 'M. Arsalan', action: 'user.invite', target: 'e.fischer@stuttgart.example (Planner)', result: 'ok' },
+];
+
+/** MOCK log lines for the admin dock; level: info | warn | error. */
+export const ADMIN_LOGS = [
+  { time: at(-1.02), level: 'info', source: 'dwd', message: 'GET https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/10_minutes/air_temperature/now/' },
+  { time: at(-1.01), level: 'warn', source: 'dwd', message: 'HTTP 503, retry 1/3 in 30 s' },
+  { time: at(-1.0), level: 'error', source: 'dwd', message: 'HTTP 503 after 3 retries; run marked failed' },
+  { time: at(-0.4), level: 'info', source: 'sentinel3', message: 'Search STAC sentinel-3-slstr-lst bbox=BW datetime=last 6 h: 4 items' },
+  { time: at(-0.35), level: 'info', source: 'sentinel3', message: 'Download S3B_SL_2_LST____20250901T0812 (1 of 4)' },
+  { time: at(-0.2), level: 'info', source: 'api', message: 'POST /api/translate 200 412 ms' },
+  { time: at(-0.1), level: 'info', source: 'bff', message: 'GET /api/health 200 3 ms' },
+];
+
+/*
+  MOCK API tokens of the signed-in user (account settings), until the account service
+  issues real ones. Only a prefix is kept; the full token is shown once at creation.
+*/
+export const API_TOKENS = [
+  { id: 'tok-1', name: 'QGIS plugin', prefix: 'hs_q7Lm', scope: 'read', createdAt: '2025-06-12T10:20:00Z', lastUsed: '2025-08-31T16:05:00Z', expiresAt: '2026-06-12T10:20:00Z' },
+  { id: 'tok-2', name: 'Nightly export script', prefix: 'hs_Z2cv', scope: 'write', createdAt: '2025-07-03T08:00:00Z', lastUsed: '2025-09-01T02:00:00Z', expiresAt: '2025-10-01T08:00:00Z' },
+  { id: 'tok-3', name: 'Notebook analysis', prefix: 'hs_8Rta', scope: 'read', createdAt: '2025-08-20T14:45:00Z', lastUsed: null, expiresAt: '2025-11-18T14:45:00Z' },
+];

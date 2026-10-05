@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuFlame, LuMenu, LuMoon, LuSun, LuX } from 'react-icons/lu';
+import { LuArrowLeft, LuFlame, LuMenu, LuMoon, LuSun, LuX } from 'react-icons/lu';
 import { portalText } from '../../i18n';
+import { useSession } from '../../state/auth';
 import { usePortal } from '../../state/portal';
 import { useTheme } from '../../state/theme';
 
@@ -9,11 +10,13 @@ const TARGET = { neighbourhood: 'portal-neighbourhood', cool: 'portal-cool', abo
 
 /*
   Portal top nav: brand, the three sections (inline from 1024 px, in a menu below), the
-  language switch and the theme toggle. No sign-in. Every control is at least 44 px.
+  language switch and the theme toggle. No sign-in; signed-in staff (session cookie) also
+  get a link back to the workspace. Every control is at least 44 px.
 */
 export function PortalNav({ wide }) {
   const { lang, setLang, section, setSection, panelOpen, togglePanel, setSheet } = usePortal();
   const { resolved, toggle } = useTheme();
+  const { user } = useSession();
   const p = portalText[lang];
   const [menu, setMenu] = useState(false);
   const menuRef = useRef(null);
@@ -71,6 +74,12 @@ export function PortalNav({ wide }) {
       {wide && <nav aria-label={p.menu} className="ml-6 hidden items-stretch gap-1 lg:flex">{links}</nav>}
 
       <div className="ml-auto flex items-center gap-1">
+        {user && (
+          <a href="/" title={p.backToWorkspace} aria-label={p.backToWorkspace} className="mr-1 flex h-11 items-center gap-2 border border-nav-border bg-bg-deep px-3 text-sm text-nav-text hover:border-nav-border-strong">
+            <LuArrowLeft size={15} className="shrink-0 text-nav-muted" aria-hidden />
+            <span className="hidden md:inline">{p.backToWorkspace}</span>
+          </a>
+        )}
         <div role="group" aria-label={p.language} className="flex border border-nav-border">
           {['en', 'de'].map((l) => (
             <button

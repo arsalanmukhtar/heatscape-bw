@@ -42,7 +42,7 @@ export function LeftRail() {
   );
 }
 
-function RailButton({ label, active, onClick, children }) {
+export function RailButton({ label, active, onClick, children }) {
   return (
     <button
       type="button"
