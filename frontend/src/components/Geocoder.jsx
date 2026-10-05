@@ -24,10 +24,15 @@ const PIN_PATH =
 export function SearchPin() {
   const pin = usePin((s) => s.pin);
   if (!pin) return null;
+  return <PlacePin key={pin.id} center={pin.center} name={pin.name} />;
+}
+
+/** The yellow place pin (search results here, the citizen's place in the Heat Portal). */
+export function PlacePin({ center, name }) {
   return (
-    <Marker key={pin.id} longitude={pin.center[0]} latitude={pin.center[1]} anchor="bottom" offset={[0, Math.round(PIN_SIZE * (1 - 184 / 256))]}>
-      <svg width={PIN_SIZE} height={PIN_SIZE} viewBox="0 0 256 256" className="pin-drop block overflow-visible text-[var(--search-pin)]" role="img" aria-label={pin.name}>
-        <title>{pin.name}</title>
+    <Marker longitude={center[0]} latitude={center[1]} anchor="bottom" offset={[0, Math.round(PIN_SIZE * (1 - 184 / 256))]}>
+      <svg width={PIN_SIZE} height={PIN_SIZE} viewBox="0 0 256 256" className="pin-drop block overflow-visible text-[var(--search-pin)]" role="img" aria-label={name}>
+        <title>{name}</title>
         <defs>
           <filter id="hs-pin-ground" x="-50%" y="-100%" width="200%" height="300%">
             <feGaussianBlur stdDeviation="10" />

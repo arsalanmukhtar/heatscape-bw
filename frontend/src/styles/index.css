@@ -70,15 +70,18 @@
     border-color: var(--border);
   }
 
+  /* The page itself never scrolls: only panels do. overflow: clip (not hidden) also blocks
+     programmatic scrolling, so scrollIntoView or an anchor jump inside a panel cannot
+     shift the whole app up and leave a gap at the bottom. */
   html,
   body,
   #root {
     height: 100%;
+    overflow: clip;
   }
 
   body {
     margin: 0;
-    overflow: hidden;
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-sans);

@@ -154,6 +154,22 @@
   --vuln-8: #633988;
   --vuln-9: #4b286f;
 
+  /* Public Heat Portal: cooler → hotter than typical, blue → green → yellow → orange → red
+     (ColorBrewer Spectral 11, reversed; its purple end replaced by a lighter blue step so
+     the cool side reads blue, lightness still rising towards yellow). A spectral ramp by user request, for
+     citizens; the yellow middle is "typical for the city". Workspace maps keep --heat-*. */
+  --spectral-1: #3288bd;
+  --spectral-2: #5aa7c9;
+  --spectral-3: #66c2a5;
+  --spectral-4: #abdda4;
+  --spectral-5: #e6f598;
+  --spectral-6: #ffffbf;
+  --spectral-7: #fee08b;
+  --spectral-8: #fdae61;
+  --spectral-9: #f46d43;
+  --spectral-10: #d53e4f;
+  --spectral-11: #9e0142;
+
   /* Diverging midpoint. A grey, never a hue, so "no change" reads as nothing. */
   --div-mid: #e8e8e8;
 

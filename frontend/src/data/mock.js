@@ -492,3 +492,37 @@ export const REPORT_SOURCES = [
   { id: 'alkis', name: 'ALKIS land use and LoD2 buildings', provider: 'LGL Baden-Württemberg', licence: 'dl-de/by-2-0', version: '2025' },
   { id: 'osm', name: 'OpenStreetMap (basemap, facilities)', provider: 'OpenStreetMap contributors', licence: 'ODbL', version: '2025-08' },
 ];
+
+/*
+  MOCK public Heat Portal content (until the DWD warning feed, the cool-places register
+  and per-cell confidence come from the API). Place names are real Mannheim places;
+  positions are approximate and opening hours illustrative.
+  Heat warning: DWD warns per district (Stadtkreis); level none | strong | extreme
+  ("starke" / "extreme Wärmebelastung"). Temperatures in °C (air, 2 m).
+*/
+export const HEAT_WARNING = { area: 'Stadtkreis Mannheim', level: 'strong', from: '11:00', to: '19:00', forecastMax: 34, tomorrowMax: 35, nightMin: 21, updated: '2025-07-31T06:30' };
+// kind: park | shade | water | coolroom. hours: null = always open. note: fee | aircon (translated).
+export const COOL_PLACES = [
+  { id: 'cp-01', kind: 'park', name: 'Luisenpark', center: [8.4945, 49.4835], hours: '09:00–21:00', note: 'fee', shade: true, water: true, seats: true },
+  { id: 'cp-02', kind: 'park', name: 'Herzogenriedpark', center: [8.48, 49.505], hours: '09:00–20:00', note: 'fee', shade: true, water: true, seats: true },
+  { id: 'cp-03', kind: 'water', name: 'Wasserspiele Friedrichsplatz', center: [8.4757, 49.4842], hours: null, shade: true, water: true, seats: true },
+  { id: 'cp-04', kind: 'park', name: 'Schlosspark und Rheinufer', center: [8.459, 49.483], hours: null, shade: true, water: false, seats: true },
+  { id: 'cp-05', kind: 'park', name: 'Waldpark Lindenhof', center: [8.456, 49.464], hours: null, shade: true, water: true, seats: true },
+  { id: 'cp-06', kind: 'park', name: 'Neckarwiese', center: [8.4805, 49.4968], hours: null, shade: false, water: true, seats: true },
+  { id: 'cp-07', kind: 'water', name: 'Brunnen Paradeplatz', center: [8.4662, 49.4872], hours: null, shade: true, water: true, seats: true },
+  { id: 'cp-08', kind: 'coolroom', name: 'Stadtbibliothek Zentralbibliothek', center: [8.4674, 49.488], hours: '10:00–19:00', note: 'aircon', shade: true, water: true, seats: true },
+  { id: 'cp-09', kind: 'coolroom', name: 'Jesuitenkirche', center: [8.4626, 49.4856], hours: '08:00–18:00', shade: true, water: false, seats: true },
+  { id: 'cp-10', kind: 'coolroom', name: 'Reiss-Engelhorn-Museen', center: [8.4618, 49.4893], hours: '11:00–18:00', note: 'fee', shade: true, water: true, seats: true },
+  { id: 'cp-11', kind: 'shade', name: 'Toulonplatz', center: [8.478, 49.4792], hours: null, shade: true, water: false, seats: true },
+  { id: 'cp-12', kind: 'water', name: 'Wasserspiel Alter Meßplatz', center: [8.4718, 49.4983], hours: null, shade: false, water: true, seats: true },
+  { id: 'cp-13', kind: 'park', name: 'Käfertaler Wald', center: [8.535, 49.515], hours: null, shade: true, water: false, seats: false },
+  { id: 'cp-14', kind: 'water', name: 'Strandbad Neckarau', center: [8.457, 49.4535], hours: '10:00–20:00', note: 'fee', shade: true, water: true, seats: true },
+  { id: 'cp-15', kind: 'coolroom', name: 'Herschelbad', center: [8.4703, 49.4902], hours: '07:00–21:00', note: 'fee', shade: true, water: true, seats: true },
+];
+
+/** MOCK confidence (0–1) of a surface-grid cell: lower towards the edges (fewer cloud-free scenes). */
+export function cellConfidence(id, center) {
+  const rand = rng([...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 3));
+  const edge = Math.min(1, Math.hypot((center[0] - 8.49) / 0.09, (center[1] - 49.49) / 0.065));
+  return Math.max(0.2, Math.min(1, 1.05 - edge * 0.55 - rand() * 0.35));
+}

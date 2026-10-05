@@ -9,6 +9,7 @@ import { useScenarios } from '../state/scenarios';
 import { useWorkspace } from '../state/workspace';
 import { BasemapButton, BasemapList } from './BasemapControl';
 import { ControlPopover } from './ControlPopover';
+import { ControlButton, Group, NorthButton } from './MapButtons';
 
 const FLY = { duration: 1200, essential: true };
 const STAGGER_MS = 40;
@@ -49,6 +50,7 @@ export function MapControls({ disabled, canCompare }) {
       <ControlButton label={t.map.zoomOut} disabled={disabled} onClick={() => main?.zoomOut()}>
         <LuMinus size={14} />
       </ControlButton>
+      <NorthButton map={main} label={t.map.north} disabled={disabled} />
     </Group>,
     <Group key="extent">
       <ControlButton label={t.map.zoomWorld} disabled={disabled} onClick={() => main?.flyTo({ ...WORLD_VIEW, ...FLY })}>
@@ -138,29 +140,5 @@ export function MapControls({ disabled, canCompare }) {
         {(shown) => <BasemapList shown={shown} />}
       </ControlPopover>
     </div>
-  );
-}
-
-function Group({ children }) {
-  return (
-    <div role="toolbar" aria-orientation="vertical" className="flex flex-col divide-y divide-border-soft border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)] backdrop-blur-md">
-      {children}
-    </div>
-  );
-}
-
-function ControlButton({ label, active, disabled, onClick, children }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
-      disabled={disabled}
-      onClick={onClick}
-      className={`grid size-7 place-items-center transition-colors disabled:opacity-50 ${active ? 'bg-accent-soft text-accent' : 'text-text hover:bg-hover'}`}
-    >
-      {children}
-    </button>
   );
 }

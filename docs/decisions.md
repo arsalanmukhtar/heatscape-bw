@@ -34,6 +34,9 @@ Append-only. One line each: decision — reason.
 28. Reports render in the browser from one content model (`lib/reportContent.js`): the A4 preview paginates measured blocks, Export PDF prints that preview (`@page` A4, print-only copy), DOCX is built with `docx` from the same model, the share link carries the settings in the URL hash (no map image) — council-ready output without a render service; server-side rendering can replace it behind the same model.
 29. Report pages print light (paper-white `--report-page`, light tokens via `data-theme="light"` on each page) in both app themes; page text has its own language (EN/DE) independent of the UI — a council paper must look the same whoever exports it.
 30. Machine translation is self-hosted LibreTranslate (open source, EN/DE only) behind `POST /api/translate` — report text never leaves our servers and no key or per-call cost; quality is below commercial engines, so translations are marked for review. Report text fields keep one version per language (`{ en, de }`); a missing version shows the other language until translated or written.
+31. The public Heat Portal is a separate route (`/portal`, lazily loaded bundle) of the same frontend, no sign-in, its own EN/DE switch (default from the browser language) — one codebase and design system; citizens never load the workspace.
+32. Portal heat layer shows heat relative to the Mannheim median on a spectral ramp (`--spectral-1…11`, ColorBrewer Spectral: blue, green, yellow = typical, orange, red; ±5.5 °C spans it; an exception to the no-rainbow rule by user request, portal only) with value suppression: 11 classes at high confidence, 5 at medium (40 % towards `--unc-suppress`), 3 at low (70 %); legend as a confidence × cooler/typical/hotter grid — citizens read "hotter or cooler than usual here" (user request), and uncertainty shows without hatching on a phone-sized map.
+33. Portal privacy: the searched address is never stored or sent to our backend (geocoding and the walking isochrone go to Mapbox from the browser); only language and layout are remembered.
 
 ## UI overrides
 
@@ -44,7 +47,7 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 - Map legend: removed from the map; each layer's legend sits inside its row in the Layers panel, generated from its symbology.
 - Mapbox wordmark and default attribution: replaced by the collapsible ⓘ attribution, bottom right.
 - Map projection: Web Mercator always (`MAP_PROJECTION`), never the Mapbox globe, on every basemap. No style fog either (`MAP_FOG = null`): the styles' globe fog culls tiles on a flat map when zoomed out.
-- Map controls: compact 28 px buttons, top right, in order: collapse chevron, zoom ±, world / Baden-Württemberg extent, tools, basemap, compare; the chevron folds the column with a staggered slide (state persisted); no fullscreen or prev/next view buttons.
+- Map controls: compact 28 px buttons, top right, in order: collapse chevron, zoom ± with north reset (`TbMapNorth`, turns with the map bearing), world / Baden-Württemberg extent, tools, basemap, compare; the chevron folds the column with a staggered slide (state persisted); no fullscreen or prev/next view buttons.
 - Basemap: chosen in the basemap map control (list: thumbnail square + name), saved in localStorage (`hs-basemap`); Default Dark; no "Auto (theme)" entry (removed by request), a saved 'auto' falls back to Dark. Not in the Settings panel. Order: Dark, Light, then the rest. Thumbnails: full screenshots in `frontend/public/basemaps/`, 96 px square crops (Channel coast, land + sea) in `public/basemaps/thumbs/`, shown at 32 px; set in `BASEMAPS` (`lib/mapStyle.js`).
 - Map snapshot: camera control saves the map container as PNG to a folder and name picked in a save dialog (Chromium; other browsers download with the default name) (`html-to-image`, `lib/mapSnapshot.js`): basemap, layers, markers, scale and the attribution (forced expanded); nav controls, geocoder, swipe handle and focus overlay are excluded via `data-snapshot="exclude"`. Map canvases use `preserveDrawingBuffer` for this.
 - Geocoder: compact, top left; 5 results visible, then scroll. Picking fits the result extent (bbox, else a zoom by result type) and drops a yellow pin (short pin in a wide ground ring, soft ground shadow) once the map has arrived; clearing the search removes it.
@@ -55,6 +58,7 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 - Left sections and the right panel: opening a section opens its wired right view (`SECTION_VIEW` in `state/layout.js`: layers → inspector, scenarios → ranking); a section without one collapses the right panel. New sections declare their view there.
 - Attribute table: one layer picker, the table button in the Layers panel; no layer dropdown in the dock bar. No Sort button either: sorting is by the column headers.
 - Dock tabs: compact (12 px icon, 2xs caps label, `--dock-chip-w` 76 px badges, no wrapping); the tab strip scrolls sideways instead of overlapping the tab actions.
+- Heat Portal map controls: the workspace's compact 28 px group (zoom ±, north reset); no Mapbox attribution, no attribution tile and no Mapbox logo (removed by request).
 - Settings panel: no theme switch (top nav and the T key only); it lists every keyboard shortcut, grouped (General, Navbar, Left panel, Right panel, Dock, Map, Measures, Reports), searchable, each row runs on click.
 - Report outline: each section type once; Add section lists only the missing ones.
 - Report pages: the selected section is marked by an accent bar in the left margin (faint bar on hover), not an outline over the content. Footer: licence line wrapped in the left half, page x of y with data version and date right-aligned.
@@ -65,9 +69,10 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 ## Open
 
 - Measures API (proposed, not built): `GET/POST /api/measures` (multipart: footprint GeoJSON/GPKG/SHP converted server-side, photos/documents), `PATCH /api/measures/{id}/status` (appends to `measure_status_events`: measure_id, from_status, to_status, changed_at timestamptz, completed_on, changed_by), `GET /api/measures/{id}/effect` (LST/sealing/NDVI before-after, DiD, series), `GET /api/measures/summary`, `GET /api/measures/export?format=csv|pdf`.
+- Portal API (proposed, not built): `GET /api/portal/warning?district=` (DWD CAP heat warnings, cached), `GET /api/portal/area?lon=&lat=` (surface LST p05/p50/p95 around a point, city rank, confidence), `GET /api/portal/cool-places?lon=&lat=` (register with opening hours, walking minutes from the routing service).
 - Reports API (proposed, not built): `GET/POST /api/reports` and `GET/PUT/DELETE /api/reports/{id}` (report settings, sections, map snapshot as object-storage key), `POST /api/reports/{id}/render?format=pdf|docx` (server-side rendering for archived council papers), `POST /api/reports/{id}/share` (signed read-only link replacing the URL-hash link).
 - Multiband RGB rasters (band picker, per-band stretch) need the tile server (rio-tiler); not possible in Mapbox GL client-side.
 - Symbology: optional QML/SLD style import (not built).
 - Map selection outline: accent (as in approved screen) or `--accent-2`.
 - Mock district "Waldfriedhof" is not a Mannheim district (Waldhof is).
-- Mapbox wordmark hidden on request; Mapbox terms require it on public deployments — restore before going public.
+- Mapbox wordmark hidden on request in the workspace; Mapbox terms require it on public deployments — restore before going public, including on the Heat Portal (`/portal`), where logo and attribution were removed by request.
