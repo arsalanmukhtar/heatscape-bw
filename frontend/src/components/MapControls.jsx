@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuChevronUp, LuColumns2, LuEarth, LuGrid2X2, LuMapPinned, LuMinus, LuMousePointerClick, LuPlus, LuRuler } from 'react-icons/lu';
+import { LuCamera, LuChevronUp, LuColumns2, LuEarth, LuGrid2X2, LuMapPinned, LuMinus, LuMousePointerClick, LuPlus, LuRuler } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
 import { t } from '../i18n';
 import { BW_BOUNDS, WORLD_VIEW } from '../lib/geo';
+import { SNAPSHOT_EXCLUDE, captureMap, useSnapshot } from '../lib/mapSnapshot';
 import { useLayout } from '../state/layout';
 import { useScenarios } from '../state/scenarios';
 import { useWorkspace } from '../state/workspace';
@@ -17,6 +18,7 @@ export function MapControls({ disabled, canCompare }) {
   const { tools, toggleTool } = useWorkspace();
   const { compare, toggleCompare } = useScenarios();
   const { mapControlsOpen: open, toggleMapControls } = useLayout();
+  const capturing = useSnapshot((s) => s.capturing);
   // One panel at a time; panels open from the top of the column (see ControlPopover).
   const [panel, setPanel] = useState(null);
   const columnRef = useRef(null);
@@ -75,12 +77,17 @@ export function MapControls({ disabled, canCompare }) {
         </ControlButton>
       </Group>
     ),
+    <Group key="snapshot">
+      <ControlButton label={t.map.snapshot} disabled={disabled || capturing} onClick={captureMap}>
+        <LuCamera size={13} className={capturing ? 'animate-pulse' : undefined} />
+      </ControlButton>
+    </Group>,
   ].filter(Boolean);
   const n = groups.length;
 
   return (
     // Spans the map height (pointer-events off) so panels can use it all; controls opt back in.
-    <div ref={columnRef} className="pointer-events-none absolute bottom-3 right-3 top-3 z-10 flex flex-col gap-2">
+    <div ref={columnRef} className="pointer-events-none absolute bottom-3 right-3 top-3 z-10 flex flex-col gap-2" {...SNAPSHOT_EXCLUDE}>
       <div className="pointer-events-auto">
         <Group>
           <button

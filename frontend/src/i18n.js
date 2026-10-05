@@ -200,6 +200,7 @@ const en = {
       'navigation-night': 'Navigation Night',
     },
     attribution: 'Map attribution',
+    snapshot: 'Save map snapshot (PNG)',
     improveMap: 'Improve this map',
     search: 'Search places',
     searchPlaceholder: 'Search address or place',

@@ -5,6 +5,7 @@ import { AIR_GRID, BLOCKS, FACILITIES, REGION, SEALING_POINTS, SURFACE_GRID, blo
 import { t } from '../i18n';
 import { cssVar, distanceKm } from '../lib/css';
 import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage, heatStops } from '../lib/mapStyle';
+import { MAP_CONTAINER_ID, SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { candidateFootprint } from '../lib/scenario';
 import { useMapResize } from '../lib/useMapResize';
 import { useLayout } from '../state/layout';
@@ -28,7 +29,7 @@ export function MapView() {
   useMapResize(containerRef, main);
 
   return (
-    <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden bg-map-ground">
+    <div ref={containerRef} id={MAP_CONTAINER_ID} className="relative min-h-0 flex-1 overflow-hidden bg-map-ground">
       {TOKEN ? <LiveMap /> : <MapPlaceholder />}
       {TOKEN && compare && ranking && <CompareSwipe ranking={ranking} />}
       <Geocoder disabled={!TOKEN} />
@@ -36,7 +37,7 @@ export function MapView() {
       {TOKEN && <MapScale />}
       {TOKEN && <MapAttribution />}
       {/* Expanded tables and charts render here, above map and controls (see Expandable). */}
-      <div id={MAP_OVERLAY_ID} className="pointer-events-none absolute inset-0 z-30" />
+      <div id={MAP_OVERLAY_ID} className="pointer-events-none absolute inset-0 z-30" {...SNAPSHOT_EXCLUDE} />
     </div>
   );
 }
@@ -129,6 +130,7 @@ function LiveMap() {
       mapStyle={styleUrl}
       projection={MAP_PROJECTION}
       fog={MAP_FOG}
+      preserveDrawingBuffer // keeps the last frame readable for map snapshots
       attributionControl={false}
       style={{ width: '100%', height: '100%' }}
       cursor={tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}

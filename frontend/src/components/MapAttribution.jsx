@@ -1,5 +1,6 @@
 import { LuInfo } from 'react-icons/lu';
 import { t } from '../i18n';
+import { useSnapshot } from '../lib/mapSnapshot';
 
 const LINKS = [
   ['© Mapbox', 'https://www.mapbox.com/about/maps/'],
@@ -9,11 +10,15 @@ const LINKS = [
 
 /** Collapsed info tile; on hover or focus the attribution row unrolls to the left. */
 export function MapAttribution() {
+  // Snapshots always carry the full attribution, shown expanded without the unroll animation.
+  const capturing = useSnapshot((s) => s.capturing);
   return (
     // Clicks do not take focus, so the row only stays open for hover or keyboard focus.
     <div className="group pointer-events-none absolute bottom-2 right-2 z-10 flex h-6 items-stretch" onMouseDown={(e) => e.preventDefault()}>
       {/* Same border and fill as the tile; its right edge is the tile's left border. */}
-      <div className="pointer-events-auto flex items-center gap-2 border border-r-0 border-border-strong bg-surface-strong px-2 text-2xs whitespace-nowrap text-muted transition-[clip-path] duration-300 ease-out [clip-path:inset(0_0_0_100%)] group-hover:[clip-path:inset(0)] group-has-[:focus-visible]:[clip-path:inset(0)]">
+      <div className={`pointer-events-auto flex items-center gap-2 border border-r-0 border-border-strong bg-surface-strong px-2 text-2xs whitespace-nowrap text-muted ${
+          capturing ? '[clip-path:inset(0)]' : 'transition-[clip-path] duration-300 ease-out [clip-path:inset(0_0_0_100%)] group-hover:[clip-path:inset(0)] group-has-[:focus-visible]:[clip-path:inset(0)]'
+        }`}>
         {LINKS.map(([label, href]) => (
           <a key={href} href={href} target="_blank" rel="noopener noreferrer" className="hover:text-text">
             {label}

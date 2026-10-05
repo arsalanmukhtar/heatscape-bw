@@ -10,21 +10,21 @@ export const MAP_PROJECTION = 'mercator';
 export const MAP_FOG = null;
 
 /*
-  Mapbox basemaps offered in the basemap control; DEFAULT_BASEMAP is listed first.
-  thumb: path under public/ (e.g. '/basemaps/streets.png'); null shows an empty square
-  until thumbnails are supplied.
+  Mapbox basemaps offered in the basemap control: Dark (default) and Light first, then the rest.
+  thumb: 96 px square crop under public/basemaps/thumbs/ (made from the full screenshots in
+  public/basemaps/); null shows an empty square.
 */
 export const DEFAULT_BASEMAP = 'dark';
 export const BASEMAPS = [
-  { id: 'dark', url: 'mapbox://styles/mapbox/dark-v11', thumb: null },
-  { id: 'standard', url: 'mapbox://styles/mapbox/standard', thumb: null },
-  { id: 'standard-satellite', url: 'mapbox://styles/mapbox/standard-satellite', thumb: null },
-  { id: 'streets', url: 'mapbox://styles/mapbox/streets-v12', thumb: null },
-  { id: 'outdoors', url: 'mapbox://styles/mapbox/outdoors-v12', thumb: null },
-  { id: 'light', url: 'mapbox://styles/mapbox/light-v11', thumb: null },
-  { id: 'satellite', url: 'mapbox://styles/mapbox/satellite-v9', thumb: null },
-  { id: 'satellite-streets', url: 'mapbox://styles/mapbox/satellite-streets-v12', thumb: null },
-  { id: 'navigation-day', url: 'mapbox://styles/mapbox/navigation-day-v1', thumb: null },
+  { id: 'dark', url: 'mapbox://styles/mapbox/dark-v11', thumb: '/basemaps/thumbs/dark.png' },
+  { id: 'light', url: 'mapbox://styles/mapbox/light-v11', thumb: '/basemaps/thumbs/light.png' },
+  { id: 'standard', url: 'mapbox://styles/mapbox/standard', thumb: '/basemaps/thumbs/standard.png' },
+  { id: 'standard-satellite', url: 'mapbox://styles/mapbox/standard-satellite', thumb: '/basemaps/thumbs/standard-satellite.png' },
+  { id: 'streets', url: 'mapbox://styles/mapbox/streets-v12', thumb: '/basemaps/thumbs/streets.png' },
+  { id: 'outdoors', url: 'mapbox://styles/mapbox/outdoors-v12', thumb: '/basemaps/thumbs/outdoors.png' },
+  { id: 'satellite', url: 'mapbox://styles/mapbox/satellite-v9', thumb: '/basemaps/thumbs/satellite.png' },
+  { id: 'satellite-streets', url: 'mapbox://styles/mapbox/satellite-streets-v12', thumb: '/basemaps/thumbs/satellite-streets.png' },
+  { id: 'navigation-day', url: 'mapbox://styles/mapbox/navigation-day-v1', thumb: '/basemaps/thumbs/navigation-day.png' },
   { id: 'navigation-night', url: 'mapbox://styles/mapbox/navigation-night-v1', thumb: null },
 ];
 

@@ -35,7 +35,7 @@ docker compose up -d --build
 | Back to static build | `docker compose up -d --build frontend` | http://localhost:8180 |
 | Host only | `cd frontend; npm install; npm run dev` (reads root `.env`) | http://localhost:5180 |
 
-- Docker dev mode: `npm install` changes need the `--build` command again.
+- Docker dev mode: after `npm install` (new or changed dependencies) add `-V` (`--renew-anon-volumes`) to the dev command, or the container keeps its old `node_modules` volume.
 
 ## Layout
 

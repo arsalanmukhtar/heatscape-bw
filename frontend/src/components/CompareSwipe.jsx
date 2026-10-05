@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN, heatStops } from '../lib/mapStyle';
 import { scenarioGrid } from '../lib/scenario';
 import { useMapResize } from '../lib/useMapResize';
+import { SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { useMapStyleUrl } from '../state/basemap';
 import { useScenarios } from '../state/scenarios';
 import { useTheme } from '../state/theme';
@@ -44,7 +45,7 @@ export function CompareSwipe({ ranking }) {
   return (
     <div ref={wrapRef} className="pointer-events-none absolute inset-0 z-[5]">
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${swipe}%)` }}>
-        <MapGL id="compare" mapboxAccessToken={MAPBOX_TOKEN} initialViewState={view} mapStyle={styleUrl} projection={MAP_PROJECTION} fog={MAP_FOG} interactive={false} attributionControl={false} style={{ width: '100%', height: '100%' }}>
+        <MapGL id="compare" mapboxAccessToken={MAPBOX_TOKEN} initialViewState={view} mapStyle={styleUrl} projection={MAP_PROJECTION} fog={MAP_FOG} preserveDrawingBuffer interactive={false} attributionControl={false} style={{ width: '100%', height: '100%' }}>
           <Source id="lst-scenario" type="geojson" data={grid}>
             <Layer id="lst-scenario-fill" type="fill" paint={{ 'fill-color': ['interpolate', ['linear'], ['get', 't'], ...stops], 'fill-opacity': 0.72 }} />
           </Source>
@@ -60,6 +61,7 @@ export function CompareSwipe({ ranking }) {
           aria-valuemax={95}
           aria-valuenow={Math.round(swipe)}
           title={t.map.swipeHandle}
+          {...SNAPSHOT_EXCLUDE}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
             dragTo(e.clientX);

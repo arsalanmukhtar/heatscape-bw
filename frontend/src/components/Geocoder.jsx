@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { REGION } from '../data/mock';
 import { t } from '../i18n';
 import { geocode } from '../lib/geocode';
+import { SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { SearchBar } from './SearchBar';
 
 // Zoom for results without a bounding box: close enough to read the place without zooming in.
@@ -116,7 +117,7 @@ export function Geocoder({ disabled }) {
   const showList = open && query.trim().length >= 2;
 
   return (
-    <div className="absolute left-3 top-3 z-20 w-64" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}>
+    <div className="absolute left-3 top-3 z-20 w-64" {...SNAPSHOT_EXCLUDE} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}>
       <SearchBar
         value={query}
         onChange={changeQuery}

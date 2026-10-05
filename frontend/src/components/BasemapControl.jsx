@@ -39,9 +39,9 @@ export function BasemapList({ shown }) {
               className={`flex w-full items-center gap-2 px-1.5 py-0.5 text-left text-xs ${on ? 'bg-accent-soft font-semibold text-text' : 'text-text hover:bg-hover'}`}
             >
               {b.thumb ? (
-                <img src={b.thumb} alt="" className="size-6.25 shrink-0 border border-border object-cover" />
+                <img src={b.thumb} alt="" className="size-8 shrink-0 border border-border object-cover" />
               ) : (
-                <span className="size-6.25 shrink-0 border border-border bg-field" aria-hidden />
+                <span className="size-8 shrink-0 border border-border bg-field" aria-hidden />
               )}
               <span className="min-w-0 flex-1 truncate">{t.map.basemaps[b.id]}</span>
             </button>

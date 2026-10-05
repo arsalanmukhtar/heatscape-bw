@@ -1,5 +1,6 @@
 # Dev override: frontend runs the Vite dev server with HMR behind the gateway.
 # docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# After dependency changes add -V: the anonymous node_modules volume below survives rebuilds.
 services:
   frontend:
     build:
