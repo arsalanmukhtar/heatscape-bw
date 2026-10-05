@@ -2,6 +2,7 @@ import { t } from '../i18n';
 import { CRITERIA } from '../lib/scenario';
 import { useActiveRanking } from '../state/scenarios';
 import { useWorkspace } from '../state/workspace';
+import { SearchEmpty } from './SearchBar';
 
 // Criteria take series colours in fixed order (never cycled).
 const CRITERION_COLOR = Object.fromEntries(CRITERIA.map((c, i) => [c, `var(--series-${i + 1})`]));
@@ -9,7 +10,7 @@ const SHIFT_COLOR = { minus: 'var(--series-1)', plus: 'var(--series-2)' };
 
 export function ScenarioCharts() {
   const ranking = useActiveRanking();
-  if (!ranking) return <p className="px-4 py-3 text-xs text-muted">{t.charts.empty}</p>;
+  if (!ranking) return <SearchEmpty>{t.charts.empty}</SearchEmpty>;
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 overflow-auto lg:grid-cols-2">

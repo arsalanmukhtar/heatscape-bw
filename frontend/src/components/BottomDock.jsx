@@ -1,10 +1,11 @@
 import { useRef } from 'react';
-import { LuChartColumn, LuChevronDown, LuChevronUp, LuChevronsDown, LuChevronsUp, LuHistory, LuTable2 } from 'react-icons/lu';
+import { LuChartColumn, LuChevronDown, LuChevronUp, LuChevronsDown, LuChevronsUp, LuClipboardList, LuHistory, LuTable2 } from 'react-icons/lu';
 import { t } from '../i18n';
 import { DOCK_MIN, useLayout } from '../state/layout';
 import { AttributeTable, AttributeTableActions, AttributeTableBadge } from './AttributeTable';
 import { ExpandButton, ExpandSlot } from './Expandable';
 import { JobsActions, JobsBadges, JobsView } from './JobsView';
+import { MeasuresSummary, MeasuresSummaryActions, MeasuresSummaryBadge } from './measures/MeasuresSummary';
 import { ResizeHandle } from './ResizeHandle';
 import { ScenarioCharts } from './ScenarioCharts';
 
@@ -13,6 +14,7 @@ const TABS = {
   table: { label: t.table.title, Icon: LuTable2, Badges: AttributeTableBadge, Actions: AttributeTableActions, Body: AttributeTable },
   jobs: { label: t.jobs.title, Icon: LuHistory, Badges: JobsBadges, Actions: JobsActions, Body: JobsView },
   charts: { label: t.charts.title, Icon: LuChartColumn, Badges: () => null, Actions: () => null, Body: ScenarioCharts },
+  summary: { label: t.summary.title, Icon: LuClipboardList, Badges: MeasuresSummaryBadge, Actions: MeasuresSummaryActions, Body: MeasuresSummary },
 };
 
 export function BottomDock() {
@@ -48,7 +50,13 @@ export function BottomDock() {
       )}
 
       <div className="flex shrink-0 items-stretch border-b border-border pr-4" style={{ height: 'var(--dock-bar-h)' }}>
-        <div role="tablist" aria-label="Dock" className="flex items-stretch">
+        {/* Compact tabs: smaller type and chips so all four fit beside the tab actions;
+            the strip scrolls sideways (no scrollbar) rather than overlapping them. */}
+        <div
+          role="tablist"
+          aria-label="Dock"
+          className="flex min-w-0 shrink items-stretch overflow-x-auto [scrollbar-width:none] [&_.level-chip]:w-[var(--dock-chip-w)] [&_.level-chip]:px-1.5 [&_.level-chip]:py-1"
+        >
           {Object.entries(TABS).map(([id, { label, Icon, Badges }]) => {
             const active = id === dockTab;
             return (
@@ -58,18 +66,18 @@ export function BottomDock() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setDockTab(id)}
-                className={`flex items-center gap-2 border-r border-border px-4 leading-none ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-r border-border px-3 leading-none ${
                   active ? 'bg-rail-active font-semibold text-rail-active-text' : 'font-medium text-muted hover:bg-hover hover:text-text'
                 }`}
               >
-                <Icon size={13} className="shrink-0" aria-hidden />
-                <span className="text-xs uppercase leading-none tracking-[var(--tracking-caps)]">{label}</span>
+                <Icon size={12} className="shrink-0" aria-hidden />
+                <span className="text-2xs uppercase leading-none tracking-[var(--tracking-caps)]">{label}</span>
                 <Badges />
               </button>
             );
           })}
         </div>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex min-w-0 items-center gap-1 pl-2">
           {dockOpen && <tab.Actions />}
           {dockOpen && <ExpandButton id={`dock-${dockTab}`} keepSpace={false} />}
           <button

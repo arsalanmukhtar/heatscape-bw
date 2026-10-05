@@ -32,8 +32,12 @@ export function RankingPanel() {
         title={t.ranking.title}
         info={t.ranking.disclaimer}
         meta={
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="block truncate border border-border px-1.5 py-0.5 text-2xs text-muted">{scenario?.name}</span>
+          <span className="flex min-w-0 items-center gap-2.5">
+            {/* Scenario name reads as part of the title: a hairline divider, no box. */}
+            <span className="h-3.5 w-px shrink-0 bg-border-strong" aria-hidden />
+            <span className="min-w-0 truncate text-xs font-medium text-text" title={scenario?.name}>
+              {scenario?.name}
+            </span>
             {ranking && stale[activeId] && (
               <span className="level-chip shrink-0" style={{ '--chip': 'var(--warning)' }}>
                 {t.ranking.outdated}
@@ -142,8 +146,8 @@ function RankingTable({ rows: all, large }) {
           <tr className="h-8 border-b border-border">
             <SortTh label={c.rank} sortKey="rank" sort={sort} onSort={sortBy} className="pl-1.5" />
             <SortTh label={c.block} sortKey="block" sort={sort} onSort={sortBy} className="px-1.5" />
-            <SortTh label={c.score} sortKey="score" sort={sort} onSort={sortBy} align="right" className="px-1.5" />
-            <SortTh label={c.stability} sortKey="stability" sort={sort} onSort={sortBy} className="px-1.5" />
+            <SortTh label={c.score} sortKey="score" sort={sort} onSort={sortBy} align="right" title={t.ranking.scoreTitle} className="px-1.5" />
+            <SortTh label={c.stability} sortKey="stability" sort={sort} onSort={sortBy} title={t.ranking.stabilityTitle} className="px-1.5" />
             <SortTh label={c.pTop} sortKey="pTop" sort={sort} onSort={sortBy} align="right" title={t.ranking.pTopTitle} className="px-1.5" />
             <SortTh label={c.confidence} sortKey="confidence" sort={sort} onSort={sortBy} align="right" className="pr-1.5" />
           </tr>

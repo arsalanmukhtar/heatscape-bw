@@ -1,9 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuCheck, LuChevronDown, LuChevronRight } from 'react-icons/lu';
+import { t } from '../i18n';
 import { parseColor, toHex } from '../lib/color';
+import { matchesSearch } from '../lib/search';
 import { Checkbox } from './Checkbox';
 import { CHECKER, ColorPicker } from './ColorPicker';
+import { SearchBar, SearchEmpty } from './SearchBar';
 
 /*
   Compact form controls (Symbology panel, dock). Square, 28 px rows, xs text, labels in
@@ -12,24 +15,30 @@ import { CHECKER, ColorPicker } from './ColorPicker';
 */
 
 const MENU_MAX = 240;
+const SEARCH_H = 38;
 
 /**
  * Compact dropdown. options: [{ value, label, icon?, preview? }]. menuWidth widens the menu
  * beyond the button (e.g. for previews); the tick column is always reserved so rows align.
+ * searchable: a search bar above the options narrows them by label (typing goes there).
  */
-export function Select({ value, onChange, options, label, className = 'w-full', disabled, renderValue, menuWidth }) {
+export function Select({ value, onChange, options, label, className = 'w-full', disabled, renderValue, menuWidth, searchable = false }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [pos, setPos] = useState(null);
+  const [query, setQuery] = useState('');
   const btnRef = useRef(null);
+  const menuRef = useRef(null);
   const listRef = useRef(null);
   const listId = useId();
   const current = options.find((o) => o.value === value);
+  const shown = searchable && query ? options.filter((o) => matchesSearch(query, [o.label])) : options;
+  const menuMax = MENU_MAX + (searchable ? SEARCH_H : 0);
 
   const place = () => {
     const r = btnRef.current?.getBoundingClientRect();
     if (!r) return;
-    const up = window.innerHeight - r.bottom < MENU_MAX + 8 && r.top > window.innerHeight - r.bottom;
+    const up = window.innerHeight - r.bottom < menuMax + 8 && r.top > window.innerHeight - r.bottom;
     const width = Math.max(r.width, menuWidth ?? 160);
     const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
     setPos({ left, width, ...(up ? { bottom: window.innerHeight - r.top + 2 } : { top: r.bottom + 2 }) });
@@ -37,13 +46,16 @@ export function Select({ value, onChange, options, label, className = 'w-full', 
 
   useLayoutEffect(() => {
     if (open) place();
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setQuery('');
+      return;
+    }
     setActive(Math.max(0, options.findIndex((o) => o.value === value)));
-    const close = (e) => !btnRef.current?.contains(e.target) && !listRef.current?.contains(e.target) && setOpen(false);
-    const away = (e) => !listRef.current?.contains(e.target) && setOpen(false);
+    const close = (e) => !btnRef.current?.contains(e.target) && !menuRef.current?.contains(e.target) && setOpen(false);
+    const away = (e) => !menuRef.current?.contains(e.target) && setOpen(false);
     document.addEventListener('mousedown', close);
     window.addEventListener('scroll', away, true);
     window.addEventListener('resize', away);
@@ -64,17 +76,19 @@ export function Select({ value, onChange, options, label, className = 'w-full', 
     btnRef.current?.focus();
   };
 
+  // Shared by the button and the search input: arrows move, Enter picks, Esc closes.
   const onKeyDown = (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!open) return setOpen(true);
-      setActive((i) => Math.max(0, Math.min(options.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))));
-    } else if ((e.key === 'Enter' || e.key === ' ') && open && options[active]) {
+      setActive((i) => Math.max(0, Math.min(shown.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))));
+    } else if ((e.key === 'Enter' || (e.key === ' ' && e.target === btnRef.current)) && open && shown[active]) {
       e.preventDefault();
-      pick(options[active]);
+      pick(shown[active]);
     } else if (e.key === 'Escape' && open) {
       e.stopPropagation();
       setOpen(false);
+      btnRef.current?.focus();
     }
   };
 
@@ -100,31 +114,42 @@ export function Select({ value, onChange, options, label, className = 'w-full', 
       {open &&
         pos &&
         createPortal(
-          <ul
-            ref={listRef}
-            id={listId}
-            role="listbox"
-            aria-label={label}
-            className="fixed z-[60] overflow-y-auto border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)]"
-            style={{ ...pos, maxHeight: MENU_MAX }}
-          >
-            {options.map((o, i) => (
-              <li
-                key={String(o.value)}
-                role="option"
-                aria-selected={o.value === value}
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pick(o)}
-                className={`flex h-7 cursor-pointer items-center gap-2 px-2 text-xs text-text ${i === active ? 'bg-hover' : ''} ${o.value === value ? 'font-semibold' : ''}`}
-              >
-                {o.icon}
-                <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                {o.preview}
-                <span className="grid w-3 shrink-0 place-items-center">{o.value === value && <LuCheck size={12} className="text-accent" />}</span>
-              </li>
-            ))}
-          </ul>,
+          <div ref={menuRef} className="fixed z-[60] flex flex-col border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)]" style={{ ...pos, maxHeight: menuMax }}>
+            {searchable && (
+              <div className="shrink-0 border-b border-border p-1" style={{ height: SEARCH_H }}>
+                <SearchBar
+                  value={query}
+                  onChange={(q) => {
+                    setQuery(q);
+                    setActive(0);
+                  }}
+                  placeholder={t.filter.search}
+                  className="w-full"
+                  clearOnEscape={false}
+                  inputProps={{ autoFocus: true, onKeyDown }}
+                />
+              </div>
+            )}
+            <ul ref={listRef} id={listId} role="listbox" aria-label={label} className="min-h-0 overflow-y-auto">
+              {shown.map((o, i) => (
+                <li
+                  key={String(o.value)}
+                  role="option"
+                  aria-selected={o.value === value}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(o)}
+                  className={`flex h-7 cursor-pointer items-center gap-2 px-2 text-xs text-text ${i === active ? 'bg-hover' : ''} ${o.value === value ? 'font-semibold' : ''}`}
+                >
+                  {o.icon}
+                  <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                  {o.preview}
+                  <span className="grid w-3 shrink-0 place-items-center">{o.value === value && <LuCheck size={12} className="text-accent" />}</span>
+                </li>
+              ))}
+            </ul>
+            {shown.length === 0 && <SearchEmpty>{t.filter.noOptions}</SearchEmpty>}
+          </div>,
           document.body,
         )}
     </>

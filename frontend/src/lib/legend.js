@@ -50,6 +50,11 @@ export function legendFor(def, style) {
         })),
       };
     }
+    case 'rules': {
+      const items = style.rules.filter((r) => r.visible).map((r) => ({ label: r.label || r.filter || t.symbology.rules.untitled, swatch: sw(resolveColor(r.color)) }));
+      if (style.elseRule.visible) items.push({ label: t.symbology.rules.else, swatch: sw(resolveColor(style.elseRule.color)) });
+      return { items };
+    }
     case 'heatmap':
       return { ramp: { colors: rampColors(style.ramp, 7), min: t.symbology.low, max: t.symbology.high } };
     case 'cluster':

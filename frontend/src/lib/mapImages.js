@@ -20,6 +20,7 @@ import { parseColor, withAlpha } from './color';
   asks for a new id and theme or basemap switches redraw what is needed:
     hs-mk|<marker>|<size>|<fill>|<stroke>|<strokeWidth>|<glyph>|<badge>
     hs-pt|<pattern>|<color>|<spacing>|<lineWidth>
+    hs-lb|<fill>|<outline>                  (label background box)
   Colours in ids are literal rgba() strings (stroke and fill alpha baked in).
 */
 const RATIO = 2;
@@ -211,13 +212,31 @@ function drawPattern([, pattern, color, spacingS, widthS]) {
   return { el, ctx };
 }
 
+// Label background: a 24 px box, fill + 1 px outline. Only its middle stretches to fit the
+// text (stretchX/Y, in image pixels), so the outline keeps its width at any label size.
+const BOX = 24;
+function drawLabelBox([, fill, outline]) {
+  const { el, ctx } = canvas(BOX);
+  ctx.fillStyle = fill;
+  ctx.fillRect(0, 0, BOX, BOX);
+  ctx.strokeStyle = outline;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, BOX - 1, BOX - 1);
+  const a = 4 * RATIO;
+  const b = (BOX - 4) * RATIO;
+  return { el, ctx, options: { stretchX: [[a, b]], stretchY: [[a, b]], content: [a, a, b, b] } };
+}
+
+const DRAW = { 'hs-mk': drawMarker, 'hs-pt': drawPattern, 'hs-lb': drawLabelBox };
+
 /** Adds a generated image for a missing id; returns false for ids it does not own. */
 export function addGeneratedImage(map, id) {
   const parts = id.split('|');
-  if (parts[0] !== 'hs-mk' && parts[0] !== 'hs-pt') return false;
+  const draw = DRAW[parts[0]];
+  if (!draw) return false;
   if (map.hasImage(id)) return true;
-  const { el, ctx } = parts[0] === 'hs-mk' ? drawMarker(parts) : drawPattern(parts);
-  map.addImage(id, ctx.getImageData(0, 0, el.width, el.height), { pixelRatio: RATIO });
+  const { el, ctx, options } = draw(parts);
+  map.addImage(id, ctx.getImageData(0, 0, el.width, el.height), { pixelRatio: RATIO, ...options });
   return true;
 }
 

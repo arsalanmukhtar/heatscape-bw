@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuCamera, LuChevronUp, LuColumns2, LuEarth, LuGrid2X2, LuMapPinned, LuMinus, LuMousePointerClick, LuPlus, LuRuler } from 'react-icons/lu';
+import { LuCamera, LuChevronUp, LuColumns2, LuEarth, LuGrid2X2, LuMagnet, LuMapPinned, LuMinus, LuMousePointerClick, LuPlus, LuRuler } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
 import { t } from '../i18n';
 import { BW_BOUNDS, WORLD_VIEW } from '../lib/geo';
@@ -15,7 +15,7 @@ const STAGGER_MS = 40;
 
 export function MapControls({ disabled, canCompare }) {
   const { main } = useMap();
-  const { tools, toggleTool } = useWorkspace();
+  const { tools, toggleTool, snap, toggleSnap } = useWorkspace();
   const { compare, toggleCompare } = useScenarios();
   const { mapControlsOpen: open, toggleMapControls } = useLayout();
   const capturing = useSnapshot((s) => s.capturing);
@@ -59,9 +59,21 @@ export function MapControls({ disabled, canCompare }) {
       </ControlButton>
     </Group>,
     <Group key="tools">
-      <ControlButton label={t.map.measure} active={tools.measure} disabled={disabled} onClick={() => toggleTool('measure')}>
-        <LuRuler size={13} />
-      </ControlButton>
+      {/* The magnet slides out beside the ruler while it is on and toggles vertex snapping. */}
+      <div className="relative">
+        <ControlButton label={t.map.measure} active={tools.measure} disabled={disabled} onClick={() => toggleTool('measure')}>
+          <LuRuler size={13} />
+        </ControlButton>
+        <div
+          inert={!tools.measure}
+          className="absolute right-full top-[-1px] mr-1.5 border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)] backdrop-blur-md transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+          style={{ opacity: tools.measure ? 1 : 0, transform: tools.measure ? 'none' : 'translateX(10px) scale(0.85)', pointerEvents: tools.measure ? 'auto' : 'none' }}
+        >
+          <ControlButton label={t.map.snap} active={snap} onClick={toggleSnap}>
+            <LuMagnet size={13} />
+          </ControlButton>
+        </div>
+      </div>
       <ControlButton label={t.map.select} active={tools.select} disabled={disabled} onClick={() => toggleTool('select')}>
         <LuMousePointerClick size={13} />
       </ControlButton>

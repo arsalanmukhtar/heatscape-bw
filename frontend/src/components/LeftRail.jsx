@@ -1,4 +1,4 @@
-import { LuActivity, LuCircleHelp, LuFileText, LuFilter, LuGoal, LuInfo, LuLayers, LuListOrdered, LuMessageSquareText, LuSettings } from 'react-icons/lu';
+import { LuActivity, LuCircleHelp, LuClipboardList, LuFileText, LuFilter, LuGoal, LuInfo, LuLayers, LuListOrdered, LuMessageSquareText, LuSettings, LuTrendingDown } from 'react-icons/lu';
 import { t } from '../i18n';
 import { useLayout } from '../state/layout';
 
@@ -22,12 +22,14 @@ export function LeftRail() {
         {item('layers', t.rail.layers, <LuLayers size={16} />)}
         {item('geoprocessing', t.rail.geoprocessing, <LuActivity size={16} />)}
         {item('scenarios', t.rail.scenarios, <LuGoal size={16} />)}
+        {item('measures', t.rail.measures, <LuClipboardList size={16} />)}
         {item('filters', t.rail.filters, <LuFilter size={16} />)}
         {item('reports', t.rail.reports, <LuFileText size={16} />)}
         <span className="my-2 h-px w-6 bg-border" aria-hidden />
         {view('inspector', t.rail.inspector, <LuInfo size={16} />)}
         {view('copilot', t.rail.copilot, <LuMessageSquareText size={16} />)}
         {view('ranking', t.rail.ranking, <LuListOrdered size={16} />)}
+        {view('effect', t.rail.effect, <LuTrendingDown size={16} />)}
         <span className="my-2 h-px w-6 bg-border" aria-hidden />
         {item('settings', t.rail.settings, <LuSettings size={16} />)}
       </div>

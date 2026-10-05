@@ -1,6 +1,8 @@
 import { contrastText, resolveColor, withAlpha } from './color';
 import { stats } from './classify';
+import { labelLayers } from './labels';
 import { fieldValues } from './layers';
+import { activeQuery, labelData, preparedData } from './prepared';
 import { bake, isIconMarker, markerId, patternId } from './mapImages';
 import { rampColors } from './ramps';
 import { rasterSource } from './rasterImage';
@@ -45,6 +47,12 @@ const identity = (c) => c;
 
 /** Colour (or image id, through toOut) per feature for categorized / graduated renderers. */
 function byClass(style, base, toOut = identity) {
+  if (style.renderer === 'rules') {
+    // __rule is the index of the first matching rule (prepared.js), -1 for "else".
+    const pairs = style.rules.flatMap((r, i) => [i, toOut(resolveColor(r.color))]);
+    const fallback = toOut(style.elseRule.visible ? resolveColor(style.elseRule.color) : TRANSPARENT);
+    return pairs.length ? ['match', ['get', '__rule'], ...pairs, fallback] : fallback;
+  }
   const colors = classColors(style);
   const classes = style.classes;
   if (style.renderer === 'categorized' && classes.length) {
@@ -78,6 +86,11 @@ function byClass(style, base, toOut = identity) {
 
 /** Filter hiding classes switched off in the class list (and "other" values). */
 function classFilter(style) {
+  if (style.renderer === 'rules') {
+    const hidden = style.rules.map((r, i) => (r.visible ? null : i)).filter((i) => i != null);
+    if (!style.elseRule.visible) hidden.push(-1);
+    return hidden.length ? ['!', ['in', ['get', '__rule'], ['literal', hidden]]] : null;
+  }
   const classes = style.classes;
   if (style.renderer === 'categorized' && classes.length) {
     const key = ['to-string', ['get', style.field]];
@@ -324,7 +337,7 @@ function vectorLayers(def, style, op) {
           id: `${id}:outline`,
           type: 'line',
           paint: {
-            'line-color': resolveColor(g.outline),
+            'line-color': g.outlineFromClass ? byClass(style, g.outline) : resolveColor(g.outline),
             'line-width': g.outlineWidth,
             'line-opacity': g.outlineOpacity * op,
             ...(outlineDash ? { 'line-dasharray': outlineDash } : {}),
@@ -402,23 +415,42 @@ function rasterLayers(def, style, op) {
  * { sourceId, sourceKey, source, layers } for one map layer. sourceKey changes when the
  * source itself must be rebuilt (clustering on/off), since Mapbox cannot change it in place.
  */
+/** Highlight for features picked by a selection query (map selection colour, above the layer). */
+function selectionLayers(def, accent2) {
+  const sel = ['==', ['get', '__sel'], true];
+  if (def.geometry === 'point')
+    return [{ id: `${def.id}:selected`, type: 'circle', filter: sel, paint: { 'circle-radius': 9, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': accent2, 'circle-stroke-width': 2.5 } }];
+  if (def.geometry === 'line') return [{ id: `${def.id}:selected`, type: 'line', filter: sel, paint: { 'line-color': accent2, 'line-width': 4, 'line-opacity': 0.85 } }];
+  return [
+    { id: `${def.id}:selected-fill`, type: 'fill', filter: sel, paint: { 'fill-color': accent2, 'fill-opacity': 0.18 } },
+    { id: `${def.id}:selected`, type: 'line', filter: sel, paint: { 'line-color': accent2, 'line-width': 2.5 } },
+  ];
+}
+
 export function buildLayerSpec(def, style, visible) {
   const op = style.opacity;
+  const prepared = def.raster || def.kind === 'dem' ? null : preparedData(def, style);
   let source;
   if (def.kind === 'dem') source = { type: 'raster-dem', url: DEM_URL, tileSize: 512 };
   else if (def.raster) {
     const { url, coordinates } = rasterSource(def);
     source = { type: 'image', url, coordinates };
-  } else if (style.renderer === 'cluster') source = { type: 'geojson', data: def.data, cluster: true, clusterRadius: style.cluster.radius, clusterMaxZoom: style.cluster.maxZoom };
-  else source = { type: 'geojson', data: def.data };
+  } else if (style.renderer === 'cluster') source = { type: 'geojson', data: prepared.data, cluster: true, clusterRadius: style.cluster.radius, clusterMaxZoom: style.cluster.maxZoom };
+  else source = { type: 'geojson', data: prepared.data };
 
   const clustered = source.cluster ? `c${style.cluster.radius}-${style.cluster.maxZoom}` : 'p';
   const sourceId = `${def.id}-src`;
-  const layers = (def.raster || def.kind === 'dem' ? rasterLayers(def, style, op) : vectorLayers(def, style, op)).map((l) => ({
-    ...l,
-    minzoom: style.minZoom,
-    maxzoom: style.maxZoom,
-    layout: { ...l.layout, visibility: visible ? (l.layout?.visibility ?? 'visible') : 'none' },
-  }));
-  return { sourceId, sourceKey: `${sourceId}-${clustered}`, source, layers };
+  const show = (l) => ({ ...l, layout: { ...l.layout, visibility: visible ? (l.layout?.visibility ?? 'visible') : 'none' } });
+  const selecting = prepared && activeQuery(def, style)?.mode === 'selection' && style.renderer !== 'cluster';
+  const layers = [
+    ...(def.raster || def.kind === 'dem' ? rasterLayers(def, style, op) : vectorLayers(def, style, op)),
+    ...(selecting ? selectionLayers(def, resolveColor('var(--accent-2)')) : []),
+  ].map((l) => show({ ...l, minzoom: style.minZoom, maxzoom: style.maxZoom }));
+
+  // Labels draw from their own point/line source (centroids, inside points, outlines).
+  const labels = prepared ? labelData(def, style) : null;
+  const extra = labels
+    ? [{ sourceId: `${def.id}-labels`, sourceKey: `${def.id}-labels`, source: { type: 'geojson', data: labels }, layers: labelLayers(def, style).map(show) }]
+    : [];
+  return { sourceId, sourceKey: `${sourceId}-${clustered}`, source, layers, extra };
 }

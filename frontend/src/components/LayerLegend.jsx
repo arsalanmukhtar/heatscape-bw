@@ -75,7 +75,7 @@ export function LegendSwatch({ swatch, box = 16 }) {
           width={box - 4}
           height={box - 4}
           fill={s.noFill ? 'none' : patterned ? `url(#${id})` : withAlpha(c, Math.max(0.25, s.fillOpacity))}
-          stroke={s.outlineWidth > 0 ? resolveColor(s.outline) : 'none'}
+          stroke={s.outlineWidth > 0 ? (s.outlineFromClass ? c : resolveColor(s.outline)) : 'none'}
           strokeWidth={Math.min(2, s.outlineWidth)}
         />
       </svg>

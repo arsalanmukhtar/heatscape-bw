@@ -8,6 +8,8 @@ import { InspectorPanel } from './components/InspectorPanel';
 import { LayersPanel } from './components/LayersPanel';
 import { LeftRail } from './components/LeftRail';
 import { MapView } from './components/MapView';
+import { EffectPanel } from './components/measures/EffectPanel';
+import { MeasuresPanel } from './components/measures/MeasuresPanel';
 import { FiltersPanel, ReportsPanel, SettingsPanel } from './components/SecondaryPanels';
 import { RankingPanel } from './components/RankingPanel';
 import { ScenariosPanel } from './components/ScenariosPanel';
@@ -22,6 +24,7 @@ const SECTIONS = {
   layers: LayersPanel,
   geoprocessing: GeoprocessingPanel,
   scenarios: ScenariosPanel,
+  measures: MeasuresPanel,
   filters: FiltersPanel,
   reports: ReportsPanel,
   settings: SettingsPanel,
@@ -33,6 +36,7 @@ const VIEWS = {
   copilot: { Panel: CopilotPanel, title: t.copilot.title, expand: t.copilot.expand },
   ranking: { Panel: RankingPanel, title: t.ranking.title, expand: t.ranking.expand },
   symbology: { Panel: SymbologyPanel, title: t.symbology.title, expand: t.symbology.expand },
+  effect: { Panel: EffectPanel, title: t.effect.title, expand: t.effect.expand },
 };
 
 export default function App() {

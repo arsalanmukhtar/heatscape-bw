@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LuInfo } from 'react-icons/lu';
 import { PANEL_MAX, PANEL_MIN, useLayout } from '../state/layout';
 import { ResizeHandle } from './ResizeHandle';
@@ -50,7 +51,7 @@ export function SidePanel({ side, open, width, defaultWidth, onResize, overlay, 
 export function PanelHeader({ title, meta, actions, info }) {
   return (
     <div className="flex h-11 shrink-0 items-center border-b border-border px-4">
-      <h2 className="text-xs font-medium uppercase tracking-[var(--tracking-caps)] text-muted">{title}</h2>
+      <h2 className="text-trim shrink-0 text-xs font-medium uppercase tracking-[var(--tracking-caps)] text-muted">{title}</h2>
       {meta && <div className="ml-2.5 min-w-0">{meta}</div>}
       {(actions || info) && (
         <div className="ml-auto flex items-center gap-1">
@@ -62,22 +63,42 @@ export function PanelHeader({ title, meta, actions, info }) {
   );
 }
 
+const NOTE_W = 256;
+
+/* The note renders in a portal at fixed position, kept inside the window, so a panel's
+   overflow never clips it (panels near the left edge open it rightwards). */
 function PanelInfo({ text }) {
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState(null);
+  const show = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.right - NOTE_W, window.innerWidth - NOTE_W - 8)) });
+  };
+  const hide = () => setPos(null);
   return (
-    <span className="group relative flex">
+    <span className="flex" onMouseEnter={show} onMouseLeave={hide}>
       <button
+        ref={btnRef}
         type="button"
         aria-label={text}
-        className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text group-hover:text-text"
+        onFocus={show}
+        onBlur={hide}
+        className={`grid size-7 place-items-center hover:bg-hover hover:text-text ${pos ? 'text-text' : 'text-muted'}`}
       >
         <LuInfo size={14} />
       </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none invisible absolute right-0 top-full z-40 mt-1 w-64 translate-y-1 border border-border-strong bg-surface-strong px-3 py-2.5 text-xs leading-relaxed text-text opacity-0 shadow-[var(--shadow-glass)] transition-[opacity,transform,visibility] duration-150 ease-out group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-has-[:focus-visible]:visible group-has-[:focus-visible]:translate-y-0 group-has-[:focus-visible]:opacity-100"
-      >
-        {text}
-      </span>
+      {pos &&
+        createPortal(
+          <span
+            role="tooltip"
+            className="pop-in pointer-events-none fixed z-[70] border border-border-strong bg-surface-strong px-3 py-2.5 text-justify text-xs leading-relaxed text-text hyphens-auto shadow-[var(--shadow-glass)]"
+            style={{ ...pos, width: NOTE_W }}
+          >
+            {text}
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }

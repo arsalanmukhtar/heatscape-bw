@@ -15,6 +15,7 @@ import { useLayout } from '../state/layout';
 import { useMapStyleUrl } from '../state/basemap';
 import { useActiveRanking, useScenarios } from '../state/scenarios';
 import { useSymbology } from '../state/symbology';
+import { allMeasures, useMeasures } from '../state/measures';
 import { useTheme } from '../state/theme';
 import { useWorkspace } from '../state/workspace';
 import { CompareSwipe } from './CompareSwipe';
@@ -23,6 +24,11 @@ import { Geocoder, SearchPin } from './Geocoder';
 import { MapAttribution } from './MapAttribution';
 import { MapControls } from './MapControls';
 import { MapScale } from './MapScale';
+import { FootprintDraft } from './measures/FootprintDraft';
+
+// Ruler snapping: a point within this many pixels of a vertex jumps onto it.
+const SNAP_PX = 12;
+const vertices = (g) => (g.type === 'Point' ? [g.coordinates] : g.type === 'LineString' || g.type === 'MultiPoint' ? g.coordinates : g.type === 'Polygon' || g.type === 'MultiLineString' ? g.coordinates.flat() : g.type === 'MultiPolygon' ? g.coordinates.flat(2) : []);
 
 // Overlay layers stay above every data layer; the first of them anchors the draw order.
 const OVERLAY_ANCHOR = 'grid-line';
@@ -54,9 +60,16 @@ function LiveMap() {
   const { main } = useMap();
   const resolved = useTheme((s) => s.resolved);
   const styleUrl = useMapStyleUrl();
-  const { layers, selectedId, select, tools } = useWorkspace();
+  const { layers, selectedId, select, tools, snap } = useWorkspace();
   const { styles, order } = useSymbology();
+  // Measures register: live data for its layers, selection, and drafting a new footprint.
+  const measuresAdded = useMeasures((s) => s.added);
+  const statusLog = useMeasures((s) => s.statusLog);
+  const { selectedId: measureId, select: selectMeasure, drawing, shaping } = useMeasures();
+  const showRightView = useLayout((s) => s.showRightView);
+  const selectedMeasure = allMeasures(measuresAdded, statusLog).find((m) => m.id === measureId);
   const [measure, setMeasure] = useState([]);
+  const [snapAt, setSnapAt] = useState(null); // ruler: vertex under the pointer
   const selected = blockById(selectedId);
   const firstSelection = useRef(true);
 
@@ -64,6 +77,8 @@ function LiveMap() {
   const palette = useMemo(
     () => ({
       accent: cssVar('--accent'),
+      accent2: cssVar('--accent-2'),
+      muted: cssVar('--text-muted'),
       line: cssVar('--map-line'),
       text: cssVar('--text'),
       surface: cssVar('--surface-strong'),
@@ -78,7 +93,7 @@ function LiveMap() {
   const specs = useMemo(
     () => Object.fromEntries(LAYERS.map((def) => [def.id, buildLayerSpec(def, styles[def.id], !!layers[def.id])])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [styles, layers, resolved],
+    [styles, layers, resolved, measuresAdded, statusLog],
   );
 
   // Scenario priority: shown while the scenario workspace (left panel or ranking view) is in use.
@@ -106,7 +121,14 @@ function LiveMap() {
   // Draw order: the data layers stack in the user's order (symbology store), all below the
   // overlays (grid, selection, measure). Layers are added on top when created, so the order
   // is re-applied after every style change; it only moves layers that are out of place.
-  const stack = useMemo(() => order.flatMap((id) => (id === 'priority' ? PRIORITY_IDS : (specs[id]?.layers.map((l) => l.id) ?? []))), [order, specs]);
+  // Labels of every layer sit above all data layers (as in QGIS), in the same layer order.
+  const stack = useMemo(
+    () => [
+      ...order.flatMap((id) => (id === 'priority' ? PRIORITY_IDS : (specs[id]?.layers.map((l) => l.id) ?? []))),
+      ...order.flatMap((id) => specs[id]?.extra.flatMap((x) => x.layers.map((l) => l.id)) ?? []),
+    ],
+    [order, specs],
+  );
   useEffect(() => {
     const map = main?.getMap();
     if (!map) return;
@@ -139,9 +161,45 @@ function LiveMap() {
     main?.fitBounds(blockBounds(selected), { padding: 140, maxZoom: 14, duration: 800 });
   }, [selected, main]);
 
+  // Ruler keys (the ruler itself stays on; ignored while typing in a field or editing
+  // footprint corners, which use Delete themselves): Esc clears the line, Delete or
+  // Backspace removes the last point.
+  useEffect(() => {
+    if (!tools.measure) return;
+    const onKey = (e) => {
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]') || useMeasures.getState().shaping) return;
+      if (e.key === 'Escape') setMeasure([]);
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        setMeasure((m) => m.slice(0, -1));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [tools.measure]);
+
   useEffect(() => {
     if (!tools.measure) setMeasure([]);
-  }, [tools.measure]);
+    if (!tools.measure || !snap) setSnapAt(null);
+  }, [tools.measure, snap]);
+
+  // Ruler snapping: the nearest vertex within SNAP_PX among the ruler's own points and
+  // every app layer drawn under the pointer (basemap features and labels are left out).
+  const snapTarget = (e) => {
+    const m = main?.getMap();
+    if (!m) return null;
+    const { x, y } = e.point;
+    // Data sources only (not their label sources: label anchors are not vertices).
+    const own = new Set(Object.values(specs).map((s) => s.sourceId).concat(['measure-selected', 'measure-control', 'measure-draft', 'selection', 'priority', 'grid']));
+    const hits = m.queryRenderedFeatures([[x - SNAP_PX, y - SNAP_PX], [x + SNAP_PX, y + SNAP_PX]]).filter((f) => own.has(f.source));
+    let best = null;
+    for (const c of [...measure, ...hits.flatMap((f) => vertices(f.geometry))]) {
+      const p = m.project(c);
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d <= SNAP_PX && (!best || d < best.d)) best = { c: [c[0], c[1]], d };
+    }
+    return best?.c ?? null;
+  };
 
   const selection = useMemo(() => {
     const [[w, s], [e, n]] = blockBounds(selected);
@@ -149,7 +207,16 @@ function LiveMap() {
   }, [selected]);
 
   const measureKm = measure.slice(1).reduce((sum, p, i) => sum + distanceKm(measure[i], p), 0);
-  const measureLine = useMemo(() => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: measure } }), [measure]);
+  const measureLine = useMemo(
+    () => ({
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: measure } },
+        ...measure.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } })),
+      ],
+    }),
+    [measure],
+  );
 
   const vis = (on) => (on ? 'visible' : 'none');
   const [[west], [, north]] = blockBounds(selected);
@@ -166,11 +233,28 @@ function LiveMap() {
       preserveDrawingBuffer // keeps the last frame readable for map snapshots
       attributionControl={false}
       style={{ width: '100%', height: '100%' }}
-      cursor={tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}
+      cursor={drawing || tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}
+      doubleClickZoom={!drawing && !shaping}
+      onMouseMove={(e) => tools.measure && snap && setSnapAt(snapTarget(e))}
+      onMouseOut={() => setSnapAt(null)}
       onClick={(e) => {
+        // Clicks on HTML markers (ruler label ×, pins, corner handles) bubble to the map: ignore them.
+        if (e.originalEvent?.target?.closest?.('.mapboxgl-marker')) return;
         const p = [e.lngLat.lng, e.lngLat.lat];
+        // Drafting a measure footprint takes every click (FootprintDraft handles them).
+        if (drawing || shaping) return;
+        // The ruler takes clicks before features do (a snapped point may sit on a footprint).
         if (tools.measure) {
-          setMeasure((m) => [...m, p]);
+          const at = snap ? snapTarget(e) : null;
+          setMeasure((m) => [...m, at ?? p]);
+          return;
+        }
+        // A click on a measure footprint selects it and opens its effect.
+        const measureLayers = specs.measures.layers.map((l) => l.id).filter((id) => main?.getMap().getLayer(id));
+        const hit = layers.measures && measureLayers.length ? main?.queryRenderedFeatures(e.point, { layers: measureLayers })[0] : null;
+        if (hit) {
+          selectMeasure(hit.properties.id);
+          showRightView('effect');
           return;
         }
         if (!tools.select) return;
@@ -179,15 +263,15 @@ function LiveMap() {
         if (nearest && nearest.km < 1.5) select(nearest.b.id);
       }}
     >
-      {LAYERS.map((def) => {
+      {LAYERS.flatMap((def) => {
         const spec = specs[def.id];
-        return (
-          <Source key={spec.sourceKey} id={spec.sourceId} {...spec.source}>
-            {spec.layers.map((l) => (
+        return [spec, ...spec.extra].map((src) => (
+          <Source key={src.sourceKey} id={src.sourceId} {...src.source}>
+            {src.layers.map(({ label, ...l }) => (
               <Layer key={l.id} {...l} />
             ))}
           </Source>
-        );
+        ));
       })}
 
       {candidates && (
@@ -216,6 +300,23 @@ function LiveMap() {
         <Layer id="selection-line" type="line" layout={{ visibility: vis(layers.selection) }} paint={{ 'line-color': palette.accent, 'line-width': 2 }} />
       </Source>
 
+      {/* Selected measure: its footprint outlined (map selection colour) and its control area dotted. */}
+      {selectedMeasure && layers.measures && (
+        <>
+          <Source id="measure-selected" type="geojson" data={selectedMeasure.geometry}>
+            <Layer id="measure-selected-line" type="line" paint={{ 'line-color': palette.accent2, 'line-width': 3 }} />
+          </Source>
+          {selectedMeasure.control && (
+            <Source id="measure-control" type="geojson" data={selectedMeasure.control}>
+              <Layer id="measure-control-line" type="line" layout={{ 'line-cap': 'round' }} paint={{ 'line-color': palette.muted, 'line-width': 1.5, 'line-dasharray': [0.1, 2] }} />
+            </Source>
+          )}
+        </>
+      )}
+
+      {/* Footprint drafted in the Add measure form (drawing, corner editing). */}
+      <FootprintDraft color={palette.accent2} surface={palette.surface} />
+
       {layers.selection && (
         <Marker longitude={west} latitude={north} anchor="bottom-left">
           <span className="block whitespace-nowrap bg-accent px-2 py-1 text-2xs font-semibold text-on-accent">
@@ -226,15 +327,28 @@ function LiveMap() {
 
       <SearchPin />
 
+      {/* Ruler snap target: a ring on the vertex the next point will jump to. */}
+      {snapAt && (
+        <Source id="ruler-snap" type="geojson" data={{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: snapAt } }}>
+          <Layer id="ruler-snap-ring" type="circle" paint={{ 'circle-radius': 7, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': palette.accent, 'circle-stroke-width': 2 }} />
+        </Source>
+      )}
+
       {lastPoint && (
         <>
           <Source id="measure" type="geojson" data={measureLine}>
-            <Layer id="measure-line" type="line" paint={{ 'line-color': palette.text, 'line-width': 2, 'line-dasharray': [2, 1.5] }} />
+            <Layer id="measure-line" type="line" filter={['==', ['geometry-type'], 'LineString']} paint={{ 'line-color': palette.text, 'line-width': 2, 'line-dasharray': [2, 1.5] }} />
+            <Layer
+              id="measure-point"
+              type="circle"
+              filter={['==', ['geometry-type'], 'Point']}
+              paint={{ 'circle-radius': 4, 'circle-color': palette.surface, 'circle-stroke-color': palette.text, 'circle-stroke-width': 2 }}
+            />
           </Source>
-          <Marker longitude={lastPoint[0]} latitude={lastPoint[1]} anchor="left" offset={[8, 0]}>
-            <span className="flex items-center gap-1.5 border border-border-strong bg-surface-strong px-2 py-1 text-xs tabular-nums text-text">
-              {measureKm.toFixed(2)} km
-              <button type="button" aria-label={t.map.clearMeasure} onClick={() => setMeasure([])} className="text-muted hover:text-text">
+          <Marker longitude={lastPoint[0]} latitude={lastPoint[1]} anchor="left" offset={[12, -14]}>
+            <span className="flex h-7 items-center gap-1.5 border border-border-strong bg-surface-strong pl-2 pr-1 text-xs tabular-nums text-text">
+              <span>{measureKm.toFixed(2)} km</span>
+              <button type="button" aria-label={t.map.clearMeasure} title={t.map.clearMeasure} onClick={() => setMeasure([])} className="grid size-5 place-items-center text-muted hover:text-accent">
                 <LuX size={12} />
               </button>
             </span>

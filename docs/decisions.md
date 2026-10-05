@@ -23,6 +23,15 @@ Append-only. One line each: decision — reason.
 19. Marker shapes, icon markers and fill patterns are drawn on a canvas on demand (`styleimagemissing`, parameters in the image id) — no sprite sheet, any colour/size combination, survives basemap and theme switches.
 20. MOCK rasters are PNG image sources with the value in the red channel, decoded by `raster-color-mix` and coloured by `raster-color` — client-side ramps and palettes without a tile server; real rasters move to rio-tiler colormap/rescale params later.
 
+21. Measures register: footprints and 100 m analysis buffers are styleable registry layers fed live from the measures store (MOCK register + measures added in the form, saved in localStorage `hs-measures`) — one layer system for styling, legends, tables and draw order.
+22. Measure effect = difference-in-differences of the summer (Jun–Aug) median Landsat 8/9 LST, footprint vs a matched control area, before vs after completion, 90 % intervals; estimated only after 2 post-completion summers ("awaiting data" before) — single scenes are too noisy at 30–100 m thermal resolution.
+23. Measure types have their own non-warm categorical tokens `--measure-*`, validated (dataviz validator, both themes) in the fixed order De-sealing, Green roof, Shade, Tree planting, Water feature; always shown with the type name — a footprint must never read as a heat value.
+24. Queries, rule-based styles and label classes use one SQL subset (`lib/sqlExpr.js`) evaluated in the browser on prepared layer data (`lib/prepared.js`): definition queries drop features, selection queries flag them — Mapbox filters lack LIKE and functions; the same WHERE subset can go to PostGIS later as a parameterised query.
+25. Labels draw from their own source (points, line geometry, polygon centroids / visual centres / outlines) and sit above every data layer; fonts limited to Mapbox-served stacks (DIN Pro, Open Sans, Roboto, Arial Unicode MS) — QGIS-like label placement without depending on tile-split polygon labels.
+
+26. Shapefile footprints are read in the browser with `shpjs` (a zip, or .shp + .dbf + .prj (+ .cpg) picked together; the .prj reprojects to WGS 84 via proj4) — no upload service needed for SHP; GeoPackage (SQLite) still waits for it.
+27. Measure status changes are an append-only trail of timestamped events (`from`, `to`, `at` ISO date-time, `completed` date), kept in `hs-measures` until the API stores them in `measure_status_events`; the latest event sets status and dates — every change stays traceable.
+
 ## UI overrides
 
 User removed or changed these. Snapshots never bring them back; only an explicit request does.
@@ -37,15 +46,21 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 - Map snapshot: camera control saves the map container as PNG to a folder and name picked in a save dialog (Chromium; other browsers download with the default name) (`html-to-image`, `lib/mapSnapshot.js`): basemap, layers, markers, scale and the attribution (forced expanded); nav controls, geocoder, swipe handle and focus overlay are excluded via `data-snapshot="exclude"`. Map canvases use `preserveDrawingBuffer` for this.
 - Geocoder: compact, top left; 5 results visible, then scroll. Picking fits the result extent (bbox, else a zoom by result type) and drops a yellow pin (short pin in a wide ground ring, soft ground shadow) once the map has arrived; clearing the search removes it.
 - Rail active state: soft accent background, no edge bar, icon in full text colour.
+- Sample region: Mannheim stays in every new screen; template examples from Stuttgart are translated to Mannheim districts (e.g. Hallschlag → Neckarstadt-West).
 - Top nav: as built (brand, region menu, view tabs, season, theme, notifications, account); no active-jobs meter or user name block.
-- Status and classification labels: square marks or tinted chips, never circles. Every chip one width (`--level-chip-w` 96 px; icon-only `--chip-compact-w` 36 px), content centred, icon + text centred together.
+- Status and classification labels: square marks or tinted chips, never circles. Every chip one width (`--level-chip-w` 96 px; icon-only `--chip-compact-w` 36 px; dock tab badges `--dock-chip-w` 76 px), content centred, icon + text centred together.
 - Left sections and the right panel: opening a section opens its wired right view (`SECTION_VIEW` in `state/layout.js`: layers → inspector, scenarios → ranking); a section without one collapses the right panel. New sections declare their view there.
+- Attribute table: one layer picker, the table button in the Layers panel; no layer dropdown in the dock bar. No Sort button either: sorting is by the column headers.
+- Dock tabs: compact (12 px icon, 2xs caps label, `--dock-chip-w` 76 px badges, no wrapping); the tab strip scrolls sideways instead of overlapping the tab actions.
+- Measure footprint draft: dotted outline over a light fill until saved (solid once saved); drawing snaps to the first corner to close the shape; finishing opens corner editing (square corner handles, 12 px: click selects (theme orange fill), drag moves, Delete / Backspace, the Delete corner button, right-click or double-click removes; round midpoint handles at 30 % opacity, full on hover: drag or click to add).
+- Ruler snapping: a magnet button slides out left of the ruler while the ruler is on and toggles snapping (default on); points snap within 12 px to the ruler's own points and the vertices of app layers (not the basemap), shown by an orange ring.
 - Panel widths: every left panel section and every right panel view share one width, 352 px (22rem) (`--panel-w`, one saved drag width `panelW` for both sides); no per-section or per-view widths.
 
 ## Open
 
+- Measures API (proposed, not built): `GET/POST /api/measures` (multipart: footprint GeoJSON/GPKG/SHP converted server-side, photos/documents), `PATCH /api/measures/{id}/status` (appends to `measure_status_events`: measure_id, from_status, to_status, changed_at timestamptz, completed_on, changed_by), `GET /api/measures/{id}/effect` (LST/sealing/NDVI before-after, DiD, series), `GET /api/measures/summary`, `GET /api/measures/export?format=csv|pdf`.
 - Multiband RGB rasters (band picker, per-band stretch) need the tile server (rio-tiler); not possible in Mapbox GL client-side.
-- Symbology passes still to come: Label tab (fonts, halos, placement, label classes, multiline expressions), Query tab (builder + SQL subset), rule-based renderer (reuses the SQL parser); optional QML/SLD import.
+- Symbology: optional QML/SLD style import (not built).
 - Map selection outline: accent (as in approved screen) or `--accent-2`.
 - Mock district "Waldfriedhof" is not a Mannheim district (Waldhof is).
 - Mapbox wordmark hidden on request; Mapbox terms require it on public deployments — restore before going public.

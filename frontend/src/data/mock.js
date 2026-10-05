@@ -7,6 +7,7 @@
            center [lon, lat], weekly: { block[4], city[4] } (July, weeks 1–4) }
 */
 import { distanceKm } from '../lib/css';
+import { rectAround } from '../lib/measures';
 
 export const REGION = { name: 'Mannheim', state: 'Baden-Württemberg', center: [8.4805, 49.4875] };
 export const SEASON = { label: 'Summer 2025', range: 'Jun–Aug', chartMonth: 'Jul 2025' };
@@ -222,6 +223,147 @@ export const HAZARD_RASTER = {
   unit: '',
   classes: HAZARD_CLASSES,
 };
+
+/*
+  MOCK adaptation measures register (Mannheim; illustrative only, not real projects).
+  effect: satellite before/after estimate for the footprint against a matched control
+  area of similar sealing and heat, over summers (Jun–Aug) 2016–2025:
+    lstBefore / lstAfter: median summer LST (°C) with a 90 % interval and the number of
+      clear-sky Landsat 8/9 scenes; sealing (%) and NDVI from Sentinel-2;
+    did: difference-in-differences (measure change − control change), °C, 90 % interval;
+    series: per summer, measure and control medians with intervals.
+  effect is null until MIN_SUMMERS post-completion summers exist ("awaiting data").
+*/
+export const MANNHEIM_DISTRICTS = DISTRICTS.map(({ name, center }) => ({ name, center }));
+
+export const FUNDING_PROGRAMMES = [
+  'KLIMOPASS (Baden-Württemberg)',
+  'Natürlicher Klimaschutz in Kommunen (KfW 444)',
+  'Klimaanpassung in sozialen Einrichtungen (BMUV)',
+  'Städtebauförderung',
+  'Municipal budget',
+];
+
+export const RESPONSIBLE_OFFICES = [
+  'Grünflächen und Umwelt',
+  'Tiefbau',
+  'Bildung (Schulbau)',
+  'Geoinformation und Stadtplanung',
+  'Klimaschutzagentur Mannheim',
+];
+
+// Summer heat anomaly by year (°C), shared by measure and control series.
+const SUMMER_ANOMALY = { 2016: 0, 2017: 0.4, 2018: 1.6, 2019: 1.1, 2020: 0.6, 2021: -0.4, 2022: 1.9, 2023: 1.3, 2024: 0.5, 2025: 0.9 };
+const SUMMERS = Object.keys(SUMMER_ANOMALY).map(Number);
+// Typical local LST effect (°C) and what the satellite sees of each type.
+const TYPE_EFFECT = {
+  desealing: { lst: -2.2, ramp: 1, sealing: [86, 38], ndvi: [0.09, 0.28], noise: 0 },
+  greenroof: { lst: -1.1, ramp: 1, sealing: [97, 97], ndvi: [0.06, 0.33], noise: 0.2 },
+  shade: { lst: -0.4, ramp: 1, sealing: [82, 82], ndvi: [0.08, 0.09], noise: 0.9 },
+  trees: { lst: -1.5, ramp: 3, sealing: [64, 58], ndvi: [0.17, 0.36], noise: 0.3 },
+  water: { lst: -1.7, ramp: 1, sealing: [79, 71], ndvi: [0.1, 0.14], noise: 0.4 },
+};
+// Last summer with data in the MOCK archive.
+const LAST_SUMMER = 2025;
+
+const MEASURE_SEEDS = [
+  { id: 'MS-001', name: 'Schoolyard de-sealing, Humboldtschule', type: 'desealing', status: 'monitored', district: 'Neckarstadt-West', completed: '2021-08-27', size: [62, 48, 12], offset: [-180, 120], cost: 410000, funding: 0, office: 2, residents: 4100 },
+  { id: 'MS-002', name: 'Street trees, Mittelstraße', type: 'trees', status: 'monitored', district: 'Neckarstadt-West', completed: '2020-11-15', size: [340, 18, 32], offset: [150, -60], cost: 286000, funding: 1, office: 0, trees: 48, residents: 6900 },
+  { id: 'MS-003', name: 'Green roof, Collini-Center podium', type: 'greenroof', status: 'monitored', district: 'Oststadt', completed: '2022-05-20', size: [70, 55, -8], offset: [220, 260], cost: 515000, funding: 3, office: 3, residents: 2300 },
+  { id: 'MS-004', name: 'Water play and misting, Marktplatz', type: 'water', status: 'monitored', district: 'Innenstadt', completed: '2021-06-30', size: [40, 40, 0], offset: [40, 160], cost: 198000, funding: 4, office: 0, residents: 5200 },
+  { id: 'MS-005', name: 'Shade sails, Jungbusch playground', type: 'shade', status: 'monitored', district: 'Jungbusch', completed: '2022-06-10', size: [36, 28, 20], offset: [-60, -90], cost: 64000, funding: 4, office: 0, residents: 3800 },
+  { id: 'MS-006', name: 'Courtyard de-sealing, Luzenberg', type: 'desealing', status: 'monitored', district: 'Luzenberg', completed: '2022-09-30', size: [55, 44, -15], offset: [80, 40], cost: 238000, funding: 0, office: 1, residents: 2600 },
+  { id: 'MS-007', name: 'Tree avenue, Seckenheimer Straße', type: 'trees', status: 'monitored', district: 'Schwetzingerstadt', completed: '2021-03-31', size: [420, 22, 64], offset: [0, 0], cost: 352000, funding: 1, office: 0, trees: 61, residents: 7400 },
+  { id: 'MS-008', name: 'Green roofs, Franklin district', type: 'greenroof', status: 'completed', district: 'Käfertal', completed: '2024-09-15', size: [120, 60, 5], offset: [600, -300], cost: 940000, funding: 3, office: 3, residents: 3100 },
+  { id: 'MS-009', name: 'Car park de-sealing, Waldhof', type: 'desealing', status: 'completed', district: 'Waldhof', completed: '2024-10-01', size: [90, 50, -20], offset: [-120, 80], cost: 305000, funding: 0, office: 1, residents: 2900 },
+  { id: 'MS-010', name: 'Pocket park, Neckarau', type: 'trees', status: 'progress', district: 'Neckarau', completed: null, target: '2025-11', size: [48, 40, 10], offset: [100, -40], cost: 175000, funding: 2, office: 0, trees: 14, residents: 2200 },
+  { id: 'MS-011', name: 'Spray fountain, Alter Meßplatz', type: 'water', status: 'monitored', district: 'Neckarstadt-Ost', completed: '2020-07-01', size: [46, 34, 0], offset: [-150, -120], cost: 226000, funding: 4, office: 0, residents: 4800 },
+  { id: 'MS-012', name: 'Shade pergolas, Friedrichsplatz', type: 'shade', status: 'planned', district: 'Oststadt', completed: null, target: '2026-06', size: [60, 20, 0], offset: [-260, 120], cost: 140000, funding: 2, office: 3, residents: 3500 },
+  { id: 'MS-013', name: 'Schoolyard de-sealing, Rheinau', type: 'desealing', status: 'planned', district: 'Rheinau', completed: null, target: '2026-08', size: [58, 46, 30], offset: [60, 90], cost: 360000, funding: 2, office: 2, residents: 1900 },
+  { id: 'MS-014', name: 'Tree planting, Schönau-Nord', type: 'trees', status: 'progress', district: 'Schönau', completed: null, target: '2025-12', size: [260, 26, -40], offset: [0, 120], cost: 198000, funding: 1, office: 0, trees: 36, residents: 2700 },
+  { id: 'MS-015', name: 'Green roof, Diesterweg school', type: 'greenroof', status: 'monitored', district: 'Innenstadt', completed: '2021-10-12', size: [52, 38, 15], offset: [-200, -180], cost: 268000, funding: 2, office: 2, residents: 3300 },
+  { id: 'MS-016', name: 'Tram stop de-sealing, Käfertal', type: 'desealing', status: 'monitored', district: 'Käfertal', completed: '2023-04-28', size: [110, 16, 70], offset: [-80, 20], cost: 121000, funding: 3, office: 1, residents: 2100 },
+];
+
+const median = (v) => {
+  const s = [...v].sort((a, b) => a - b);
+  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+};
+
+function effectFor(seed, heat, rand) {
+  const fx = TYPE_EFFECT[seed.type];
+  const done = Number(seed.completed.slice(0, 4)) + (Number(seed.completed.slice(5, 7)) - 0.5) / 12;
+  const base = round1(32.6 + heat * 4.2 + rand() * 1.2);
+  const ctrl = base - 0.2 + rand() * 0.4;
+  const series = SUMMERS.map((y) => {
+    const t = y + 0.6; // mid-July
+    const since = t - done;
+    const shift = since > 0 ? fx.lst * Math.min(1, since / fx.ramp) * (0.85 + rand() * 0.3) : 0;
+    const m = SUMMER_ANOMALY[y] + base + shift + (rand() - 0.5) * (0.7 + fx.noise);
+    const c = SUMMER_ANOMALY[y] + ctrl + (rand() - 0.5) * 0.7;
+    const wm = 0.6 + rand() * 0.4 + fx.noise * 0.5;
+    const wc = 0.6 + rand() * 0.4;
+    return { year: y, after: since > 0, n: 3 + Math.floor(rand() * 5), m: round1(m), mLo: round1(m - wm), mHi: round1(m + wm), c: round1(c), cLo: round1(c - wc), cHi: round1(c + wc) };
+  });
+  const before = series.filter((s) => !s.after);
+  const after = series.filter((s) => s.after && s.year <= LAST_SUMMER);
+  if (after.length < 2) return { series, effect: null };
+  const stat = (rows, key) => {
+    const v = rows.map((r) => r[key]);
+    const med = median(v);
+    const spread = Math.max(0.5, (Math.max(...v) - Math.min(...v)) / 2);
+    return { med: round1(med), lo: round1(med - spread), hi: round1(med + spread), n: rows.reduce((s, r) => s + r.n, 0), years: `${rows[0].year}–${rows[rows.length - 1].year}` };
+  };
+  const lstBefore = stat(before, 'm');
+  const lstAfter = stat(after, 'm');
+  const didMed = round1(lstAfter.med - lstBefore.med - (median(after.map((r) => r.c)) - median(before.map((r) => r.c))));
+  const half = round1(0.75 / Math.sqrt(after.length / 2) + fx.noise * 0.9);
+  const width = half * 2;
+  return {
+    series,
+    effect: {
+      lstBefore,
+      lstAfter,
+      sealing: fx.sealing.map((v) => Math.round(v + (rand() - 0.5) * 6)),
+      ndvi: fx.ndvi.map((v) => Math.round((v + (rand() - 0.5) * 0.04) * 100) / 100),
+      did: { med: didMed, lo: round1(didMed + half), hi: round1(didMed - half) },
+      confidence: width <= 1.6 ? 'High' : width <= 2.4 ? 'Medium' : 'Low',
+      summersAfter: after.length,
+    },
+  };
+}
+
+export const MEASURES = MEASURE_SEEDS.map((seed, i) => {
+  const d = DISTRICTS.find((x) => x.name === seed.district) ?? DISTRICTS[0];
+  const rand = rng(500 + i * 7);
+  const lat = d.center[1] + seed.offset[1] / 111320;
+  const lon = d.center[0] + seed.offset[0] / (111320 * Math.cos((lat * Math.PI) / 180));
+  const [w, h, deg] = seed.size;
+  const geometry = rectAround([lon, lat], w, h, deg);
+  // Control area: same size, ~650 m away in comparable surroundings.
+  const control = rectAround([lon + 0.0085, lat - 0.0021], w, h, deg);
+  const { series, effect } = seed.completed ? effectFor(seed, d.heat, rand) : { series: null, effect: null };
+  return {
+    id: seed.id,
+    name: seed.name,
+    type: seed.type,
+    status: seed.status,
+    district: seed.district,
+    completed: seed.completed,
+    target: seed.target ?? null,
+    area: Math.round(w * h),
+    cost: seed.cost,
+    funding: FUNDING_PROGRAMMES[seed.funding],
+    office: RESPONSIBLE_OFFICES[seed.office],
+    trees: seed.trees ?? 0,
+    residents: seed.residents,
+    notes: '',
+    geometry,
+    control,
+    series,
+    effect,
+  };
+});
 
 export const USER = { initials: 'MA', name: 'M. Arsalan' };
 

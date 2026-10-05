@@ -12,7 +12,7 @@ const px = (v) => `${v} px`;
 const deg = (v) => `${v}°`;
 
 // Renderers that colour features by class: the symbol colour is then only the base.
-const classed = (style) => ['categorized', 'graduated'].includes(style.renderer);
+const classed = (style) => ['categorized', 'graduated', 'rules'].includes(style.renderer);
 
 function useSetter(id) {
   const update = useSymbology((st) => st.update);
@@ -181,6 +181,7 @@ export function PolygonSymbolSection({ def, id, style }) {
         <ColorField value={g.outline} onChange={set('polygon.outline')} label={s.outline} />
       </Field>
       <Slider label={s.outlineWidth} value={g.outlineWidth} min={0} max={6} step={0.25} onChange={set('polygon.outlineWidth')} format={px} />
+      {classed(style) && <Check checked={g.outlineFromClass} onChange={set('polygon.outlineFromClass')} label={s.outlineFromClass} />}
       {g.outlineWidth > 0 && (
         <>
           <Slider label={s.outlineOpacity} value={g.outlineOpacity} min={0} max={1} step={0.05} onChange={set('polygon.outlineOpacity')} format={pct} />

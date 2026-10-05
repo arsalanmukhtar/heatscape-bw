@@ -7,7 +7,7 @@ export const DOCK_MIN = 120;
 
 /* Right view wired to each left section. Opening a section opens its view; a section
    with no entry has no right panel, so opening it collapses the right panel. */
-export const SECTION_VIEW = { layers: 'inspector', scenarios: 'ranking' };
+export const SECTION_VIEW = { layers: 'inspector', scenarios: 'ranking', measures: 'effect' };
 
 /* Sizes stay null until a handle is dragged; null means "use the token default"
    (--panel-w, --dock-open-h), so tokens.css remains the single source. The left and right
@@ -16,11 +16,11 @@ export const useLayout = create()(
   persist(
     (set, get) => ({
       leftOpen: true,
-      leftSection: 'layers', // layers | geoprocessing | scenarios | filters | reports | settings
+      leftSection: 'layers', // layers | geoprocessing | scenarios | measures | filters | reports | settings
       rightOpen: true,
-      rightView: 'inspector', // inspector | copilot | ranking | symbology
+      rightView: 'inspector', // inspector | copilot | ranking | symbology | effect
       dockOpen: true,
-      dockTab: 'table', // table | jobs | charts
+      dockTab: 'table', // table | jobs | charts | summary
       dockMax: false, // dock fills the map area (not persisted)
       mapControlsOpen: true,
       expanded: null, // id of the element shown in the map overlay (not persisted)

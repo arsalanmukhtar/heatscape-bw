@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { DEFAULT_ORDER, LAYERS, layerById, numericFields } from '../lib/layers';
+import { DEFAULT_ORDER, fieldValues, LAYERS, layerById, numericFields } from '../lib/layers';
 import { buildClasses, DEFAULT_STYLES, normalizeStyle, RECLASSIFY_KEYS, renderersFor } from '../lib/styleModel';
 
 /*
@@ -38,6 +38,13 @@ function applyChange(def, style, path, value) {
   }
   if (path === 'field' && next.renderer !== 'categorized') next.normalizeBy = next.normalizeBy === value ? null : next.normalizeBy;
   if (RECLASSIFY_KEYS.includes(key)) next.classes = buildClasses(def, next);
+  // A first rule to start from when switching to the rule-based renderer.
+  if (path === 'renderer' && value === 'rules' && !next.rules.length) {
+    const f = numericFields(def)[0];
+    const v = f ? fieldValues(def, f.key).filter(Number.isFinite).sort((a, b) => a - b) : [];
+    const median = v.length ? +v[Math.floor(v.length / 2)].toFixed(1) : 0;
+    next.rules = f ? [{ label: `${f.label} ≥ ${median}`, filter: `${f.key} >= ${median}`, color: 'var(--series-1)', visible: true }] : [];
+  }
   // A new ramp recolours every class.
   if (key === 'ramp') next.classes = next.classes.map((c) => ({ ...c, color: null }));
   return next;
@@ -132,8 +139,14 @@ export const useSymbology = create()(
       // without losing what was saved; unknown layers are dropped.
       merge: (saved, current) => {
         const styles = Object.fromEntries(LAYERS.map((def) => [def.id, normalizeStyle(def, saved?.styles?.[def.id])]));
-        const kept = (saved?.order ?? []).filter((id) => DEFAULT_ORDER.includes(id));
-        const order = [...kept, ...DEFAULT_ORDER.filter((id) => !kept.includes(id))];
+        // Layers new since the order was saved go in at their default place (above the layer
+        // that precedes them by default), not on top of the stack.
+        const order = (saved?.order ?? []).filter((id) => DEFAULT_ORDER.includes(id));
+        DEFAULT_ORDER.forEach((id, i) => {
+          if (order.includes(id)) return;
+          const prev = DEFAULT_ORDER.slice(0, i).reverse().find((p) => order.includes(p));
+          order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, id);
+        });
         const editing = isStyleable(saved?.editing) ? saved.editing : current.editing;
         return { ...current, styles, order, editing };
       },

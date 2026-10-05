@@ -1,10 +1,10 @@
 import { useId, useState } from 'react';
-import { LuEye, LuEyeOff, LuGrid2X2, LuImage, LuMapPin, LuMountain, LuScanSearch, LuSpline, LuSquare, LuSquareDashed, LuTable2, LuTarget } from 'react-icons/lu';
+import { LuEye, LuEyeOff, LuFilter, LuGrid2X2, LuImage, LuMapPin, LuMountain, LuScanSearch, LuSpline, LuSquare, LuSquareDashed, LuTable2, LuTarget } from 'react-icons/lu';
 import { LiaPaletteSolid } from 'react-icons/lia';
 import { useMap } from 'react-map-gl/mapbox';
 import { blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
-import { LAYER_GROUPS, LAYERS, layerBounds } from '../lib/layers';
+import { isVector, LAYER_GROUPS, LAYERS, layerBounds, layerData } from '../lib/layers';
 import { useLayout } from '../state/layout';
 import { useSymbology } from '../state/symbology';
 import { useWorkspace } from '../state/workspace';
@@ -138,10 +138,10 @@ function layerKind(def) {
   const k = t.layers.kinds;
   if (def.kind === 'dem') return { type: k.dem, detail: k.demDetail };
   if (def.raster) return { type: def.kind === 'classified' ? k.rasterClassified : k.raster, detail: k.cells(def.raster.cols, def.raster.rows) };
-  return { type: k[def.geometry], detail: k.features(def.data.features.length) };
+  return { type: k[def.geometry], detail: k.features(layerData(def).features.length) };
 }
 
-function Row({ Icon, label, title, kind, active, actions, children }) {
+function Row({ Icon, label, title, kind, active, actions, children, badge }) {
   return (
     <li className={`border bg-field ${active ? 'border-accent-line' : 'border-border'}`}>
       <div className="flex items-start gap-2.5 py-1.5 pl-2 pr-1">
@@ -162,8 +162,11 @@ function Row({ Icon, label, title, kind, active, actions, children }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex h-7 items-center gap-0.5">
-            <span className="min-w-0 flex-1 truncate text-sm text-text" title={title}>
-              {label}
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className="min-w-0 truncate text-sm text-text" title={title}>
+                {label}
+              </span>
+              {badge}
             </span>
             {actions}
           </div>
@@ -203,10 +206,27 @@ function LayerItem({ def }) {
       Icon={Icon}
       label={def.label}
       kind={layerKind(def)}
+      badge={
+        style.query?.applied && (
+          <button
+            type="button"
+            onClick={() => {
+              edit(def.id);
+              useSymbology.getState().setTab('query');
+              showRightView('symbology');
+            }}
+            aria-label={t.layers.queryActive[style.query.mode](style.query.applied)}
+            title={t.layers.queryActive[style.query.mode](style.query.applied)}
+            className="grid size-5 shrink-0 place-items-center text-accent"
+          >
+            <LuFilter size={12} />
+          </button>
+        )
+      }
       active={styling}
       actions={
         <>
-          <ActionButton label={def.raster || def.kind === 'dem' ? t.layers.noTable : t.layers.openTable} active={tabling} disabled={!def.data} onClick={openTable}>
+          <ActionButton label={def.raster || def.kind === 'dem' ? t.layers.noTable : t.layers.openTable} active={tabling} disabled={!isVector(def)} onClick={openTable}>
             <LuTable2 size={13} />
           </ActionButton>
           <ActionButton label={t.layers.zoomTo} onClick={() => main?.fitBounds(layerBounds(def), FLY)}>

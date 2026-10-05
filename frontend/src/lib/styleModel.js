@@ -1,6 +1,8 @@
 import { TEMP_DOMAIN } from '../data/mock';
 import { computeBreaks, percentile, stats, uniqueValues } from './classify';
-import { fieldValues, LAYERS } from './layers';
+import { t } from '../i18n';
+import { fieldValues, layerData, LAYERS } from './layers';
+import { MEASURE_TYPES } from './measures';
 
 /*
   Layer style model (JSON, saved per layer). One object per layer holds every setting;
@@ -10,9 +12,9 @@ import { fieldValues, LAYERS } from './layers';
   color (null = from the ramp), label (null = automatic), visible.
 */
 export const RENDERERS = {
-  point: ['single', 'categorized', 'graduated', 'graduatedSize', 'heatmap', 'cluster'],
-  line: ['single', 'categorized', 'graduated', 'graduatedSize'],
-  polygon: ['single', 'categorized', 'graduated'],
+  point: ['single', 'categorized', 'graduated', 'graduatedSize', 'rules', 'heatmap', 'cluster'],
+  line: ['single', 'categorized', 'graduated', 'graduatedSize', 'rules'],
+  polygon: ['single', 'categorized', 'graduated', 'rules'],
   continuous: ['pseudocolor', 'gray'],
   classified: ['paletted', 'pseudocolor'],
   dem: ['hillshade'],
@@ -70,6 +72,7 @@ const BASE = {
     outlineWidth: 0,
     outlineOpacity: 1,
     outlineDash: 'solid',
+    outlineFromClass: false, // categorized/graduated: outline in each class colour
     extrude: false,
     extrudeField: null,
     extrudeScale: 10,
@@ -111,6 +114,51 @@ const BASE = {
     resampling: 'linear',
   },
   hillshade: { exaggeration: 0.5, direction: 335, anchor: 'viewport', shadow: '#000000', highlight: '#ffffff', accent: '#000000' },
+  // Rule-based renderer: first matching rule wins; "else" catches the rest.
+  rules: [], // { label, filter (SQL), color, visible }
+  elseRule: { visible: true, color: 'var(--unc-suppress)', label: null },
+  // Labels (Label tab). Light text on a dark halo reads on every basemap.
+  label: {
+    enabled: false,
+    mode: 'field', // field | expression
+    field: null,
+    expression: '',
+    decimals: 1,
+    font: 'DIN Pro',
+    fontStyle: 'Medium',
+    size: 12,
+    color: '#ffffff',
+    opacity: 1,
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    maxWidth: 10,
+    transform: 'none', // none | uppercase | lowercase
+    justify: 'auto', // auto | left | center | right
+    halo: { enabled: true, color: '#0b0f14', width: 1.2, blur: 0.5, opacity: 0.9 },
+    background: { enabled: false, color: '#0b0f14', opacity: 0.8, outline: '#ffffff', outlineOpacity: 0.25, padding: 3 },
+    placement: {
+      point: 'auto', // auto (cartographic, tries 8 positions) | fixed
+      anchor: 'top', // fixed position: centre or one of 8 around the point
+      distance: 0.8, // em
+      line: 'line', // line (along, curved) | line-center | horizontal
+      linePosition: 'above', // above | on | below
+      spacing: 250,
+      keepUpright: true,
+      maxAngle: 45,
+      polygon: 'inside', // centroid | inside (visual centre) | perimeter
+      rotation: 'none', // none | angle | field
+      angle: 0,
+      rotationField: null,
+    },
+    minZoom: 0,
+    maxZoom: 24,
+    allowOverlap: false,
+    priorityField: null,
+    padding: 2,
+    classes: [], // { filter (SQL), color, size, bold, visible }: first match wins
+  },
+  // Query tab: draft SQL and builder; `applied` is the query the map uses ('' = none).
+  query: { mode: 'definition', sql: '', applied: '', builder: { combinator: 'AND', conditions: [] }, saved: [] },
 };
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -162,6 +210,15 @@ const OVERRIDES = {
   },
   hazardRaster: { renderer: 'paletted', opacity: 0.75, ramp: { id: 'YlOrRd', invert: false, stops: null }, raster: { resampling: 'nearest' } },
   hillshade: { renderer: 'hillshade' },
+  // Footprints outlined in their type colour over a faint tint; buffers dashed in neutral grey.
+  measures: {
+    renderer: 'categorized',
+    field: 'type',
+    showOther: false,
+    polygon: { fillOpacity: 0.16, outlineWidth: 2, outlineFromClass: true },
+    presetClasses: MEASURE_TYPES.map((m) => ({ value: m.id, color: m.color, label: t.measures.types[m.id], visible: true })),
+  },
+  measureBuffers: { line: { color: 'var(--unc-suppress)', width: 1.25, opacity: 0.9, dash: 'dash', cap: 'butt' } },
 };
 
 /** Deep merge for plain objects; arrays and scalars from `over` replace those in `base`. */
@@ -196,8 +253,9 @@ export function buildClasses(def, style) {
   if (!style.field) return [];
   if (style.renderer === 'categorized') {
     const rows = fieldValues(def, style.field);
-    const raw = def.fields.find((f) => f.key === style.field)?.type === 'number' ? rows : (def.data?.features ?? []).map((f) => f.properties[style.field]);
-    return uniqueValues(raw).map(({ value }) => ({ value, color: null, label: null, visible: true }));
+    const field = def.fields.find((f) => f.key === style.field);
+    const raw = field?.type === 'number' ? rows : (layerData(def)?.features ?? []).map((f) => f.properties[style.field]);
+    return uniqueValues(raw).map(({ value }) => ({ value, color: null, label: field?.labels?.[value] ?? null, visible: true }));
   }
   if (style.renderer === 'graduated') {
     const values = fieldValues(def, style.field, style.normalizeBy);
@@ -217,7 +275,10 @@ export function buildClasses(def, style) {
 export function defaultStyle(def) {
   const style = deepMerge(BASE, OVERRIDES[def.id]);
   if (!style.field && def.fields) style.field = (def.fields.find((f) => f.type === 'number' && f.kind !== 'coord') ?? def.fields[1] ?? def.fields[0])?.key ?? null;
-  style.classes = buildClasses(def, style);
+  // Labels default to the layer's name-like field, else its main value.
+  if (def.fields) style.label.field = (def.fields.find((f) => f.kind === 'text') ?? def.fields.find((f) => f.key === style.field) ?? def.fields[0]).key;
+  style.classes = style.presetClasses ?? buildClasses(def, style);
+  delete style.presetClasses;
   return style;
 }
 

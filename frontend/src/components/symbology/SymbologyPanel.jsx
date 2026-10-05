@@ -7,9 +7,11 @@ import { renderersFor } from '../../lib/styleModel';
 import { useLayout } from '../../state/layout';
 import { useSymbology } from '../../state/symbology';
 import { Check, Field, NumberField, Section, Select, Slider } from '../controls';
-import { SearchEmpty } from '../SearchBar';
 import { PanelHeader } from '../SidePanel';
 import { ClassificationSection, RasterBandSection } from './Classification';
+import { LabelTab } from './LabelTab';
+import { QueryTab } from './QueryTab';
+import { RulesSection } from './Rules';
 import {
   ClusterSection,
   HeatmapSection,
@@ -33,8 +35,7 @@ const outlineBtn = 'flex h-7 items-center gap-1.5 border border-border px-2 text
 
 /*
   Symbology (right panel): styles the layer picked here or from a layer row's paint bucket.
-  Tabs Style · Label · Query; Label and Query arrive in the next passes. Every change
-  applies to the map at once and is saved (state/symbology.js).
+  Tabs Style · Label · Query. Every change applies to the map at once and is saved (state/symbology.js).
 */
 export function SymbologyPanel() {
   const toggleRight = useLayout((st) => st.toggleRight);
@@ -66,6 +67,7 @@ export function SymbologyPanel() {
           value={def.id}
           onChange={edit}
           label={s.layer}
+          searchable
           options={LAYERS.map((l) => {
             const Icon = iconFor(l);
             return { value: l.id, label: l.label, icon: <Icon size={13} className="shrink-0 text-muted" /> };
@@ -80,17 +82,19 @@ export function SymbologyPanel() {
             role="tab"
             aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`flex flex-1 items-center justify-center gap-1.5 border-r border-border last:border-r-0 ${
-              tab === id ? 'bg-rail-active font-semibold text-rail-active-text' : 'font-medium text-muted hover:bg-hover hover:text-text'
+            className={`flex flex-1 items-center justify-center gap-1.5 border-r border-border leading-none last:border-r-0 ${
+              tab === id ? 'bg-rail-active font-semibold text-rail-active-text shadow-[inset_0_-2px_0_var(--accent)]' : 'bg-surface-strong font-medium text-text/75 hover:bg-hover hover:text-text'
             }`}
           >
-            <Icon size={12} className="shrink-0" aria-hidden />
-            <span className="text-xs uppercase tracking-[var(--tracking-caps)]">{label}</span>
+            <Icon size={13} className="shrink-0" aria-hidden />
+            <span className="text-xs uppercase leading-none tracking-[var(--tracking-caps)]">{label}</span>
           </button>
         ))}
       </div>
       <div role="tabpanel" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {tab === 'style' ? <StyleTab key={def.id} def={def} /> : <SearchEmpty>{tab === 'label' ? s.labelNext : s.queryNext}</SearchEmpty>}
+        {tab === 'style' && <StyleTab key={def.id} def={def} />}
+        {tab === 'label' && <LabelTab key={def.id} def={def} />}
+        {tab === 'query' && <QueryTab key={def.id} def={def} />}
       </div>
     </>
   );
@@ -111,6 +115,7 @@ function StyleTab({ def }) {
       </Section>
 
       {vector && <ClassificationSection def={def} id={id} style={style} />}
+      {style.renderer === 'rules' && <RulesSection def={def} style={style} />}
       {style.renderer === 'heatmap' && <HeatmapSection def={def} id={id} style={style} />}
       {style.renderer === 'cluster' && <ClusterSection id={id} style={style} />}
       {def.geometry === 'point' && style.renderer !== 'heatmap' && <PointSymbolSection id={id} style={style} />}

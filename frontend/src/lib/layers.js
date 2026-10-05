@@ -9,6 +9,8 @@ import {
   blockBounds,
 } from '../data/mock';
 import { t } from '../i18n';
+import { MEASURE_STATUSES, MEASURE_TYPES, measuresFC } from './measures';
+import { allMeasures, useMeasures } from '../state/measures';
 
 /*
   Map layers that can be styled. Each entry: id (also the visibility key in
@@ -44,16 +46,33 @@ const GRID_FIELDS = [
   { key: 'heatClass', label: c.heatClass, kind: 'chip', type: 'string' },
   ...COORDS,
 ];
-const FACILITY_FIELDS = [
+// Capacity unit differs by facility: hospital beds, or pumped water in m³/h.
+const facilityFields = (capacityLabel) => [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 'name', label: c.name, kind: 'text', type: 'string' },
   { key: 'kind', label: c.kind, kind: 'text', type: 'string' },
-  { key: 'capacity', label: c.capacity, kind: 'int', type: 'number' },
+  { key: 'capacity', label: capacityLabel, kind: 'int', type: 'number' },
   ...COORDS,
+];
+
+// Measures register as live layers: footprints and their analysis buffers.
+const measureData = (part) => () => measuresFC(allMeasures(useMeasures.getState().added, useMeasures.getState().statusLog))[part];
+const MEASURE_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 'name', label: c.name, kind: 'text', type: 'string' },
+  { key: 'type', label: c.measureType, kind: 'measureType', type: 'string', labels: Object.fromEntries(MEASURE_TYPES.map((m) => [m.id, t.measures.types[m.id]])) },
+  { key: 'status', label: c.status, kind: 'measureStatus', type: 'string', labels: Object.fromEntries(MEASURE_STATUSES.map((m) => [m.id, t.measures.statuses[m.id]])) },
+  { key: 'district', label: t.table.columns.district, kind: 'text', type: 'string' },
+  { key: 'completed', label: c.completed, kind: 'text', type: 'string' },
+  { key: 'area', label: c.area, kind: 'int', type: 'number' },
+  { key: 'cost', label: c.cost, kind: 'int', type: 'number' },
+  { key: 'residents', label: c.residents, kind: 'int', type: 'number' },
+  { key: 'effect', label: c.effect, kind: 'effect', type: 'number' },
 ];
 
 export const LAYER_GROUPS = [
   { id: 'heat', label: t.layers.heatIslands },
+  { id: 'adaptation', label: t.layers.adaptation },
   { id: 'urban', label: t.layers.urban },
   { id: 'infrastructure', label: t.layers.infrastructure },
   { id: 'raster', label: t.layers.rasters },
@@ -94,8 +113,10 @@ export const LAYERS = [
       ...COORDS,
     ],
   },
-  { id: 'hospitals', group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, data: facilities('hospital'), fields: FACILITY_FIELDS },
-  { id: 'water', group: 'infrastructure', geometry: 'point', label: t.layers.water, data: facilities('water'), fields: FACILITY_FIELDS },
+  { id: 'hospitals', group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, data: facilities('hospital'), fields: facilityFields(c.capacityBeds) },
+  { id: 'water', group: 'infrastructure', geometry: 'point', label: t.layers.water, data: facilities('water'), fields: facilityFields(c.capacityWater) },
+  { id: 'measures', group: 'adaptation', geometry: 'polygon', label: t.layers.measures, getData: measureData('footprints'), fields: MEASURE_FIELDS },
+  { id: 'measureBuffers', group: 'adaptation', geometry: 'line', label: t.layers.measureBuffers, getData: measureData('buffers'), fields: MEASURE_FIELDS },
   { id: 'lstRaster', group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
   { id: 'hazardRaster', group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
   { id: 'hillshade', group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },
@@ -104,7 +125,7 @@ export const LAYERS = [
 export const layerById = (id) => LAYERS.find((l) => l.id === id);
 
 /** Draw order, bottom to top. 'priority' is the scenario overlay, kept in the stack so data can sit above or below it. */
-export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'blocks', 'airTemp', 'priority', 'sealing', 'hospitals', 'water'];
+export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'blocks', 'airTemp', 'priority', 'measureBuffers', 'measures', 'sealing', 'hospitals', 'water'];
 
 // Centre of a feature's coordinates (good enough for points and grid cells).
 function centerOf(geometry) {
@@ -114,22 +135,31 @@ function centerOf(geometry) {
   return [sum[0] / ring.length, sum[1] / ring.length];
 }
 
-const rowCache = new Map();
+/** A vector layer's GeoJSON: fixed data, or live data (measures) read on each call. */
+export const layerData = (def) => (def?.getData ? def.getData() : def?.data) ?? null;
+export const isVector = (def) => !!(def?.data || def?.getData);
+
+// Rows per data object, so live layers rebuild their rows when their data changes.
+const rowCache = new WeakMap();
 
 /** Attribute rows of a vector layer: properties plus lon/lat of the feature centre. */
 export function layerRows(def) {
-  if (!def?.data) return [];
-  if (!rowCache.has(def.id)) {
+  const data = layerData(def);
+  if (!data) return [];
+  if (!rowCache.has(data)) {
     rowCache.set(
-      def.id,
-      def.data.features.map((f) => {
+      data,
+      data.features.map((f) => {
         const [lon, lat] = centerOf(f.geometry);
         return { ...f.properties, lon: +lon.toFixed(5), lat: +lat.toFixed(5) };
       }),
     );
   }
-  return rowCache.get(def.id);
+  return rowCache.get(data);
 }
+
+/** Display text of a field value (labels for coded values such as measure types). */
+export const fieldText = (field, value) => field?.labels?.[value] ?? value;
 
 /** Numeric fields of a layer (for graduated renderers, normalisation, weights). */
 export const numericFields = (def) => (def?.fields ?? []).filter((f) => f.type === 'number' && f.kind !== 'coord');
@@ -153,7 +183,8 @@ export function layerBounds(def) {
     const [w, s, e, n] = def.raster.bounds;
     return [[w, s], [e, n]];
   }
-  if (!def?.data) return [[8.42, 49.43], [8.6, 49.56]];
+  const data = layerData(def);
+  if (!data?.features.length) return [[8.42, 49.43], [8.6, 49.56]];
   let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity];
   const visit = (c) => {
     if (typeof c[0] === 'number') {
@@ -163,6 +194,6 @@ export function layerBounds(def) {
       n = Math.max(n, c[1]);
     } else c.forEach(visit);
   };
-  def.data.features.forEach((f) => visit(f.geometry.coordinates));
+  data.features.forEach((f) => visit(f.geometry.coordinates));
   return [[w, s], [e, n]];
 }

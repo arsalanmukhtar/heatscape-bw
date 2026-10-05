@@ -46,6 +46,7 @@
      the longest of the six labels, at the small size. */
   --level-chip-w: 96px; /* every chip; fits the longest label ("12 of 128 rows") */
   --chip-compact-w: 36px; /* icon-only chips (e.g. confidence pips in narrow columns) */
+  --dock-chip-w: 76px; /* badges on the compact dock tabs */
 
   /* The vertical variant runs down the right edge of a layer row, edge to edge, so the
      chips of a group stack into one unbroken column. The row carries no vertical
@@ -154,6 +155,16 @@
 
   /* Diverging midpoint. A grey, never a hue, so "no change" reads as nothing. */
   --div-mid: #e8e8e8;
+
+  /* Adaptation measure types (categorical, map outlines, list icons, summary charts).
+     Non-warm on purpose, so a measure footprint never reads as a heat value. Validated as
+     a categorical set (lightness band, chroma, CVD and normal-vision separation, contrast)
+     on the dark and light surfaces in this fixed order; always shown with the type name. */
+  --measure-desealing: #2f9fc4;
+  --measure-greenroof: #8a9e2a;
+  --measure-shade: #b45cb8;
+  --measure-trees: #2e9a4c;
+  --measure-water: #4f6cd8;
 
   /* Temperature change: cooler (blue) to warmer (red). Index 1 is next to the
      midpoint, 5 is the extreme. Scenario effects and before/after comparisons. */
