@@ -81,7 +81,7 @@ export function AdminCopilot() {
           </Card>
           <Card title={cp.failedTitle} expandId="admin-copilot-failed" actions={<SearchBar value={fQuery} onChange={setFQuery} placeholder={a.filter} className="w-40" />}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] border-collapse text-xs">
+              <table className="w-full min-w-[32.5rem] border-collapse text-xs">
                 <thead className="bg-surface-strong">
                   <tr className="border-b border-border">
                     {['time', 'tool', 'error', 'user'].map((k) => (

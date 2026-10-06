@@ -26,7 +26,7 @@ export function MapScale() {
       aria-label={`${t.map.scale} ${scale.label}`}
     >
       <span className="h-1 border-x-2 border-b-2 border-text" style={{ width: scale.px }} aria-hidden />
-      <span className="font-mono text-[10px] font-semibold leading-none text-text">{scale.label}</span>
+      <span className="font-mono text-[0.625rem] font-semibold leading-none text-text">{scale.label}</span>
     </div>
   );
 }

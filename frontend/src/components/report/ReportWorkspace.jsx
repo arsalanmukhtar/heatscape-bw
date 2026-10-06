@@ -98,7 +98,7 @@ export function ReportWorkspace() {
             <button type="button" onClick={() => report.setZoom(ZOOMS[zi - 1])} disabled={zi <= 0} aria-label={r.zoomOut} title={r.zoomOut} className={iconBtn}>
               <LuMinus size={13} />
             </button>
-            <Select value={report.zoom} onChange={report.setZoom} label={r.zoom} className="w-[72px] border-y-0" options={ZOOMS.map((z) => ({ value: z, label: `${z} %` }))} />
+            <Select value={report.zoom} onChange={report.setZoom} label={r.zoom} className="w-[4.5rem] border-y-0" options={ZOOMS.map((z) => ({ value: z, label: `${z} %` }))} />
             <button type="button" onClick={() => report.setZoom(ZOOMS[zi + 1])} disabled={zi >= ZOOMS.length - 1} aria-label={r.zoomIn} title={r.zoomIn} className={iconBtn}>
               <LuPlus size={13} />
             </button>

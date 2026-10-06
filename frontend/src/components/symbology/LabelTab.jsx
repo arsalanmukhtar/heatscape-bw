@@ -19,7 +19,7 @@ const btn = 'flex h-7 items-center gap-1.5 border border-border px-2.5 text-xs t
 /** 3 × 3 grid for a fixed label position around a point. */
 function PositionPicker({ value, onChange }) {
   return (
-    <div role="radiogroup" aria-label={l.position} className="grid w-[96px] grid-cols-3 gap-0.5">
+    <div role="radiogroup" aria-label={l.position} className="grid w-[6rem] grid-cols-3 gap-0.5">
       {POSITIONS.map((p) => (
         <button
           key={p}

@@ -28,7 +28,7 @@ export function TopNav() {
 
       <RegionMenu value={region} onChange={setRegion} />
 
-      <nav className="ml-4 flex h-[34px] items-stretch border border-nav-border bg-bg-deep p-[3px]" aria-label="Views">
+      <nav className="ml-4 flex h-[2.125rem] items-stretch border border-nav-border bg-bg-deep p-[0.1875rem]" aria-label="Views">
         {views.map((v) => {
           const active = v.id === view;
           return (
@@ -52,7 +52,7 @@ export function TopNav() {
 
       <div className="ml-auto flex items-center gap-3">
         <div
-          className="flex h-[30px] items-center gap-2 whitespace-nowrap border border-nav-border bg-bg-deep px-2 text-xs text-nav-text lg:px-3"
+          className="flex h-[1.875rem] items-center gap-2 whitespace-nowrap border border-nav-border bg-bg-deep px-2 text-xs text-nav-text lg:px-3"
           title={`${t.nav.season}: ${SEASON.label} (${SEASON.range})`}
         >
           <LuCalendar size={13} className="text-nav-muted" />
@@ -67,7 +67,7 @@ export function TopNav() {
           onClick={toggle}
           aria-label={themeLabel}
           title={themeLabel}
-          className="grid size-[30px] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text"
+          className="grid size-[1.875rem] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text"
         >
           {resolved === 'dark' ? <LuSun size={15} /> : <LuMoon size={15} />}
         </button>
@@ -76,7 +76,7 @@ export function TopNav() {
           type="button"
           aria-label={t.nav.notifications}
           title={t.nav.notifications}
-          className="grid size-[30px] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text"
+          className="grid size-[1.875rem] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text"
         >
           <LuBell size={15} />
         </button>
@@ -147,7 +147,7 @@ export function AccountMenu() {
         aria-label={user ? `${t.nav.account}: ${user.name}` : t.nav.account}
         title={user ? user.name : t.nav.account}
         onClick={() => setOpen(!open)}
-        className={`grid size-[30px] place-items-center border bg-surface-raised text-2xs font-semibold text-nav-text ${open ? 'border-accent-line' : 'border-nav-border-strong hover:border-nav-text'}`}
+        className={`grid size-[1.875rem] place-items-center border bg-surface-raised text-2xs font-semibold text-nav-text ${open ? 'border-accent-line' : 'border-nav-border-strong hover:border-nav-text'}`}
       >
         {user ? <span>{user.initials}</span> : <LuUser size={14} className="text-nav-muted" aria-hidden />}
       </button>
@@ -212,7 +212,7 @@ function RegionMenu({ value, onChange }) {
         aria-label={t.nav.region}
         onClick={() => setOpen(!open)}
         style={{ width: 'var(--region-menu-w)' }}
-        className="flex h-[30px] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-sm text-nav-text hover:border-nav-border-strong"
+        className="flex h-[1.875rem] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-sm text-nav-text hover:border-nav-border-strong"
       >
         <LuMap size={13} className="shrink-0 text-nav-muted" />
         <span className="min-w-0 flex-1 truncate text-left">{value}</span>

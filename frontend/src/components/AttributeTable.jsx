@@ -188,7 +188,7 @@ export function AttributeTable() {
                 key={r.id}
                 onClick={() => onRow(r)}
                 aria-selected={selected}
-                className={`h-[29px] cursor-pointer border-b border-border-soft tabular-nums ${selected ? 'bg-accent-soft' : 'hover:bg-hover'}`}
+                className={`h-[1.8125rem] cursor-pointer border-b border-border-soft tabular-nums ${selected ? 'bg-accent-soft' : 'hover:bg-hover'}`}
               >
                 {def.fields.map((f) => (
                   <Cell key={f.key} field={f} value={r[f.key]} selected={selected} />

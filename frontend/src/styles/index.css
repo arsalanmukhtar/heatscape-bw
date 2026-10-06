@@ -70,6 +70,221 @@
     border-color: var(--border);
   }
 
+  /* Responsive scale. Every size in the app is in rem (tokens, Tailwind spacing and
+     type, converted arbitrary values), so one root font size per screen class scales the
+     whole UI proportionally. 16px is the desktop base (1440–1919 px wide).
+       ≥ 3200: 24px · ≥ 2560: 20px · ≥ 2240: 18px · ≥ 1920: 17px
+       1440–1919: 16px · 1280–1439: 15px · 1024–1279: 14px (small laptops, landscape tablets)
+       768–1023 portrait: 14px compact tablet view (tighter panels and nav, see tokens.css)
+       768–1023 landscape: 14px · < 768: 16px (phones, small tablets: the portal keeps 44px touch targets)
+     14px is the floor: below it body text (0.8125rem) drops under 11.5px. A4 report pages
+     are paper and stay in px; print pins the root to 16px. */
+  html {
+    font-size: 100%;
+  }
+  @media (min-width: 1920px) {
+    html {
+      font-size: 106.25%;
+    }
+  }
+  @media (min-width: 2240px) {
+    html {
+      font-size: 112.5%;
+    }
+  }
+  @media (min-width: 2560px) {
+    html {
+      font-size: 125%;
+    }
+  }
+  @media (min-width: 3200px) {
+    html {
+      font-size: 150%;
+    }
+  }
+  @media (max-width: 1439px) {
+    html {
+      font-size: 93.75%;
+    }
+  }
+  @media (max-width: 1279px) {
+    html {
+      font-size: 87.5%;
+    }
+  }
+  @media (max-width: 767px) {
+    html {
+      font-size: 100%;
+    }
+  }
+  /* Public portal: touch-first, so never below the 16px base (44px touch targets on
+     tablets and small laptops); it still scales up on large screens. */
+  @media (max-width: 1919px) {
+    html[data-app='portal'] {
+      font-size: 100%;
+    }
+  }
+  @media print {
+    html {
+      font-size: 16px;
+    }
+  }
+
+  /* Icons scale with the root too: react-icons write their size as a px width/height
+     attribute (size={15}), which these rules restate in rem. Only SVGs with a viewBox
+     (icons, swatches), so px-drawn charts keep their measured size; never on A4 report
+     pages, which are paper. */
+  svg[viewBox][width="8"]:not(.report-page *) {
+    width: 0.5rem;
+  }
+  svg[viewBox][height="8"]:not(.report-page *) {
+    height: 0.5rem;
+  }
+  svg[viewBox][width="9"]:not(.report-page *) {
+    width: 0.5625rem;
+  }
+  svg[viewBox][height="9"]:not(.report-page *) {
+    height: 0.5625rem;
+  }
+  svg[viewBox][width="10"]:not(.report-page *) {
+    width: 0.625rem;
+  }
+  svg[viewBox][height="10"]:not(.report-page *) {
+    height: 0.625rem;
+  }
+  svg[viewBox][width="11"]:not(.report-page *) {
+    width: 0.6875rem;
+  }
+  svg[viewBox][height="11"]:not(.report-page *) {
+    height: 0.6875rem;
+  }
+  svg[viewBox][width="12"]:not(.report-page *) {
+    width: 0.75rem;
+  }
+  svg[viewBox][height="12"]:not(.report-page *) {
+    height: 0.75rem;
+  }
+  svg[viewBox][width="13"]:not(.report-page *) {
+    width: 0.8125rem;
+  }
+  svg[viewBox][height="13"]:not(.report-page *) {
+    height: 0.8125rem;
+  }
+  svg[viewBox][width="14"]:not(.report-page *) {
+    width: 0.875rem;
+  }
+  svg[viewBox][height="14"]:not(.report-page *) {
+    height: 0.875rem;
+  }
+  svg[viewBox][width="15"]:not(.report-page *) {
+    width: 0.9375rem;
+  }
+  svg[viewBox][height="15"]:not(.report-page *) {
+    height: 0.9375rem;
+  }
+  svg[viewBox][width="16"]:not(.report-page *) {
+    width: 1rem;
+  }
+  svg[viewBox][height="16"]:not(.report-page *) {
+    height: 1rem;
+  }
+  svg[viewBox][width="17"]:not(.report-page *) {
+    width: 1.0625rem;
+  }
+  svg[viewBox][height="17"]:not(.report-page *) {
+    height: 1.0625rem;
+  }
+  svg[viewBox][width="18"]:not(.report-page *) {
+    width: 1.125rem;
+  }
+  svg[viewBox][height="18"]:not(.report-page *) {
+    height: 1.125rem;
+  }
+  svg[viewBox][width="19"]:not(.report-page *) {
+    width: 1.1875rem;
+  }
+  svg[viewBox][height="19"]:not(.report-page *) {
+    height: 1.1875rem;
+  }
+  svg[viewBox][width="20"]:not(.report-page *) {
+    width: 1.25rem;
+  }
+  svg[viewBox][height="20"]:not(.report-page *) {
+    height: 1.25rem;
+  }
+  svg[viewBox][width="21"]:not(.report-page *) {
+    width: 1.3125rem;
+  }
+  svg[viewBox][height="21"]:not(.report-page *) {
+    height: 1.3125rem;
+  }
+  svg[viewBox][width="22"]:not(.report-page *) {
+    width: 1.375rem;
+  }
+  svg[viewBox][height="22"]:not(.report-page *) {
+    height: 1.375rem;
+  }
+  svg[viewBox][width="23"]:not(.report-page *) {
+    width: 1.4375rem;
+  }
+  svg[viewBox][height="23"]:not(.report-page *) {
+    height: 1.4375rem;
+  }
+  svg[viewBox][width="24"]:not(.report-page *) {
+    width: 1.5rem;
+  }
+  svg[viewBox][height="24"]:not(.report-page *) {
+    height: 1.5rem;
+  }
+  svg[viewBox][width="25"]:not(.report-page *) {
+    width: 1.5625rem;
+  }
+  svg[viewBox][height="25"]:not(.report-page *) {
+    height: 1.5625rem;
+  }
+  svg[viewBox][width="26"]:not(.report-page *) {
+    width: 1.625rem;
+  }
+  svg[viewBox][height="26"]:not(.report-page *) {
+    height: 1.625rem;
+  }
+  svg[viewBox][width="27"]:not(.report-page *) {
+    width: 1.6875rem;
+  }
+  svg[viewBox][height="27"]:not(.report-page *) {
+    height: 1.6875rem;
+  }
+  svg[viewBox][width="28"]:not(.report-page *) {
+    width: 1.75rem;
+  }
+  svg[viewBox][height="28"]:not(.report-page *) {
+    height: 1.75rem;
+  }
+  svg[viewBox][width="29"]:not(.report-page *) {
+    width: 1.8125rem;
+  }
+  svg[viewBox][height="29"]:not(.report-page *) {
+    height: 1.8125rem;
+  }
+  svg[viewBox][width="30"]:not(.report-page *) {
+    width: 1.875rem;
+  }
+  svg[viewBox][height="30"]:not(.report-page *) {
+    height: 1.875rem;
+  }
+  svg[viewBox][width="31"]:not(.report-page *) {
+    width: 1.9375rem;
+  }
+  svg[viewBox][height="31"]:not(.report-page *) {
+    height: 1.9375rem;
+  }
+  svg[viewBox][width="32"]:not(.report-page *) {
+    width: 2rem;
+  }
+  svg[viewBox][height="32"]:not(.report-page *) {
+    height: 2rem;
+  }
+
   /* The page itself never scrolls: only panels do. overflow: clip (not hidden) also blocks
      programmatic scrolling, so scrollIntoView or an anchor jump inside a panel cannot
      shift the whole app up and leave a gap at the bottom. */
@@ -109,21 +324,36 @@
     outline: none;
   }
 
-  /* Optical vertical centring. A line box carries uneven space above and below the
-     glyphs, so text beside an icon or inside a fixed-height control sits off centre.
-     Trimming the box to cap height and baseline centres the letters exactly. It only
-     works on an element wrapping the text, so text next to an icon goes in a <span>. */
-  :is(.items-center, .place-items-center) > :is(span, a, label):not(:has(*)),
+  /* ALIGNMENT RULE (universal). Icons, text, chips and inputs in a row share one horizontal
+     centre line: the centre of the icon box = the centre of the text's cap band (baseline
+     to cap height), for every label, mixed case or caps, at every size.
+     1. Rows centre their items: every button, link, label, tab, option and menu item that
+        is a flex/grid row centres vertically by default (no class needed).
+     2. Text is trimmed to its cap band, so its box is exactly the letters: a childless
+        span / a / label / time in any centring row (items-center, place-items-center, a
+        control from 1.), and a text-only button. The row then centres letters and icon
+        box on the same line. (Lucide icons draw centred in their box.)
+     3. Icons never shrink or sit on a text baseline (block boxes in the row).
+     4. Clipped labels (truncate, overflow-hidden) clip sideways only (below, unlayered),
+        so the trim is not undone and descenders are not cut.
+     5. Multi-line text beside an icon (row items-start): the text block gets
+        `text-cap-start` (its first line trimmed to the cap top) and the icon sits in an
+        `icon-cap` box one cap-height tall, with the first line's text size on the box,
+        so the icon centres on the first line's cap band.
+     6. Two-line list rows with trailing meta (chip, value) are one grid: each line shares a
+        grid row with its meta (title ↔ chip, subtitle ↔ value), never two stacked columns.
+     Never nudge an icon or label with margins or padding to fix alignment. */
+  :is(button, a, label, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'], [role='menuitemradio'], [role='switch']) {
+    align-items: center;
+  }
+  :is(.items-center, .place-items-center, button, a, label, summary, [role='button'], [role='tab'], [role='option'], [role='menuitem'], [role='menuitemradio'], [role='switch'])
+    > :is(span, a, label, time):not(:has(*)),
   button:not(:has(*)) {
     text-box: trim-both cap alphabetic;
   }
-
-  /* Beside an icon, mixed-case text is centred on its x-height instead: its visual mass
-     is the lowercase band, so cap centring leaves it looking ~0.1em low next to the icon.
-     Uppercase labels keep cap centring (their mass is the cap band). */
-  :is(.items-center, .place-items-center) > svg ~ :is(span, a, label):not(:has(*)):not(.uppercase, .uppercase *),
-  :is(.items-center, .place-items-center) > :is(span, a, label):not(:has(*)):has(~ svg):not(.uppercase, .uppercase *) {
-    text-box: trim-both ex alphabetic;
+  :is(.flex, .inline-flex, .grid, .inline-grid) > svg {
+    display: block;
+    flex-shrink: 0;
   }
 
   /* Number inputs without native spinners (they do not follow the square UI). */
@@ -215,7 +445,7 @@
      centre. Trim the line box to cap height and baseline (needs a block-level text
      container, hence inline-block) and let equal padding centre it. */
   display: inline-block;
-  padding: 5px 8px;
+  padding: 0.3125rem 0.5rem; /* 5 × 8 px at the 16 px base; scales with the UI */
   font-size: var(--fs-2xs);
   font-weight: var(--fw-medium);
   line-height: 1;
@@ -232,6 +462,19 @@
   color: var(--chip);
   background: color-mix(in srgb, var(--chip) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--chip) 32%, transparent);
+}
+
+/* Alignment rule 5: icon beside multi-line text. The box is one cap-height of its own
+   font size tall and centres the icon in it; pair it with text-cap-start on the text. */
+@utility icon-cap {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 1cap;
+}
+@utility text-cap-start {
+  text-box: trim-start cap alphabetic;
 }
 
 /* Trim a text box to cap height and baseline so it centres optically (for text the
@@ -401,4 +644,13 @@
 :is(.items-center, .place-items-center) > :is(span, a, label).truncate:not(:has(*)) {
   overflow: clip;
   overflow-clip-margin: 0.3em;
+}
+
+/* Alignment rule 4 (unlayered, so it beats the Tailwind utilities): a clipped label clips
+   only sideways. overflow: hidden would also clip vertically, which cuts descenders off
+   cap-trimmed text and undoes the optical centring. The ellipsis still works on clip. */
+.truncate,
+:is(span, a, label, time).overflow-hidden {
+  overflow: visible;
+  overflow-x: clip;
 }

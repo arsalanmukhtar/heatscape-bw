@@ -24,7 +24,7 @@ function Logo({ item, hidden }) {
         className="flex h-12 items-center px-4"
       >
         {item.src ? (
-          <img src={item.src} alt={item.name} draggable={false} className="block h-8 w-auto max-w-[150px] object-contain" />
+          <img src={item.src} alt={item.name} draggable={false} className="block h-8 w-auto max-w-[9.375rem] object-contain" />
         ) : (
           <span className="whitespace-nowrap text-sm font-semibold tracking-[-0.01em] text-text">{item.text}</span>
         )}

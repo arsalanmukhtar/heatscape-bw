@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { rem, useRootScale } from '../../lib/useRootScale';
 
 /** Width of an element, kept current on resize (charts draw at their real width). */
-function useWidth() {
+function useMeasuredWidth() {
   const ref = useRef(null);
   const [w, setW] = useState(0);
   useLayoutEffect(() => {
@@ -14,6 +15,19 @@ function useWidth() {
   return [ref, w];
 }
 
+/*
+  Chart frame in design px (the 16px desktop base): the measured width divided by the UI
+  scale, drawn through a viewBox at the real size, so heights, labels and bars scale with
+  the root font size like the rest of the UI.
+*/
+function useWidth() {
+  const [ref, real] = useMeasuredWidth();
+  const k = useRootScale();
+  return [ref, real / k, k];
+}
+
+const frame = (w, h, k) => ({ width: w * k, height: h * k, viewBox: `0 0 ${w} ${h}` });
+
 const niceMax = (v) => {
   const p = 10 ** Math.floor(Math.log10(v || 1));
   return [1, 2, 2.5, 5, 10].map((k) => k * p).find((m) => m >= v) ?? v;
@@ -25,7 +39,7 @@ const niceMax = (v) => {
   Hover: a tooltip per bar (title).
 */
 export function Bars({ data, height = 160, format = (v) => v, color = 'var(--series-1)', large = false }) {
-  const [ref, w] = useWidth();
+  const [ref, w, k] = useWidth();
   const h = large ? height * 2 : height;
   const max = niceMax(Math.max(...data.map((d) => d.value)));
   const left = 36;
@@ -39,7 +53,7 @@ export function Bars({ data, height = 160, format = (v) => v, color = 'var(--ser
   return (
     <div ref={ref} className="w-full">
       {w > 0 && (
-        <svg width={w} height={h} role="img" className="block">
+        <svg {...frame(w, h, k)} role="img" className="block">
           {ticks.map((v) => {
             const y = 8 + plotH - (v / max) * plotH;
             return (
@@ -78,7 +92,7 @@ export function Bars({ data, height = 160, format = (v) => v, color = 'var(--ser
  * [from, to] (ms), coloured by run status (legend beside the chart).
  */
 export function Timeline({ rows, from, to, colorOf, large = false }) {
-  const [ref, w] = useWidth();
+  const [ref, w, k] = useWidth();
   const labelW = large ? 220 : 170;
   const rowH = large ? 30 : 24;
   const plotW = Math.max(0, w - labelW - 8);
@@ -88,7 +102,7 @@ export function Timeline({ rows, from, to, colorOf, large = false }) {
   return (
     <div ref={ref} className="w-full">
       {w > 0 && (
-        <svg width={w} height={h} role="img" className="block">
+        <svg {...frame(w, h, k)} role="img" className="block">
           {hours.map((t) => (
             <g key={t}>
               <line x1={x(t)} x2={x(t)} y1={0} y2={rows.length * rowH} style={{ stroke: 'var(--border-soft)' }} />
@@ -127,7 +141,7 @@ export function Sparkline({ values, width = 120, height = 32, color = 'var(--ser
   const hi = Math.max(...values);
   const pts = values.map((v, i) => [(i / (values.length - 1)) * (width - 4) + 2, height - 3 - ((v - lo) / (hi - lo || 1)) * (height - 6)]);
   return (
-    <svg width={width} height={height} aria-hidden className="block">
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: rem(width), height: rem(height) }} aria-hidden className="block">
       <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" strokeWidth={2} style={{ stroke: color }} />
       <rect x={pts[pts.length - 1][0] - 3} y={pts[pts.length - 1][1] - 3} width={6} height={6} style={{ fill: color }} />
     </svg>

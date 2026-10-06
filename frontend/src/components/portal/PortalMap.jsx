@@ -95,7 +95,7 @@ export function PortalMap({ padBottom = 0 }) {
                 className="grid size-11 place-items-center"
               >
                 <span
-                  className={`grid size-[30px] place-items-center border-2 shadow-[var(--shadow-glass)] ${on ? 'text-on-accent' : 'bg-surface-strong'}`}
+                  className={`grid size-[1.875rem] place-items-center border-2 shadow-[var(--shadow-glass)] ${on ? 'text-on-accent' : 'bg-surface-strong'}`}
                   style={{ borderColor: ink.cool, color: on ? undefined : ink.cool, background: on ? ink.cool : undefined }}
                 >
                   <Icon size={16} aria-hidden />

@@ -27,7 +27,7 @@ export function AdminUsers() {
       <div className="flex flex-col gap-4 px-6 pb-6">
         <Card title={`${a.sections.users} · ${rows.length}`} expandId="admin-users" actions={<SearchBar value={query} onChange={setQuery} placeholder={a.filter} className="w-48" />}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse text-xs">
+            <table className="w-full min-w-[51.25rem] border-collapse text-xs">
               <thead className="bg-surface-strong">
                 <tr className="border-b border-border">
                   {Object.keys(u.columns).map((k) => (
@@ -60,7 +60,7 @@ export function AdminUsers() {
 
         <Card title={u.matrixTitle} expandId="admin-roles">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-xs">
+            <table className="w-full min-w-[40rem] border-collapse text-xs">
               <thead className="bg-surface-strong">
                 <tr className="border-b border-border">
                   <th scope="col" className={`${thCls} text-left text-2xs font-medium uppercase tracking-[var(--tracking-caps)] text-muted`} />

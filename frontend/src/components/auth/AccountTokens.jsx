@@ -113,7 +113,7 @@ export function AccountTokens() {
 
       <Card title={`${a.account.sections.tokens} · ${rows.length}`} expandId="account-tokens" actions={<SearchBar value={query} onChange={setQuery} className="w-44" />}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-xs">
+          <table className="w-full min-w-[45rem] border-collapse text-xs">
             <thead className="bg-surface-strong">
               <tr className="border-b border-border">
                 {Object.keys(tk.columns).map((k) => (

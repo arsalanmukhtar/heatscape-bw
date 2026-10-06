@@ -50,13 +50,13 @@ export function AccountPage() {
         <span className="mx-4 hidden h-6 w-px bg-nav-border sm:block lg:mx-6" aria-hidden />
         <span className="hidden text-sm font-semibold text-nav-text sm:inline">{ac.title}</span>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <a href="/" className="hidden h-[30px] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-xs text-nav-text hover:border-nav-border-strong md:flex">
+          <a href="/" className="hidden h-[1.875rem] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-xs text-nav-text hover:border-nav-border-strong md:flex">
             <LuArrowLeft size={13} className="shrink-0 text-nav-muted" aria-hidden />
             <span>{a.backToWorkspace}</span>
           </a>
           <CornerControls />
           {user && (
-            <button type="button" onClick={leave} className="flex h-[30px] items-center gap-2 border border-nav-border px-2.5 text-xs text-nav-text hover:bg-nav-hover">
+            <button type="button" onClick={leave} className="flex h-[1.875rem] items-center gap-2 border border-nav-border px-2.5 text-xs text-nav-text hover:bg-nav-hover">
               <LuLogOut size={13} className="shrink-0 text-nav-muted" aria-hidden />
               <span className="hidden sm:inline">{ac.signOut}</span>
             </button>

@@ -173,7 +173,7 @@ export function DatePicker({ value, onChange, label, className = 'min-w-0 flex-1
                       setShown({ y: shown.y, m });
                       setView('days');
                     }}
-                    className={`${cell} h-[58px] ${tone(picked?.y === shown.y && picked?.m === m, today.y === shown.y && today.m === m)}`}
+                    className={`${cell} h-[3.625rem] ${tone(picked?.y === shown.y && picked?.m === m, today.y === shown.y && today.m === m)}`}
                   >
                     {name}
                   </button>
@@ -191,7 +191,7 @@ export function DatePicker({ value, onChange, label, className = 'min-w-0 flex-1
                       setShown({ ...shown, y });
                       setView('months');
                     }}
-                    className={`${cell} h-[58px] ${tone(picked?.y === y, today.y === y)}`}
+                    className={`${cell} h-[3.625rem] ${tone(picked?.y === y, today.y === y)}`}
                   >
                     {y}
                   </button>

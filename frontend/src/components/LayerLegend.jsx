@@ -4,6 +4,7 @@ import { resolveColor, withAlpha } from '../lib/color';
 import { legendFor } from '../lib/legend';
 import { ICONS } from '../lib/mapImages';
 import { dashArray } from '../lib/symbology';
+import { rem } from '../lib/useRootScale';
 
 const SHOWN = 6;
 
@@ -29,20 +30,22 @@ const SHAPE_PATHS = {
 const OUTLINE = 'var(--border-strong)';
 const ring = (width) => ({ fill: 'none', stroke: OUTLINE, strokeWidth: width });
 
-/** One legend symbol (16 px), drawn from the layer's symbol settings. */
-export function LegendSwatch({ swatch, box = 16 }) {
+/** One legend symbol (16 px), drawn from the layer's symbol settings. paper: on an A4
+    report page, sized in px instead of scaling with the UI. */
+export function LegendSwatch({ swatch, box = 16, paper = false }) {
   const { geometry, symbol: s, color, size } = swatch;
+  const len = (n) => (paper ? n : rem(n));
   const c = resolveColor(color);
   const half = box / 2;
 
-  if (geometry === 'raster') return <span className="block shrink-0 border border-border-strong" style={{ width: box - 4, height: box - 4, background: c }} aria-hidden />;
+  if (geometry === 'raster') return <span className="block shrink-0 border border-border-strong" style={{ width: len(box - 4), height: len(box - 4), background: c }} aria-hidden />;
 
   if (geometry === 'line') {
     const w = Math.max(1, Math.min(4, size ?? s.width));
     const dash = dashArray(s.dash, s.customDash);
     const casing = s.casing ? w + 2 * Math.min(2, s.casingWidth) : 0;
     return (
-      <svg width={box} height={box} className="shrink-0" aria-hidden>
+      <svg width={box} height={box} viewBox={`0 0 ${box} ${box}`} style={{ width: len(box), height: len(box) }} className="shrink-0" aria-hidden>
         {/* Outline under the whole line (solid, so dashes keep a visible track). */}
         <line x1="1.5" x2={box - 1.5} y1={half} y2={half} strokeLinecap={s.cap} style={ring(Math.max(w, casing) + 1.5)} />
         {s.casing && <line x1="1.5" x2={box - 1.5} y1={half} y2={half} stroke={resolveColor(s.casingColor)} strokeWidth={casing} strokeLinecap={s.cap} />}
@@ -56,7 +59,7 @@ export function LegendSwatch({ swatch, box = 16 }) {
     const patterned = s.pattern !== 'solid' && !s.noFill;
     const sp = 4;
     return (
-      <svg width={box} height={box} className="shrink-0" aria-hidden>
+      <svg width={box} height={box} viewBox={`0 0 ${box} ${box}`} style={{ width: len(box), height: len(box) }} className="shrink-0" aria-hidden>
         {patterned && (
           <defs>
             <pattern id={id} width={sp} height={sp} patternUnits="userSpaceOnUse">

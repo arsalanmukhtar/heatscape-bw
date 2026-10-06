@@ -87,24 +87,19 @@ function MeasureRow({ measure: x }) {
         type="button"
         onClick={pick}
         aria-current={on ? 'true' : undefined}
-        className={`flex w-full items-center gap-3 border-b border-l-2 border-b-border-soft px-3 py-2.5 text-left ${on ? 'border-l-accent bg-accent-soft' : 'border-l-transparent hover:bg-hover'}`}
+        className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-l-2 border-b-border-soft px-3 py-2.5 text-left ${on ? 'border-l-accent bg-accent-soft' : 'border-l-transparent hover:bg-hover'}`}
       >
-        {/* Type mark: icon in the type colour (identity, always next to the type name in the tooltip). */}
-        <span className="grid size-8 shrink-0 place-items-center border" style={{ borderColor: type.color, color: type.color }} title={m.types[x.type]}>
+        {/* Two aligned lines (alignment rule): name ↔ status chip, place/date ↔ effect, each
+            line centred on its own grid row; the type mark spans both. */}
+        <span className="row-span-2 grid size-8 place-items-center border" style={{ borderColor: type.color, color: type.color }} title={m.types[x.type]}>
           <type.Icon size={15} aria-hidden />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-text">{x.name}</span>
-          <span className="mt-0.5 block truncate text-2xs text-muted">
-            {x.district} · {x.completed ? fmtDate(x.completed) : m.target(x.target)}
-          </span>
+        <span className="truncate text-sm text-text">{x.name}</span>
+        <span className="level-chip justify-self-end" style={{ '--chip': status.color }}>
+          {m.statuses[x.status]}
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1">
-          <span className="level-chip" style={{ '--chip': status.color }}>
-            {m.statuses[x.status]}
-          </span>
-          <span className={`text-xs tabular-nums ${effect.value == null ? 'text-muted' : 'font-semibold text-text'}`}>{effect.text}</span>
-        </span>
+        <span className="truncate text-2xs text-muted">{`${x.district} · ${x.completed ? fmtDate(x.completed) : m.target(x.target)}`}</span>
+        <span className={`justify-self-end whitespace-nowrap text-xs tabular-nums ${effect.value == null ? 'text-muted' : 'font-semibold text-text'}`}>{effect.text}</span>
       </button>
     </li>
   );

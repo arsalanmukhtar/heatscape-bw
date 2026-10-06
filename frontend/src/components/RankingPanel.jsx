@@ -137,7 +137,7 @@ function RankingTable({ rows: all, large }) {
             <col className="w-6" />
             <col />
             <col className="w-11" />
-            <col className="w-[52px]" />
+            <col className="w-[3.25rem]" />
             <col className="w-11" />
             <col className="w-11" />
           </colgroup>
@@ -300,7 +300,7 @@ function Dumbbell({ now, scenario, large = false }) {
   const fmt = (d) => `${d.med.toFixed(1)} °C (${d.lo.toFixed(1)}–${d.hi.toFixed(1)})`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={`block w-full ${large ? 'm-auto max-w-[1100px]' : ''}`} role="img" aria-label={`${t.ranking.now} ${fmt(now)}; ${t.ranking.scenario} ${fmt(scenario)}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className={`block w-full ${large ? 'm-auto max-w-[68.75rem]' : ''}`} role="img" aria-label={`${t.ranking.now} ${fmt(now)}; ${t.ranking.scenario} ${fmt(scenario)}`}>
       {ticks.map((v) => (
         <g key={v}>
           <line x1={x(v)} x2={x(v)} y1={PAD.t} y2={H - PAD.b} stroke="var(--chart-grid)" />

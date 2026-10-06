@@ -80,7 +80,7 @@ export function AccountSessions({ onSignedOut }) {
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-xs">
+          <table className="w-full min-w-[47.5rem] border-collapse text-xs">
             <thead className="bg-surface-strong">
               <tr className="border-b border-border">
                 {Object.keys(s.columns).map((k) => (

@@ -108,7 +108,7 @@ export function RichTextEditor({ value, onChange, label }) {
               className={`relative grid size-6 place-items-center ${active[tool.id] || picker?.kind === tool.id ? 'bg-accent-soft text-accent' : 'text-muted hover:text-accent'}`}
             >
               <tool.Icon size={13} />
-              {tool.color && <span className="absolute inset-x-1 bottom-0.5 h-[3px]" style={{ background: tool.color }} aria-hidden />}
+              {tool.color && <span className="absolute inset-x-1 bottom-0.5 h-[0.1875rem]" style={{ background: tool.color }} aria-hidden />}
             </button>
           ),
         )}
@@ -124,7 +124,7 @@ export function RichTextEditor({ value, onChange, label }) {
         onBlur={emit}
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}
-        className="report-rich min-h-[340px] resize-y overflow-auto px-2.5 py-2 text-xs leading-relaxed text-text outline-none"
+        className="report-rich min-h-[21.25rem] resize-y overflow-auto px-2.5 py-2 text-xs leading-relaxed text-text outline-none"
       />
       {picker && (
         <ColorPicker

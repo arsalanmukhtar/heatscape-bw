@@ -72,7 +72,7 @@ export function JobsView() {
                       key={j.id}
                       onClick={() => select(j.id)}
                       aria-selected={selected}
-                      className={`h-[29px] cursor-pointer border-b border-border-soft ${selected ? 'bg-accent-soft' : 'hover:bg-hover'}`}
+                      className={`h-[1.8125rem] cursor-pointer border-b border-border-soft ${selected ? 'bg-accent-soft' : 'hover:bg-hover'}`}
                     >
                       <td className="px-3 pl-4">
                         <StatusCell status={j.status} />

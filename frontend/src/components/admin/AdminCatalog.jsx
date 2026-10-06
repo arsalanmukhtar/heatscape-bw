@@ -3,6 +3,7 @@ import { STAC_COLLECTIONS } from '../../data/mock';
 import { t } from '../../i18n';
 import { BW_BOUNDS } from '../../lib/geo';
 import { useSearch } from '../../lib/search';
+import { rem } from '../../lib/useRootScale';
 import { useSort } from '../../lib/useSort';
 import { SearchBar, SearchEmpty } from '../SearchBar';
 import { SortTh } from '../SortTh';
@@ -23,7 +24,7 @@ function Footprint({ bbox }) {
   const x = (lon) => 2 + ((lon - w) / (e - w)) * (W - 4);
   const y = (lat) => 2 + ((n - lat) / (n - s)) * (H - 4);
   return (
-    <svg width={W} height={H} role="img" aria-label={a.catalog.footprint} className="block">
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: rem(W), height: rem(H) }} role="img" aria-label={a.catalog.footprint} className="block">
       <rect x={x(w0)} y={y(n0)} width={x(e0) - x(w0)} height={y(s0) - y(n0)} style={{ fill: 'var(--surface-raised)', stroke: 'var(--border-strong)' }} />
       <rect x={x(bbox[0])} y={y(bbox[3])} width={Math.max(2, x(bbox[2]) - x(bbox[0]))} height={Math.max(2, y(bbox[1]) - y(bbox[3]))} strokeWidth={1.5} style={{ fill: 'color-mix(in srgb, var(--accent-2) 22%, transparent)', stroke: 'var(--accent-2)' }} />
     </svg>
@@ -41,7 +42,7 @@ export function AdminCatalog() {
       <div className="px-6 pb-6">
         <Card title={a.catalog.total(rows.length)} expandId="admin-catalog" actions={<SearchBar value={query} onChange={setQuery} placeholder={a.filter} className="w-48" />}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-xs">
+            <table className="w-full min-w-[56.25rem] border-collapse text-xs">
               <thead className="bg-surface-strong">
                 <tr className="border-b border-border">
                   <SortTh label={c.title} sortKey="title" sort={sort} onSort={sortBy} className={thCls} />

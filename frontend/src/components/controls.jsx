@@ -160,7 +160,7 @@ export function Select({ value, onChange, options, label, className = 'w-full', 
 export function Field({ label, children, hint }) {
   return (
     <div className="flex min-h-7 items-center gap-2" title={hint}>
-      <span className="w-[104px] shrink-0 truncate text-xs text-muted">{label}</span>
+      <span className="w-[6.5rem] shrink-0 truncate text-xs text-muted">{label}</span>
       <div className="flex min-w-0 flex-1 items-center gap-1.5">{children}</div>
     </div>
   );
@@ -271,7 +271,7 @@ export function Segmented({ value, options, onChange, label }) {
           aria-checked={o.value === value}
           title={o.title ?? o.label}
           onClick={() => onChange(o.value)}
-          className={`flex h-[26px] min-w-0 flex-1 items-center justify-center gap-1 border-r border-border px-1.5 text-xs last:border-r-0 ${
+          className={`flex h-[1.625rem] min-w-0 flex-1 items-center justify-center gap-1 border-r border-border px-1.5 text-xs last:border-r-0 ${
             o.value === value ? 'bg-accent-soft font-semibold text-text' : 'text-muted hover:bg-hover hover:text-text'
           }`}
         >
@@ -320,7 +320,7 @@ export function ColorField({ value, onChange, label, compact = false, size = 'si
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
-          className="h-7 w-[76px] border border-border bg-field px-2 font-mono text-xs text-text outline-none focus:border-accent-line"
+          className="h-7 w-[4.75rem] border border-border bg-field px-2 font-mono text-xs text-text outline-none focus:border-accent-line"
         />
       )}
       {open && <ColorPicker value={value} onChange={onChange} onClose={() => setOpen(false)} anchor={btnRef.current} label={label} />}

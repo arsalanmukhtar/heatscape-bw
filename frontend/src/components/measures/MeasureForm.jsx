@@ -137,8 +137,12 @@ export function MeasureForm() {
               <p className="text-2xs text-muted">{f.uploadHint}</p>
               {geoMessage && (
                 <p className={`flex items-start gap-1.5 text-xs ${geoMessage.ok ? 'text-success' : 'text-warning'}`}>
-                  {!geoMessage.ok && <LuCircleAlert size={13} className="mt-px shrink-0" aria-hidden />}
-                  <span>{geoMessage.text}</span>
+                  {!geoMessage.ok && (
+                    <span className="icon-cap">
+                      <LuCircleAlert size={13} aria-hidden />
+                    </span>
+                  )}
+                  <span className="text-cap-start">{geoMessage.text}</span>
                 </p>
               )}
             </>
@@ -201,7 +205,7 @@ export function MeasureForm() {
 
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <span className="w-[104px] shrink-0 text-xs text-muted">{f.files}</span>
+            <span className="w-[6.5rem] shrink-0 text-xs text-muted">{f.files}</span>
             <button type="button" onClick={() => filesRef.current?.click()} className={btn}>
               <LuPaperclip size={12} aria-hidden />
               <span>{f.attach}</span>

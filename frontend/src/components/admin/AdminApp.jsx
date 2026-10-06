@@ -90,11 +90,11 @@ function AdminConsole() {
           {a.mock}
         </span>
         <div className="ml-auto flex items-center gap-3">
-          <a href="/" className="flex h-[30px] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-xs text-nav-text hover:border-nav-border-strong">
+          <a href="/" className="flex h-[1.875rem] items-center gap-2 border border-nav-border bg-bg-deep px-3 text-xs text-nav-text hover:border-nav-border-strong">
             <LuArrowLeft size={13} className="shrink-0 text-nav-muted" aria-hidden />
             <span>{a.back}</span>
           </a>
-          <button type="button" onClick={toggle} aria-label={resolved === 'dark' ? t.nav.themeToLight : t.nav.themeToDark} title={resolved === 'dark' ? t.nav.themeToLight : t.nav.themeToDark} className="grid size-[30px] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text">
+          <button type="button" onClick={toggle} aria-label={resolved === 'dark' ? t.nav.themeToLight : t.nav.themeToDark} title={resolved === 'dark' ? t.nav.themeToLight : t.nav.themeToDark} className="grid size-[1.875rem] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text">
             {resolved === 'dark' ? <LuSun size={15} /> : <LuMoon size={15} />}
           </button>
           <AccountMenu />

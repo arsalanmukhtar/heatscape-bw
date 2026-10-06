@@ -67,8 +67,8 @@ export function SqlField({ value, onChange, fields, kind = 'sql', rows = 3, labe
       )}
       {value.trim() && (
         <p className={`flex items-start gap-1.5 text-2xs ${result.error ? 'text-danger' : 'text-success'}`} role={result.error ? 'alert' : 'status'}>
-          {result.error ? <LuCircleAlert size={12} className="mt-px shrink-0" aria-hidden /> : <LuCircleCheck size={12} className="mt-px shrink-0" aria-hidden />}
-          <span>{result.error ? q.error(result.error, result.pos) : q.valid}</span>
+          <span className="icon-cap">{result.error ? <LuCircleAlert size={12} aria-hidden /> : <LuCircleCheck size={12} aria-hidden />}</span>
+          <span className="text-cap-start">{result.error ? q.error(result.error, result.pos) : q.valid}</span>
         </p>
       )}
     </div>

@@ -32,7 +32,7 @@ export function AdminPipelines() {
       <div className="flex flex-col gap-4 px-6 pb-6">
         <Card title={`${a.sections.pipelines} · ${rows.length}`} expandId="admin-pipelines" actions={<SearchBar value={query} onChange={setQuery} placeholder={a.filter} className="w-48" />}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-xs">
+            <table className="w-full min-w-[53.75rem] border-collapse text-xs">
               <thead className="bg-surface-strong">
                 <tr className="border-b border-border">
                   {COLUMNS.map((k) => (

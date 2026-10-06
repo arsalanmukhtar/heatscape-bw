@@ -11,7 +11,13 @@ const TRANSPARENT = 'rgba(0,0,0,0)';
 export function resolveColor(c) {
   if (!c) return TRANSPARENT;
   const m = /^var\((--[\w-]+)\)$/.exec(c);
-  return m ? cssVar(m[1]) || '#888888' : c;
+  const out = m ? cssVar(m[1]) || '#888888' : c;
+  // Mapbox's colour parser rejects hex with alpha (#rrggbbaa, #rgba): pass those as rgba().
+  const h = /^#([0-9a-f]{4}|[0-9a-f]{8})$/i.exec(out.trim());
+  if (!h) return out;
+  const x = h[1].length === 4 ? [...h[1]].map((d) => d + d).join('') : h[1];
+  const [r, g, b, a] = [0, 2, 4, 6].map((i) => parseInt(x.slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${+(a / 255).toFixed(3)})`;
 }
 
 /** { r, g, b, a } with r/g/b 0–255 and a 0–1, or null for an unreadable colour. */

@@ -12,18 +12,20 @@
 */
 
 :root {
-  /* Layout geometry: a 48px navigation bar level with the rail, one 352px (22rem) width for every
-     left panel section and every right panel view (symmetric workspace), and a dock tall
-     enough for its bar plus four table rows. */
-  --nav-h: 48px;
-  --rail-w: 48px;
-  --panel-w: 352px;
-  --region-menu-w: 148px; /* fixed so the nav does not shift when the region changes */
-  --legend-w: 172px;
-  --legend-tab-w: 34px;
-  --dock-bar-h: 38px;
-  --dock-open-h: 188px;
-  --dock-logs-w: 380px;
+  /* Layout geometry: a 3rem (48px) navigation bar level with the rail, one 22rem (352px)
+     width for every left panel section and every right panel view (symmetric workspace),
+     and a dock tall enough for its bar plus four table rows. All in rem, so the layout
+     scales with the root font size set per screen size (index.css); px values in the
+     comments are at the 16px desktop base. Hairlines (scrollbar, focus ring) stay px. */
+  --nav-h: 3rem;
+  --rail-w: 3rem;
+  --panel-w: 22rem;
+  --region-menu-w: 9.25rem; /* fixed so the nav does not shift when the region changes */
+  --legend-w: 10.75rem;
+  --legend-tab-w: 2.125rem;
+  --dock-bar-h: 2.375rem;
+  --dock-open-h: 11.75rem;
+  --dock-logs-w: 23.75rem;
   --dock-cur: var(--dock-bar-h);
 
   /* Square throughout. Surfaces sit flush against the viewport edges and the
@@ -39,15 +41,19 @@
   /* Freshness chips sit in a column at the right edge of a layer row. They are read
      as a set, so they share one width sized to the longest label rather than each
      shrinking to its own text. Wide enough for OBSERVED and FORECAST in full. */
-  --chip-w: 72px;
+  --chip-w: 4.5rem;
 
   /* Level chips read as a column in the distribution list and in the level column of
      the attribute table, so they share a width there too. Wide enough for SCREENING,
      the longest of the six labels, at the small size. */
-  --level-chip-w: 96px; /* every chip; fits the longest label ("12 of 128 rows") */
-  --chip-compact-w: 36px; /* icon-only chips (e.g. confidence pips in narrow columns) */
-  --dock-chip-w: 76px; /* badges on the compact dock tabs */
+  --level-chip-w: 6rem; /* every chip; fits the longest label ("12 of 128 rows") */
+  --chip-compact-w: 2.25rem; /* icon-only chips (e.g. confidence pips in narrow columns) */
+  --dock-chip-w: 4.75rem; /* badges on the compact dock tabs */
   --report-page: #ffffff; /* report pages are paper-white in both themes */
+  /* Destructive action buttons (delete): solid red with white text in both themes
+     (4.8:1). Not a status colour: it marks an action, never a state. */
+  --destructive: #dc2626;
+  --on-destructive: #ffffff;
 
   /* The vertical variant runs down the right edge of a layer row, edge to edge, so the
      chips of a group stack into one unbroken column. The row carries no vertical
@@ -56,7 +62,7 @@
      FORECAST, OFFICIAL), so that run plus twice the padding is the height. Raising the
      font size makes every layer row taller. The floor is 32px, below which the action
      buttons become the tallest item and the chip starts to clip. */
-  --chip-vertical-w: 18px;
+  --chip-vertical-w: 1.125rem;
   --chip-vertical-fs: 0.4375rem;
   --chip-vertical-tracking: 0.04em;
   --chip-vertical-pad: 3px;
@@ -233,6 +239,19 @@
   --unc-dot: rgba(10, 13, 17, 0.5);
   --unc-suppress: #9aa1ab;
   --unc-nodata: #b8bec6;
+}
+
+/* Compact tablet view (portrait, 768–1023 px wide; root at 14px, see index.css): panels
+   float over the map at a narrower width, the dock gets taller (more height than width),
+   the region menu and level chips tighten so the top nav and tables fit. */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+  :root {
+    --panel-w: 20rem;
+    --dock-open-h: 14rem;
+    --region-menu-w: 7.5rem;
+    --level-chip-w: 5.5rem;
+    --dock-logs-w: 18rem;
+  }
 }
 
 /* Dark, the default operations theme. */

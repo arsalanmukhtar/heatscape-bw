@@ -63,7 +63,7 @@ export function useReportPages() {
 
   const pages = useMemo(() => paginate(blocks, heights), [blocks, heights]);
   const measurer = (
-    <div data-theme="light" aria-hidden className="pointer-events-none invisible fixed left-0 top-0 -z-10 text-[13px] leading-relaxed text-text" style={{ width: CONTENT_W }} key={fontsReady ? 'f' : 'n'}>
+    <div data-theme="light" aria-hidden className="pointer-events-none invisible fixed left-[0px] top-[0px] -z-10 text-[13px] leading-relaxed text-text" style={{ width: CONTENT_W }} key={fontsReady ? 'f' : 'n'}>
       <div ref={ref}>
         {blocks
           .filter((b) => !b.fullPage)
@@ -85,7 +85,7 @@ export function useReportPages() {
 */
 function Marker({ on, hover, left = -18 }) {
   if (!on && !hover) return null;
-  return <span className="pointer-events-none absolute bottom-[14px] top-0 w-[3px]" style={{ left, background: on ? 'var(--accent)' : 'var(--border-strong)' }} aria-hidden />;
+  return <span className="pointer-events-none absolute bottom-[14px] top-[0px] w-[3px]" style={{ left, background: on ? 'var(--accent)' : 'var(--border-strong)' }} aria-hidden />;
 }
 
 /** One A4 page. Pages are always light (white) in both themes. */
@@ -119,8 +119,8 @@ function Page({ page, n, total, content: c, selectedId, onSelect, hovered, onHov
         </div>
       ) : (
         <>
-          <header className="absolute inset-x-0 top-0 flex items-center gap-2 border-b border-border" style={{ height: BODY_TOP - 28, marginInline: PAD_X, paddingTop: 22 }}>
-            <span className="grid size-5 place-items-center bg-accent text-on-accent" aria-hidden>
+          <header className="absolute inset-x-[0px] top-[0px] flex items-center gap-[8px] border-b border-border" style={{ height: BODY_TOP - 28, marginInline: PAD_X, paddingTop: 22 }}>
+            <span className="grid size-[20px] place-items-center bg-accent text-on-accent" aria-hidden>
               <LuFlame size={12} strokeWidth={2.25} />
             </span>
             <span className="text-[11px] font-bold tracking-[0.04em] text-text">{c.P.brand}</span>
@@ -138,9 +138,9 @@ function Page({ page, n, total, content: c, selectedId, onSelect, hovered, onHov
       )}
       {/* Footer: licence line wraps within the left half; page number, data version and date
           stand right-aligned in the other half. */}
-      <footer className="absolute flex items-start justify-between gap-8 border-t border-border pt-2 text-[9px] leading-snug text-muted" style={{ left: PAD_X, right: PAD_X, bottom: 18, height: BODY_BOTTOM - 28 }}>
+      <footer className="absolute flex items-start justify-between gap-[32px] border-t border-border pt-[8px] text-[9px] leading-snug text-muted" style={{ left: PAD_X, right: PAD_X, bottom: 18, height: BODY_BOTTOM - 28 }}>
         <p className="w-1/2">{c.P.licence}</p>
-        <div className="flex flex-col items-end gap-0.5 text-right">
+        <div className="flex flex-col items-end gap-[2px] text-right">
           <span className="text-[10px] font-semibold text-text">{c.P.page(n, total)}</span>
           <span>
             {c.P.dataVersion} {c.dataVersion}

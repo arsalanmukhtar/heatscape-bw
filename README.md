@@ -5,7 +5,7 @@ Geospatial analytics platform for urban heat and land sealing in Baden-Württemb
 ## Quick start
 
 ```powershell
-Copy-Item .env.example .env      # set POSTGRES_PASSWORD, ADMIN_PASSWORD; optional VITE_MAPBOX_TOKEN, PLANNER_PASSWORD
+Copy-Item .env.example .env      # set POSTGRES_PASSWORD; optional VITE_MAPBOX_TOKEN; dev sign-in users are preset
 docker compose up -d --build
 ```
 
@@ -62,12 +62,13 @@ gateway/     nginx.conf
 | Geoprocessing panel, Jobs History dock tab + logs, map scale bar | UI done, MOCK tools and simulated jobs; process/job API planned |
 | Scenarios workspace (editor, ranking with rank stability, priority map + swipe compare, charts tab) | UI done, ranking computed in browser from MOCK blocks; scenarios/ranking API planned |
 | Layers panel (per-layer legend, table, zoom, toggles) + Symbology panel: Style (incl. rule-based), Label, Query (builder + SQL subset) tabs; saved per layer | UI done, MOCK vector and raster layers; queries run in the browser until the API exists |
-| Measures register (list + filters, add form with draw (snap-close, corner editing) or GeoJSON/Shapefile upload, footprints + buffers on map, Effect panel with status change + timestamped status history, before/after + DiD chart, dock Summary + CSV/PDF reporting export) | UI done, MOCK register and effects; measures API planned (`docs/decisions.md` Open) |
+| Measures register (list + filters, add form with draw (snap-close, corner editing) or GeoJSON/Shapefile upload, footprints + buffers on map, Effect panel with status change + timestamped status history + delete (soft: archived as Deprecated, confirmed in a modal), before/after + DiD chart, dock Summary + CSV/PDF reporting export) | UI done, MOCK register and effects; measures API planned (`docs/decisions.md` Open) |
 | Report Builder (Reports view: outline with drag reorder, A4 preview with zoom, section properties, map capture, EN/DE page text, templates, rich text, per-language texts with machine translation via `POST /api/translate`; Export PDF via print, DOCX, share link) | UI done, MOCK indicators; saved in the browser; translation live (LibreTranslate); reports API planned (`docs/decisions.md` Open) |
 | Public Heat Portal `/portal` (EN/DE, mobile bottom sheet, address search, DWD warning card, area result with quantile dot plot, cool places with walking time, value-suppressing heat layer, 10-min walk isochrone) | UI done, MOCK warning, places and confidence; isochrone live (Mapbox); portal API planned (`docs/decisions.md` Open) |
 | Admin console `/admin` (Overview KPIs + pipeline timeline + alerts, Data Pipelines with run/pause/logs + run history, STAC catalog, Regions onboarding, Users & Roles + permission matrix, Copilot usage/cost/eval, System Health, Audit Log, log dock) | UI done, MOCK except System Health (live checks of the running services); ops API planned (`docs/decisions.md` Open) |
 | Sign-in (`/signin`, split screen, EN/DE, inline validation, show password, remember me, error banner) + middleware sessions + gateway Admin-role guard on `/admin` | Done with MOCK users from `.env` (`ADMIN_*`, `PLANNER_*`); Keycloak planned (`docs/decisions.md` Open) |
 | Forgot / update password, email verification, municipality SSO button, Account settings (`/account`: profile, language & theme, active sessions, API tokens) | UI done; sessions live, the rest MOCK until Keycloak |
+| Responsive scale (root font size per screen class, rem everywhere, compact portrait-tablet view; portal ≥ 16 px; report pages fixed A4) | Done |
 | Backend health + database extensions check | Done |
 | Keycloak, workers, tiles, copilot API | Planned (`docs/architecture.md`) |
 

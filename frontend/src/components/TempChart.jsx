@@ -90,7 +90,7 @@ export function TempChart({ labels, series, domain, ticks, unit, large = false }
       <ul className="flex shrink-0 flex-col gap-2 pt-1 text-2xs text-muted">
         {series.map((s) => (
           <li key={s.name} className="flex items-center gap-1.5 whitespace-nowrap">
-            <svg width="22" height="8" aria-hidden>
+            <svg width="22" height="8" viewBox="0 0 22 8" aria-hidden>
               <line x1="0" x2="22" y1="4" y2="4" stroke={s.color} strokeWidth={s.dashed ? 1.25 : 2} strokeDasharray={s.dashed ? '3 2.5' : undefined} />
               {!s.dashed && <circle cx="11" cy="4" r="2.6" fill={s.color} />}
             </svg>

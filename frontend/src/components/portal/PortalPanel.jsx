@@ -34,8 +34,10 @@ function TodayCard({ p, lang }) {
   return (
     <Card id="portal-today" title={p.today.title}>
       <div className="flex items-start gap-3 border-l-4 px-3 py-3" style={{ borderColor: lv.color, background: `color-mix(in srgb, ${lv.color} 12%, transparent)` }} role="status">
-        <lv.Icon size={22} className="mt-0.5 shrink-0" style={{ color: lv.color }} aria-hidden />
-        <div className="min-w-0">
+        <span className="icon-cap text-base" style={{ color: lv.color }}>
+          <lv.Icon size={22} aria-hidden />
+        </span>
+        <div className="text-cap-start min-w-0">
           <p className="text-base font-semibold text-text">{p.today.levels[w.level]}</p>
           {w.level !== 'none' && <p className="mt-0.5 text-sm text-text">{p.today.validity(w.area, w.from, w.to)}</p>}
         </div>
@@ -55,9 +57,11 @@ function TodayCard({ p, lang }) {
       <h3 className="mt-4 text-sm font-semibold text-text">{p.today.tipsTitle}</h3>
       <ul className="mt-2 flex flex-col gap-1.5">
         {p.today.tips.map((tip) => (
-          <li key={tip} className="flex gap-2 text-sm leading-relaxed text-text">
-            <LuThermometerSun size={16} className="mt-0.5 shrink-0 text-muted" aria-hidden />
-            <span>{tip}</span>
+          <li key={tip} className="flex items-start gap-2 text-sm leading-relaxed text-text">
+            <span className="icon-cap text-muted">
+              <LuThermometerSun size={16} aria-hidden />
+            </span>
+            <span className="text-cap-start">{tip}</span>
           </li>
         ))}
       </ul>
@@ -139,23 +143,18 @@ function CoolCard({ p, location, placeId, pickPlace }) {
                     onClick={() => pickPlace(x.id)}
                     aria-label={p.cool.showOnMap(x.name)}
                     aria-pressed={on}
-                    className={`flex min-h-11 w-full items-start gap-3 px-3 py-2.5 text-left ${on ? 'bg-accent-soft' : 'hover:bg-hover'}`}
+                    className={`grid min-h-11 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 text-left ${on ? 'bg-accent-soft' : 'hover:bg-hover'}`}
                   >
-                    <span className="mt-0.5 grid size-9 shrink-0 place-items-center border border-border-strong text-[var(--series-1)]" aria-hidden>
+                    {/* Aligned lines (alignment rule): name ↔ walking time, kind/hours ↔ distance,
+                        each centred on its own grid row; the icon tile spans the first two. */}
+                    <span className="row-span-2 grid size-9 place-items-center border border-border-strong text-[var(--series-1)]" aria-hidden>
                       <Icon size={18} />
                     </span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="text-sm font-semibold text-text">{x.name}</span>
-                      <span className="text-xs text-muted">
-                        {p.cool.kinds[x.kind]} · {x.hours ? p.cool.hours(x.hours) : p.cool.always}
-                        {x.note ? ` · ${p.cool.notes[x.note]}` : ''}
-                      </span>
-                      {feats.length > 0 && <span className="text-xs text-muted">{feats.join(' · ')}</span>}
-                    </span>
-                    <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-                      <span className="text-sm font-semibold tabular-nums text-text">{p.cool.walk(x.minutes)}</span>
-                      <span className="text-xs tabular-nums text-muted">{p.cool.distance(x.meters)}</span>
-                    </span>
+                    <span className="text-sm font-semibold text-text">{x.name}</span>
+                    <span className="justify-self-end whitespace-nowrap text-sm font-semibold tabular-nums text-text">{p.cool.walk(x.minutes)}</span>
+                    <span className="text-xs text-muted">{`${p.cool.kinds[x.kind]} · ${x.hours ? p.cool.hours(x.hours) : p.cool.always}${x.note ? ` · ${p.cool.notes[x.note]}` : ''}`}</span>
+                    <span className="justify-self-end whitespace-nowrap text-xs tabular-nums text-muted">{p.cool.distance(x.meters)}</span>
+                    {feats.length > 0 && <span className="col-start-2 col-end-4 text-xs text-muted">{feats.join(' · ')}</span>}
                   </button>
                 </li>
               );

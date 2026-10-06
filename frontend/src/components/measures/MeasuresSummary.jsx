@@ -3,6 +3,7 @@ import { t } from '../../i18n';
 import { downloadCsv } from '../../lib/csv';
 import { resolveLight } from '../../lib/css';
 import { MEASURE_STATUSES, MEASURE_TYPES } from '../../lib/measures';
+import { rem } from '../../lib/useRootScale';
 import { filterMeasures, useAllMeasures, useMeasures } from '../../state/measures';
 import { fmtEffect, fmtInt } from './format';
 
@@ -185,14 +186,14 @@ function ByYear({ rows, large }) {
         </div>
         <Legend />
       </div>
-      <div className="flex items-end gap-2" style={{ height: H }}>
+      <div className="flex items-end gap-2" style={{ height: rem(H) }}>
         {data.map((d) => {
           const total = d.parts.reduce((a, b) => a + b, 0);
           return (
             <div key={d.y} className="flex min-w-0 flex-1 flex-col items-center gap-1">
               <span className="text-2xs tabular-nums text-text">{total}</span>
               {/* Segments stack bottom-up in type order, 2 px surface gaps between them. */}
-              <div className="flex w-full max-w-10 flex-col-reverse gap-0.5" style={{ height: (total / max) * (H - 34) }}>
+              <div className="flex w-full max-w-10 flex-col-reverse gap-0.5" style={{ height: rem((total / max) * (H - 34)) }}>
                 {d.parts.map((n, i) =>
                   n ? (
                     <span key={MEASURE_TYPES[i].id} className="block w-full" style={{ flexGrow: n, background: MEASURE_TYPES[i].color }} title={`${d.y} · ${t.measures.types[MEASURE_TYPES[i].id]}: ${n}`} />

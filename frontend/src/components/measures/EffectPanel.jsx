@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LuCheck, LuDownload, LuHourglass, LuScanSearch } from 'react-icons/lu';
+import { LuCheck, LuDownload, LuHourglass, LuScanSearch, LuTrash2 } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
 import { VscCollapseAll } from 'react-icons/vsc';
 import { t } from '../../i18n';
@@ -8,6 +8,7 @@ import { MEASURE_STATUSES, measureStatus, measureType, MIN_SUMMERS } from '../..
 import { useLayout } from '../../state/layout';
 import { useAllMeasures, useMeasures } from '../../state/measures';
 import { ConfidencePips } from '../ConfidencePips';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { Field, Select } from '../controls';
 import { DatePicker } from '../DatePicker';
 import { ExpandButton, ExpandSlot } from '../Expandable';
@@ -17,7 +18,11 @@ import { EffectChart } from './EffectChart';
 import { fmtDate, fmtSigned, measureBounds } from './format';
 
 const e = t.effect;
-const outlineBtn = 'flex h-8 flex-1 items-center justify-center gap-1.5 border border-border-strong px-3 text-xs text-text hover:bg-hover disabled:opacity-40 disabled:hover:bg-transparent';
+// Footer buttons: the app's standard icon button (xs text, 13 px icon), one line each with
+// short labels and tight padding so the three fit the panel width. Labels are plain spans
+// (no truncate): clipping breaks the optical centring trim.
+const footBtn = 'flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border px-1.5 text-xs';
+const outlineBtn = `${footBtn} border-border-strong text-text hover:bg-hover disabled:opacity-40 disabled:hover:bg-transparent`;
 
 /** Right panel "Effect": before/after and difference-in-differences for the selected measure. */
 export function EffectPanel() {
@@ -43,6 +48,8 @@ export function EffectPanel() {
 
 function Effect({ measure: x }) {
   const { main } = useMap();
+  const deprecate = useMeasures((s) => s.deprecate);
+  const [confirming, setConfirming] = useState(false);
   const type = measureType(x.type);
   const status = measureStatus(x.status);
   const fx = x.effect;
@@ -81,15 +88,39 @@ function Effect({ measure: x }) {
       </div>
 
       <div className="flex shrink-0 gap-2 border-t border-border px-4 py-3">
-        <button type="button" onClick={() => main?.fitBounds(measureBounds(x), { padding: 160, maxZoom: 17, duration: 800 })} className={outlineBtn}>
-          <LuScanSearch size={13} aria-hidden />
+        <button type="button" onClick={() => main?.fitBounds(measureBounds(x), { padding: 160, maxZoom: 17, duration: 800 })} title={e.zoomLabel} aria-label={e.zoomLabel} className={outlineBtn}>
+          <LuScanSearch size={13} className="shrink-0" aria-hidden />
           <span>{e.zoom}</span>
         </button>
-        <button type="button" onClick={exportCsv} disabled={!x.series} className={outlineBtn}>
-          <LuDownload size={13} aria-hidden />
+        <button type="button" onClick={exportCsv} disabled={!x.series} title={e.exportLabel} aria-label={e.exportLabel} className={outlineBtn}>
+          <LuDownload size={13} className="shrink-0" aria-hidden />
           <span>{e.export}</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          aria-label={e.deleteLabel(x.name)}
+          title={e.deleteLabel(x.name)}
+          className={`${footBtn} border-transparent bg-[var(--destructive)] font-semibold text-[var(--on-destructive)] hover:brightness-110`}
+        >
+          <LuTrash2 size={13} className="shrink-0" aria-hidden />
+          <span>{e.delete}</span>
+        </button>
       </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title={e.deleteTitle}
+        confirmLabel={e.deleteConfirm}
+        cancelLabel={e.cancel}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          deprecate(x.id);
+        }}
+      >
+        {e.deleteText(x.name)}
+      </ConfirmDialog>
     </>
   );
 }

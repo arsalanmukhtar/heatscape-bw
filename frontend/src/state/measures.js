@@ -10,7 +10,10 @@ import { matchesSearch } from '../lib/search';
   browser until the measures API exists; uploaded files are kept for the session only).
   New measures have no effect estimate yet ("awaiting data"). Status changes are kept as
   an append-only, timestamped trail per measure (statusLog), never by overwriting.
+  Deleting is a soft delete: a final 'deprecated' event archives the measure. It leaves
+  the register, map and summaries but keeps its record and full trail (historic archive).
 */
+export const DEPRECATED = 'deprecated';
 const EMPTY_FILTERS = { type: '', status: '', district: '', year: '' };
 
 export const emptyDraft = () => ({
@@ -35,6 +38,8 @@ const isDone = (status) => status === 'completed' || status === 'monitored';
 function withStatusLog(m, events) {
   if (!events?.length) return { ...m, history: [] };
   const last = events[events.length - 1];
+  // Archived: the record stays exactly as it was, only marked deprecated.
+  if (last.to === DEPRECATED) return { ...m, history: events, status: DEPRECATED, deprecatedAt: last.at };
   const done = isDone(last.to);
   return {
     ...m,
@@ -49,13 +54,25 @@ function withStatusLog(m, events) {
 
 let cacheKey = [null, null];
 let allCache = null;
-/** MOCK register + added measures, status trail applied (stable array while nothing changes). */
-export function allMeasures(added, statusLog = {}) {
+let archiveCache = null;
+function build(added, statusLog) {
   if (added !== cacheKey[0] || statusLog !== cacheKey[1]) {
     cacheKey = [added, statusLog];
-    allCache = [...MEASURES, ...added].map((m) => withStatusLog(m, statusLog[m.id]));
+    const every = [...MEASURES, ...added].map((m) => withStatusLog(m, statusLog[m.id]));
+    allCache = every.filter((m) => m.status !== DEPRECATED);
+    archiveCache = every.filter((m) => m.status === DEPRECATED);
   }
+}
+/** The active register: MOCK + added measures, status trail applied, deprecated ones left out
+    (stable array while nothing changes). */
+export function allMeasures(added, statusLog = {}) {
+  build(added, statusLog);
   return allCache;
+}
+/** The archive: deprecated (soft-deleted) measures with their full trail. */
+export function archivedMeasures(added, statusLog = {}) {
+  build(added, statusLog);
+  return archiveCache;
 }
 
 const SORTS = {
@@ -165,6 +182,18 @@ export const useMeasures = create()(
         if (!current) return;
         const event = { from: current.status, to, at: new Date().toISOString(), completed: isDone(to) ? completed || null : null };
         set({ statusLog: { ...get().statusLog, [id]: [...(get().statusLog[id] ?? []), event] } });
+      },
+
+      // Soft delete: append a 'deprecated' event (never removes the record or its trail) and
+      // move the selection to the next active measure.
+      deprecate: (id) => {
+        const active = allMeasures(get().added, get().statusLog);
+        const current = active.find((m) => m.id === id);
+        if (!current) return;
+        const event = { from: current.status, to: DEPRECATED, at: new Date().toISOString(), completed: null };
+        const statusLog = { ...get().statusLog, [id]: [...(get().statusLog[id] ?? []), event] };
+        const next = active[active.indexOf(current) + 1] ?? active[active.indexOf(current) - 1] ?? null;
+        set({ statusLog, selectedId: get().selectedId === id ? (next?.id ?? null) : get().selectedId });
       },
 
       save: () => {

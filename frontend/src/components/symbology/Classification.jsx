@@ -139,7 +139,7 @@ export function ClassList({ def, id, style }) {
       <div className="flex h-6 items-center gap-1.5 border-b border-border text-2xs uppercase tracking-[var(--tracking-caps)] text-muted">
         <span className="w-7 shrink-0" />
         <span className="w-7 shrink-0" />
-        <span className={graduated ? 'w-[116px] shrink-0' : 'w-16 shrink-0'}>{graduated ? s.range : s.value}</span>
+        <span className={graduated ? 'w-[7.25rem] shrink-0' : 'w-16 shrink-0'}>{graduated ? s.range : s.value}</span>
         <span className="min-w-0 flex-1">{s.label}</span>
         <span className="w-9 shrink-0 text-right">{s.count}</span>
       </div>
@@ -161,9 +161,9 @@ export function ClassList({ def, id, style }) {
             <span className={`flex min-w-0 flex-1 items-center gap-1.5 transition-opacity duration-150 ${c.visible ? '' : 'opacity-40'}`}>
             <ColorField value={colors[i]} onChange={(c) => updateClass(id, i, { color: c })} label={s.classColor} compact />
             {graduated ? (
-              <span className="flex w-[116px] shrink-0 items-center gap-1">
-                <NumberField value={+c.from.toFixed(style.precision + 1)} step="any" label={s.from} className="w-[54px]" onChange={(v) => updateClass(id, i, { from: v })} />
-                <NumberField value={+c.to.toFixed(style.precision + 1)} step="any" label={s.to} className="w-[54px]" onChange={(v) => updateClass(id, i, { to: v })} />
+              <span className="flex w-[7.25rem] shrink-0 items-center gap-1">
+                <NumberField value={+c.from.toFixed(style.precision + 1)} step="any" label={s.from} className="w-[3.375rem]" onChange={(v) => updateClass(id, i, { from: v })} />
+                <NumberField value={+c.to.toFixed(style.precision + 1)} step="any" label={s.to} className="w-[3.375rem]" onChange={(v) => updateClass(id, i, { to: v })} />
               </span>
             ) : (
               <span className="w-16 shrink-0 truncate text-xs text-text" title={String(c.value)}>

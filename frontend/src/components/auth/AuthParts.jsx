@@ -84,7 +84,8 @@ function Wordmark({ large = false, ref }) {
 /*
   Split screen from 1024 px: the heat visual with name and value statement over the
   partner / data provider logo row (55 %), the form on a surface panel (45 %). Below: form only, under a slim
-  visual header. The visual always uses the dark tokens (data-theme="dark").
+  visual header and over the partner / data provider strip. The visual always uses the
+  dark tokens (data-theme="dark").
 */
 export function AuthLayout({ children }) {
   const a = useAuthText();
@@ -128,6 +129,10 @@ export function AuthLayout({ children }) {
             {a.privacy}
           </a>
         </footer>
+        {/* Below 1024 px the visual panel is hidden, so the logo strip closes the form side. */}
+        <div className="lg:hidden">
+          <PartnerTicker />
+        </div>
       </div>
     </div>
   );
@@ -163,8 +168,10 @@ export function Banner({ tone = 'info', children, className = '' }) {
   const { Icon, color, bg, role } = TONES[tone];
   return (
     <div role={role} className={`flex items-start gap-2.5 border-l-2 px-3 py-2.5 text-sm text-text ${className}`} style={{ borderLeftColor: color, background: bg }}>
-      <Icon size={15} className="mt-px shrink-0" style={{ color }} aria-hidden />
-      <span className="min-w-0 flex-1 text-justify">{children}</span>
+      <span className="icon-cap">
+        <Icon size={15} style={{ color }} aria-hidden />
+      </span>
+      <span className="text-cap-start min-w-0 flex-1 text-justify">{children}</span>
     </div>
   );
 }
