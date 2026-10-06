@@ -13,7 +13,8 @@ import { setShortcutMap } from '../lib/shortcuts';
 import { buildLayerSpec } from '../lib/symbology';
 import { useMapResize } from '../lib/useMapResize';
 import { useLayout } from '../state/layout';
-import { useMapStyleUrl } from '../state/basemap';
+import { basemapAttributions } from '../lib/attribution';
+import { useBasemap, useMapStyleUrl } from '../state/basemap';
 import { useActiveRanking, useScenarios } from '../state/scenarios';
 import { useSymbology } from '../state/symbology';
 import { allMeasures, useMeasures } from '../state/measures';
@@ -50,7 +51,7 @@ export function MapView() {
       <Geocoder disabled={!TOKEN} />
       <MapControls disabled={!TOKEN} canCompare={!!ranking} />
       {TOKEN && <MapScale />}
-      {TOKEN && <MapAttribution />}
+      {TOKEN && <WorkspaceAttribution />}
       {/* Expanded tables and charts render here, above map and controls (see Expandable). */}
       <div id={MAP_OVERLAY_ID} className="pointer-events-none absolute inset-0 z-30" {...SNAPSHOT_EXCLUDE} />
     </div>
@@ -437,6 +438,14 @@ function LiveMap() {
       )}
     </MapGL>
   );
+}
+
+/** Credits for the basemap and every data layer that is switched on. */
+function WorkspaceAttribution() {
+  const basemap = useBasemap((s) => s.basemap);
+  const layers = useWorkspace((s) => s.layers);
+  const sources = [...basemapAttributions(basemap), ...LAYERS.filter((def) => layers[def.id]).flatMap((def) => def.attribution ?? [])];
+  return <MapAttribution sources={sources} />;
 }
 
 function MapPlaceholder() {

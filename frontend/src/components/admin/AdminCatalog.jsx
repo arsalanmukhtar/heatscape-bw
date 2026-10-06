@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { STAC_COLLECTIONS } from '../../data/mock';
 import { t } from '../../i18n';
+import { ATTRIBUTIONS, credit } from '../../lib/attribution';
 import { BW_BOUNDS } from '../../lib/geo';
 import { useSearch } from '../../lib/search';
 import { rem } from '../../lib/useRootScale';
@@ -11,8 +12,8 @@ import { Card, fmtDate, fmtInt, PageHead, tdCls, thCls, trCls } from './AdminPar
 
 const a = t.admin;
 const c = a.catalog.columns;
-const searchValues = (x) => [x.id, x.title, x.licence, x.version];
-const sortValue = (x, key) => (key === 'temporal' ? x.temporal[0] : key === 'spatial' ? (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]) : x[key]);
+const searchValues = (x) => [x.id, x.title, x.licence, credit(x.attribution), x.version];
+const sortValue = (x, key) => (key === 'temporal' ? x.temporal[0] : key === 'spatial' ? (x.bbox[2] - x.bbox[0]) * (x.bbox[3] - x.bbox[1]) : key === 'credit' ? credit(x.attribution) : x[key]);
 
 /** Footprint placeholder: the collection's bbox drawn inside the Baden-Württemberg frame. */
 function Footprint({ bbox }) {
@@ -42,7 +43,7 @@ export function AdminCatalog() {
       <div className="px-6 pb-6">
         <Card title={a.catalog.total(rows.length)} expandId="admin-catalog" actions={<SearchBar value={query} onChange={setQuery} placeholder={a.filter} className="w-48" />}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[56.25rem] border-collapse text-xs">
+            <table className="w-full min-w-[68.75rem] border-collapse text-xs">
               <thead className="bg-surface-strong">
                 <tr className="border-b border-border">
                   <SortTh label={c.title} sortKey="title" sort={sort} onSort={sortBy} className={thCls} />
@@ -50,6 +51,7 @@ export function AdminCatalog() {
                   <SortTh label={c.temporal} sortKey="temporal" sort={sort} onSort={sortBy} className={thCls} />
                   <SortTh label={c.spatial} sortKey="spatial" sort={sort} onSort={sortBy} className={thCls} />
                   <SortTh label={c.licence} sortKey="licence" sort={sort} onSort={sortBy} className={thCls} />
+                  <SortTh label={c.credit} sortKey="credit" sort={sort} onSort={sortBy} className={thCls} />
                   <SortTh label={c.version} sortKey="version" sort={sort} onSort={sortBy} className={thCls} />
                 </tr>
               </thead>
@@ -70,7 +72,12 @@ export function AdminCatalog() {
                         <span className="font-mono text-2xs text-muted">{x.bbox.map((v) => v.toFixed(2)).join(', ')}</span>
                       </span>
                     </td>
-                    <td className={`${tdCls} text-text`}>{x.licence}</td>
+                    <td className={tdCls}>
+                      <a href={ATTRIBUTIONS[x.attribution]?.licenceUrl} target="_blank" rel="noopener noreferrer" className="text-text underline-offset-2 hover:text-accent hover:underline">
+                        {x.licence}
+                      </a>
+                    </td>
+                    <td className={`${tdCls} text-muted`}>{credit(x.attribution)}</td>
                     <td className={`${tdCls} text-text`}>{x.version}</td>
                   </tr>
                 ))}

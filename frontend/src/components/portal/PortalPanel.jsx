@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { LuBuilding2, LuChevronDown, LuCircleCheck, LuDroplets, LuPhone, LuThermometerSun, LuTrees, LuTriangleAlert, LuUmbrella } from 'react-icons/lu';
 import { HEAT_WARNING } from '../../data/mock';
 import { portalText } from '../../i18n';
+import { ATTRIBUTIONS, credit, DATA_ATTRIBUTIONS } from '../../lib/attribution';
 import { areaResult, coolPlacesNear, rankPhrase, RADIUS_M } from '../../lib/portal';
 import { usePortal } from '../../state/portal';
 import { ConfidencePips } from '../ConfidencePips';
@@ -173,8 +174,8 @@ function CoolCard({ p, location, placeId, pickPlace }) {
   );
 }
 
-/** About the data: square accordion, first item open. */
-function AboutCard({ p }) {
+/** About the data: square accordion, first item open; then every data source with its credit and licence. */
+function AboutCard({ p, lang }) {
   const [open, setOpen] = useState(0);
   return (
     <Card id="portal-about" title={p.about.title}>
@@ -201,6 +202,26 @@ function AboutCard({ p }) {
           </div>
         ))}
       </div>
+      <h3 className="mt-5 text-sm font-semibold text-text">{p.about.sourcesTitle}</h3>
+      <ul className="mt-2 flex flex-col border border-border">
+        {DATA_ATTRIBUTIONS.map((k) => {
+          const x = ATTRIBUTIONS[k];
+          return (
+            <li key={k} className="border-b border-border-soft px-3 py-2.5 last:border-b-0">
+              <a href={x.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-text underline-offset-2 hover:underline">
+                {x.name}
+              </a>
+              <p className="mt-0.5 text-xs text-muted">{credit(k, lang)}</p>
+              <p className="mt-0.5 text-xs text-muted">
+                {p.about.licence}:{' '}
+                <a href={x.licenceUrl} target="_blank" rel="noopener noreferrer" className="text-accent underline-offset-2 hover:underline">
+                  {x.licence}
+                </a>
+              </p>
+            </li>
+          );
+        })}
+      </ul>
     </Card>
   );
 }
@@ -217,7 +238,7 @@ export function PortalPanel() {
       <TodayCard p={p} lang={lang} />
       <AreaCard p={p} lang={lang} location={location} />
       <CoolCard p={p} location={location} placeId={placeId} pickPlace={pickPlace} />
-      <AboutCard p={p} />
+      <AboutCard p={p} lang={lang} />
     </div>
   );
 }

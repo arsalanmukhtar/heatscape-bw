@@ -4,6 +4,7 @@ import { LuPanelRightOpen } from 'react-icons/lu';
 import { BottomDock } from './components/BottomDock';
 import { CopilotPanel } from './components/CopilotPanel';
 import { GeoprocessingPanel } from './components/GeoprocessingPanel';
+import { ToolPanel } from './components/ToolPanel';
 import { InspectorPanel } from './components/InspectorPanel';
 import { LayersPanel } from './components/LayersPanel';
 import { LeftRail } from './components/LeftRail';
@@ -44,6 +45,7 @@ const VIEWS = {
   symbology: { Panel: SymbologyPanel, title: t.symbology.title, expand: t.symbology.expand },
   effect: { Panel: EffectPanel, title: t.effect.title, expand: t.effect.expand },
   report: { Panel: ReportProps, title: t.report.propsTitle, expand: t.report.expand },
+  tool: { Panel: ToolPanel, title: t.geoprocessing.toolTitle, expand: t.geoprocessing.expand },
 };
 
 export default function App() {

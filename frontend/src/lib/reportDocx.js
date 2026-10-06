@@ -208,7 +208,7 @@ export async function buildDocx(report, c) {
                 alignment: AlignmentType.LEFT,
                 children: [run(`${P.dataVersion} ${c.dataVersion} · ${P.generated} ${c.date} · `, { size: 16, color: C.muted }), new TextRun({ children: [PageNumber.CURRENT, ' / ', PageNumber.TOTAL_PAGES], font: FONT, size: 16, color: C.muted })],
               }),
-              new Paragraph({ children: [run(P.licence, { size: 14, color: C.muted })] }),
+              new Paragraph({ children: [run(c.credits, { size: 14, color: C.muted })] }),
             ],
           }),
         },

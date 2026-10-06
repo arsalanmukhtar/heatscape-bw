@@ -14,7 +14,8 @@ import { allMeasures, useMeasures } from '../state/measures';
 
 /*
   Map layers that can be styled. Each entry: id (also the visibility key in
-  workspace.layers), group, geometry (point | line | polygon | raster), label, and either
+  workspace.layers), attribution (provider keys from lib/attribution.js, credited on the
+  map while the layer is shown), group, geometry (point | line | polygon | raster), label, and either
   vector data (GeoJSON) with fields, or a raster (kind: continuous | classified | dem).
   field.kind drives table cells: text | id | num | int | pct | temp | green | chip | coord.
   Feature-level ids live in properties.id so tables, queries and styles share one key.
@@ -79,10 +80,11 @@ export const LAYER_GROUPS = [
 ];
 
 export const LAYERS = [
-  { id: 'surfaceTemp', group: 'heat', geometry: 'polygon', label: t.layers.surfaceTemp, data: SURFACE_GRID, fields: GRID_FIELDS },
-  { id: 'airTemp', group: 'heat', geometry: 'line', label: t.layers.airTemp, data: AIR_GRID, fields: GRID_FIELDS },
+  { id: 'surfaceTemp', attribution: ['usgs'], group: 'heat', geometry: 'polygon', label: t.layers.surfaceTemp, data: SURFACE_GRID, fields: GRID_FIELDS },
+  { id: 'airTemp', attribution: ['dwd'], group: 'heat', geometry: 'line', label: t.layers.airTemp, data: AIR_GRID, fields: GRID_FIELDS },
   {
     id: 'blocks',
+    attribution: ['usgs', 'destatis', 'lgl'],
     group: 'urban',
     geometry: 'polygon',
     label: t.layers.blocks,
@@ -102,6 +104,7 @@ export const LAYERS = [
   },
   {
     id: 'sealing',
+    attribution: ['copernicus'],
     group: 'urban',
     geometry: 'point',
     label: t.layers.sealing,
@@ -113,13 +116,13 @@ export const LAYERS = [
       ...COORDS,
     ],
   },
-  { id: 'hospitals', group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, data: facilities('hospital'), fields: facilityFields(c.capacityBeds) },
-  { id: 'water', group: 'infrastructure', geometry: 'point', label: t.layers.water, data: facilities('water'), fields: facilityFields(c.capacityWater) },
-  { id: 'measures', group: 'adaptation', geometry: 'polygon', label: t.layers.measures, getData: measureData('footprints'), fields: MEASURE_FIELDS },
-  { id: 'measureBuffers', group: 'adaptation', geometry: 'line', label: t.layers.measureBuffers, getData: measureData('buffers'), fields: MEASURE_FIELDS },
-  { id: 'lstRaster', group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
-  { id: 'hazardRaster', group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
-  { id: 'hillshade', group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },
+  { id: 'hospitals', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, data: facilities('hospital'), fields: facilityFields(c.capacityBeds) },
+  { id: 'water', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.water, data: facilities('water'), fields: facilityFields(c.capacityWater) },
+  { id: 'measures', attribution: ['usgs', 'copernicus'], group: 'adaptation', geometry: 'polygon', label: t.layers.measures, getData: measureData('footprints'), fields: MEASURE_FIELDS },
+  { id: 'measureBuffers', attribution: [], group: 'adaptation', geometry: 'line', label: t.layers.measureBuffers, getData: measureData('buffers'), fields: MEASURE_FIELDS },
+  { id: 'lstRaster', attribution: ['usgs'], group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
+  { id: 'hazardRaster', attribution: ['usgs', 'dwd'], group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
+  { id: 'hillshade', attribution: ['mapbox'], group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },
 ];
 
 export const layerById = (id) => LAYERS.find((l) => l.id === id);

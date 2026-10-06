@@ -136,10 +136,10 @@ function Page({ page, n, total, content: c, selectedId, onSelect, hovered, onHov
           </div>
         </>
       )}
-      {/* Footer: licence line wraps within the left half; page number, data version and date
+      {/* Footer: credit line (lib/attribution.js) wraps within the left half; page number, data version and date
           stand right-aligned in the other half. */}
       <footer className="absolute flex items-start justify-between gap-[32px] border-t border-border pt-[8px] text-[9px] leading-snug text-muted" style={{ left: PAD_X, right: PAD_X, bottom: 18, height: BODY_BOTTOM - 28 }}>
-        <p className="w-1/2">{c.P.licence}</p>
+        <p className="w-1/2">{c.credits}</p>
         <div className="flex flex-col items-end gap-[2px] text-right">
           <span className="text-[10px] font-semibold text-text">{c.P.page(n, total)}</span>
           <span>

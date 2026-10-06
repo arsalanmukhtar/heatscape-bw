@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LuPause, LuPlay, LuScrollText } from 'react-icons/lu';
 import { PIPELINE_RUNS } from '../../data/mock';
 import { t } from '../../i18n';
+import { ATTRIBUTIONS, credit } from '../../lib/attribution';
 import { useSearch } from '../../lib/search';
 import { useSort } from '../../lib/useSort';
 import { useAdmin } from '../../state/admin';
@@ -48,7 +49,9 @@ export function AdminPipelines() {
                   <tr key={p.id} onClick={() => selectPipeline(p.id)} aria-selected={p.id === selectedPipeline} className={`${trCls} cursor-pointer ${p.id === selectedPipeline ? 'bg-accent-soft' : 'hover:bg-hover'}`}>
                     <td className={tdCls}>
                       <span className="block text-text">{p.name}</span>
-                      <span className="block text-2xs text-muted">{p.source}</span>
+                      <span className="block text-2xs text-muted">
+                        {p.source} · {ATTRIBUTIONS[p.attribution]?.licence}
+                      </span>
                     </td>
                     <td className={`${tdCls} text-text`}>{p.schedule}</td>
                     <td className={`${tdCls} text-text`} title={fmtTime(p.lastRun)}>
@@ -103,6 +106,13 @@ export function AdminPipelines() {
               <div className="flex flex-col gap-2 px-4 py-3">
                 <p className="text-xs text-muted">
                   {a.pipelines.source}: {sel.source} · {sel.schedule}
+                </p>
+                <p className="text-xs text-muted">
+                  {a.pipelines.licence}:{' '}
+                  <a href={ATTRIBUTIONS[sel.attribution]?.licenceUrl} target="_blank" rel="noopener noreferrer" className="text-text underline-offset-2 hover:text-accent hover:underline">
+                    {ATTRIBUTIONS[sel.attribution]?.licence}
+                  </a>{' '}
+                  · {a.pipelines.credit}: {credit(sel.attribution)}
                 </p>
                 <Bars
                   large={large}

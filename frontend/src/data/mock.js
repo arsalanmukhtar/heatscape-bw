@@ -392,14 +392,108 @@ export const COPILOT = {
   suggestions: ['Hottest blocks near schools', 'Compare 2018 vs 2022 sealing'],
 };
 
-/* MOCK geoprocessing tools until the backend process registry exists. icon: key into
-   the icon map in GeoprocessingPanel. */
+/*
+  MOCK geoprocessing tools until the backend process registry exists (OGC API – Processes:
+  each tool's description, inputs and outputs). icon: key into the icon map in
+  GeoprocessingPanel. inputs: layer pickers (geometry: which layer kinds fit; optional: may
+  stay empty). params: { key, label, type (select | number | text | check | date), options,
+  default, unit, min, max, step }. formats: output formats, first = default; ext per format.
+*/
+export const GP_FORMATS = { cog: { label: 'Cloud-optimised GeoTIFF', ext: 'tif' }, gpkg: { label: 'GeoPackage', ext: 'gpkg' }, parquet: { label: 'GeoParquet', ext: 'parquet' }, geojson: { label: 'GeoJSON', ext: 'geojson' }, csv: { label: 'CSV table', ext: 'csv' } };
+export const GP_EXTENTS = [
+  { value: 'study', label: 'Study area (Mannheim)' },
+  { value: 'view', label: 'Current map view' },
+  { value: 'block', label: 'Selected block' },
+];
 export const GP_TOOLS = [
-  { id: 'zonal', name: 'Zonal Statistics', category: 'Analysis', icon: 'zonal', short: 'Zonal' },
-  { id: 'hvi', name: 'Heat Vulnerability Index', category: 'Vulnerability', icon: 'hvi', short: 'HVI' },
-  { id: 'lst', name: 'Land Surface Temp Calc', category: 'Climate', icon: 'lst', short: 'LST' },
-  { id: 'sealing', name: 'Urban Sealing Ratio', category: 'Infrastructure', icon: 'sealing', short: 'Sealing' },
-  { id: 'coldair', name: 'Cold Air Corridor Analysis', category: 'Climate', icon: 'coldair', short: 'ColdAir' },
+  {
+    id: 'zonal',
+    name: 'Zonal Statistics',
+    category: 'Analysis',
+    icon: 'zonal',
+    short: 'Zonal',
+    description: 'Summarises a raster inside each zone polygon (e.g. land surface temperature per block) and writes one row per zone.',
+    inputs: [
+      { key: 'zones', label: 'Zone layer', geometry: ['polygon'], default: 'blocks' },
+      { key: 'raster', label: 'Value raster', geometry: ['raster'], default: 'lstRaster' },
+    ],
+    params: [
+      { key: 'stat', label: 'Statistic', type: 'select', options: ['mean', 'median', 'min', 'max', 'p90', 'std'], default: 'median' },
+      { key: 'allTouched', label: 'Count cells touching the zone edge', type: 'check', default: false },
+      { key: 'minCoverage', label: 'Minimum valid cells', type: 'number', unit: '%', min: 0, max: 100, step: 5, default: 50 },
+    ],
+    formats: ['parquet', 'gpkg', 'csv'],
+  },
+  {
+    id: 'hvi',
+    name: 'Heat Vulnerability Index',
+    category: 'Vulnerability',
+    icon: 'hvi',
+    short: 'HVI',
+    description: 'Combines heat exposure, population sensitivity and adaptive capacity into a 0–100 index per zone.',
+    inputs: [
+      { key: 'zones', label: 'Zone layer', geometry: ['polygon'], default: 'blocks' },
+      { key: 'exposure', label: 'Exposure raster', geometry: ['raster'], default: 'lstRaster' },
+    ],
+    params: [
+      { key: 'weighting', label: 'Weighting', type: 'select', options: ['equal', 'expert', 'pca'], default: 'equal' },
+      { key: 'wExposure', label: 'Exposure weight', type: 'number', min: 0, max: 1, step: 0.05, default: 0.4 },
+      { key: 'wSensitivity', label: 'Sensitivity weight', type: 'number', min: 0, max: 1, step: 0.05, default: 0.35 },
+      { key: 'wCapacity', label: 'Capacity weight', type: 'number', min: 0, max: 1, step: 0.05, default: 0.25 },
+      { key: 'normalise', label: 'Normalisation', type: 'select', options: ['min-max', 'z-score', 'rank'], default: 'min-max' },
+    ],
+    formats: ['gpkg', 'parquet', 'geojson'],
+  },
+  {
+    id: 'lst',
+    name: 'Land Surface Temp Calc',
+    category: 'Climate',
+    icon: 'lst',
+    short: 'LST',
+    description: 'Builds a land surface temperature composite from Landsat 8/9 Collection 2 thermal scenes over a date range.',
+    inputs: [{ key: 'mask', label: 'Mask (optional)', geometry: ['polygon'], default: null, optional: true }],
+    params: [
+      { key: 'from', label: 'From', type: 'date', default: '2025-06-01' },
+      { key: 'to', label: 'To', type: 'date', default: '2025-08-31' },
+      { key: 'cloud', label: 'Max. cloud cover', type: 'number', unit: '%', min: 0, max: 100, step: 5, default: 20 },
+      { key: 'composite', label: 'Composite', type: 'select', options: ['median', 'mean', 'p90'], default: 'median' },
+      { key: 'resolution', label: 'Cell size', type: 'select', options: ['30', '100'], unit: 'm', default: '30' },
+    ],
+    formats: ['cog'],
+  },
+  {
+    id: 'sealing',
+    name: 'Urban Sealing Ratio',
+    category: 'Infrastructure',
+    icon: 'sealing',
+    short: 'Sealing',
+    description: 'Share of sealed (impervious) surface per zone from Sentinel-2 NDVI and the built-up mask.',
+    inputs: [{ key: 'zones', label: 'Zone layer', geometry: ['polygon'], default: 'blocks' }],
+    params: [
+      { key: 'year', label: 'Year', type: 'select', options: ['2025', '2024', '2023'], default: '2025' },
+      { key: 'ndvi', label: 'NDVI threshold', type: 'number', min: 0, max: 1, step: 0.05, default: 0.3 },
+      { key: 'water', label: 'Exclude water bodies', type: 'check', default: true },
+    ],
+    formats: ['gpkg', 'parquet', 'csv'],
+  },
+  {
+    id: 'coldair',
+    name: 'Cold Air Corridor Analysis',
+    category: 'Climate',
+    icon: 'coldair',
+    short: 'ColdAir',
+    description: 'Finds nocturnal cold-air flow paths from the terrain and surface roughness, and the green areas that feed them.',
+    inputs: [
+      { key: 'dem', label: 'Terrain (DEM)', geometry: ['dem'], default: 'hillshade' },
+      { key: 'sources', label: 'Cold-air sources (optional)', geometry: ['polygon'], default: null, optional: true },
+    ],
+    params: [
+      { key: 'wind', label: 'Prevailing wind', type: 'number', unit: '°', min: 0, max: 359, step: 5, default: 225 },
+      { key: 'roughness', label: 'Max. roughness length', type: 'number', unit: 'm', min: 0, max: 2, step: 0.1, default: 0.5 },
+      { key: 'width', label: 'Min. corridor width', type: 'number', unit: 'm', min: 10, max: 500, step: 10, default: 50 },
+    ],
+    formats: ['gpkg', 'geojson', 'cog'],
+  },
 ];
 
 /*
@@ -485,12 +579,12 @@ export const REPORT_INDICATORS = [
   { id: 'heatDays', med: 23, lo: 19, hi: 27, unit: 'd', digits: 0, confidence: 'Low' },
 ];
 export const REPORT_SOURCES = [
-  { id: 'landsat', name: 'Landsat 8/9 Collection 2 Level-2 Surface Temperature', provider: 'USGS', licence: 'Public domain', version: 'C2 L2, scenes Jun–Aug 2025' },
-  { id: 'sentinel2', name: 'Sentinel-2 L2A (sealing, NDVI)', provider: 'Copernicus / ESA', licence: 'Copernicus open licence', version: 'L2A, 2025' },
-  { id: 'dwd', name: 'DWD station observations (air temperature, heat days)', provider: 'Deutscher Wetterdienst', licence: 'CC BY 4.0', version: 'CDC, 2025' },
-  { id: 'zensus', name: 'Zensus 2022 100 m grid (population, age)', provider: 'Destatis', licence: 'dl-de/by-2-0', version: '2022' },
-  { id: 'alkis', name: 'ALKIS land use and LoD2 buildings', provider: 'LGL Baden-Württemberg', licence: 'dl-de/by-2-0', version: '2025' },
-  { id: 'osm', name: 'OpenStreetMap (basemap, facilities)', provider: 'OpenStreetMap contributors', licence: 'ODbL', version: '2025-08' },
+  { id: 'landsat', attribution: 'usgs', name: 'Landsat 8/9 Collection 2 Level-2 Surface Temperature', provider: 'USGS', licence: 'Public domain', version: 'C2 L2, scenes Jun–Aug 2025' },
+  { id: 'sentinel2', attribution: 'copernicus', name: 'Sentinel-2 L2A (sealing, NDVI)', provider: 'Copernicus / ESA', licence: 'Copernicus open licence', version: 'L2A, 2025' },
+  { id: 'dwd', attribution: 'dwd', name: 'DWD station observations (air temperature, heat days)', provider: 'Deutscher Wetterdienst', licence: 'CC BY 4.0', version: 'CDC, 2025' },
+  { id: 'zensus', attribution: 'destatis', name: 'Zensus 2022 100 m grid (population, age)', provider: 'Destatis', licence: 'dl-de/by-2-0', version: '2022' },
+  { id: 'alkis', attribution: 'lgl', name: 'ALKIS land use and LoD2 buildings', provider: 'LGL Baden-Württemberg', licence: 'dl-de/by-2-0', version: '2025' },
+  { id: 'osm', attribution: 'osm', name: 'OpenStreetMap (basemap, facilities)', provider: 'OpenStreetMap contributors', licence: 'ODbL', version: '2025-08' },
 ];
 
 /*
@@ -537,12 +631,12 @@ export const ADMIN_NOW = '2025-09-01T09:00:00';
 const at = (h) => new Date(new Date(ADMIN_NOW).getTime() + h * 3600e3).toISOString();
 
 export const PIPELINES = [
-  { id: 'landsat', name: 'Landsat 8/9 ST (Collection 2 L2)', source: 'USGS M2M API', schedule: 'Daily 04:00', lastRun: at(-5), nextRun: at(19), status: 'ok', records: 18, duration: 1260 },
-  { id: 'sentinel2', name: 'Sentinel-2 L2A', source: 'Copernicus Data Space', schedule: 'Daily 03:00', lastRun: at(-6), nextRun: at(18), status: 'ok', records: 46, duration: 2140 },
-  { id: 'sentinel3', name: 'Sentinel-3 SLSTR LST', source: 'Copernicus Data Space', schedule: 'Every 6 h', lastRun: at(-0.4), nextRun: at(5.6), status: 'running', records: 0, duration: 380 },
-  { id: 'dwd', name: 'DWD station observations', source: 'DWD Open Data (CDC)', schedule: 'Hourly', lastRun: at(-1), nextRun: at(0), status: 'failed', records: 0, duration: 41 },
-  { id: 'zensus', name: 'Zensus 2022 100 m grid', source: 'Destatis', schedule: 'Manual', lastRun: '2025-06-12T10:15', nextRun: null, status: 'ok', records: 31842, duration: 920 },
-  { id: 'lod2', name: 'LGL LoD2 buildings', source: 'LGL Baden-Württemberg', schedule: 'Monthly, 1st 02:00', lastRun: at(-7), nextRun: '2025-10-01T02:00', status: 'paused', records: 2194, duration: 3310 },
+  { id: 'landsat', attribution: 'usgs', name: 'Landsat 8/9 ST (Collection 2 L2)', source: 'USGS M2M API', schedule: 'Daily 04:00', lastRun: at(-5), nextRun: at(19), status: 'ok', records: 18, duration: 1260 },
+  { id: 'sentinel2', attribution: 'copernicus', name: 'Sentinel-2 L2A', source: 'Copernicus Data Space', schedule: 'Daily 03:00', lastRun: at(-6), nextRun: at(18), status: 'ok', records: 46, duration: 2140 },
+  { id: 'sentinel3', attribution: 'copernicus', name: 'Sentinel-3 SLSTR LST', source: 'Copernicus Data Space', schedule: 'Every 6 h', lastRun: at(-0.4), nextRun: at(5.6), status: 'running', records: 0, duration: 380 },
+  { id: 'dwd', attribution: 'dwd', name: 'DWD station observations', source: 'DWD Open Data (CDC)', schedule: 'Hourly', lastRun: at(-1), nextRun: at(0), status: 'failed', records: 0, duration: 41 },
+  { id: 'zensus', attribution: 'destatis', name: 'Zensus 2022 100 m grid', source: 'Destatis', schedule: 'Manual', lastRun: '2025-06-12T10:15', nextRun: null, status: 'ok', records: 31842, duration: 920 },
+  { id: 'lod2', attribution: 'lgl', name: 'LGL LoD2 buildings', source: 'LGL Baden-Württemberg', schedule: 'Monthly, 1st 02:00', lastRun: at(-7), nextRun: '2025-10-01T02:00', status: 'paused', records: 2194, duration: 3310 },
 ];
 
 /** MOCK run history per pipeline: 14 runs, newest last. */
@@ -574,12 +668,12 @@ export const ADMIN_KPIS = { datasets: 42, latestIngestion: at(-5), latestSource:
 
 // STAC collections: bbox [west, south, east, north]; temporal [start, end|null].
 export const STAC_COLLECTIONS = [
-  { id: 'landsat-c2-l2-st', title: 'Landsat 8/9 Surface Temperature', items: 1284, temporal: ['2013-04-11', null], bbox: [7.5, 47.5, 10.5, 49.8], licence: 'Public domain', version: 'C2 L2' },
-  { id: 'sentinel-2-l2a', title: 'Sentinel-2 L2A', items: 6412, temporal: ['2017-03-28', null], bbox: [7.5, 47.5, 10.5, 49.8], licence: 'Copernicus open licence', version: '05.10' },
-  { id: 'sentinel-3-slstr-lst', title: 'Sentinel-3 SLSTR LST', items: 3920, temporal: ['2018-10-01', null], bbox: [5.8, 47.2, 15.1, 55.1], licence: 'Copernicus open licence', version: '004' },
-  { id: 'heatscape-lst-composite', title: 'Heatscape summer LST composites', items: 36, temporal: ['2014-06-01', '2025-08-31'], bbox: [8.39, 49.4, 8.6, 49.59], licence: 'CC BY 4.0', version: '2025.09' },
-  { id: 'heatscape-sealing', title: 'Heatscape sealing degree (10 m)', items: 9, temporal: ['2017-01-01', '2025-01-01'], bbox: [8.39, 49.4, 8.6, 49.59], licence: 'CC BY 4.0', version: '2025.02' },
-  { id: 'lgl-lod2', title: 'LGL LoD2 buildings', items: 48, temporal: ['2024-01-01', null], bbox: [8.3, 49.0, 8.75, 49.6], licence: 'dl-de/by-2-0', version: '2025-08' },
+  { id: 'landsat-c2-l2-st', attribution: 'usgs', title: 'Landsat 8/9 Surface Temperature', items: 1284, temporal: ['2013-04-11', null], bbox: [7.5, 47.5, 10.5, 49.8], licence: 'Public domain', version: 'C2 L2' },
+  { id: 'sentinel-2-l2a', attribution: 'copernicus', title: 'Sentinel-2 L2A', items: 6412, temporal: ['2017-03-28', null], bbox: [7.5, 47.5, 10.5, 49.8], licence: 'Copernicus open licence', version: '05.10' },
+  { id: 'sentinel-3-slstr-lst', attribution: 'copernicus', title: 'Sentinel-3 SLSTR LST', items: 3920, temporal: ['2018-10-01', null], bbox: [5.8, 47.2, 15.1, 55.1], licence: 'Copernicus open licence', version: '004' },
+  { id: 'heatscape-lst-composite', attribution: 'heatscape', title: 'Heatscape summer LST composites', items: 36, temporal: ['2014-06-01', '2025-08-31'], bbox: [8.39, 49.4, 8.6, 49.59], licence: 'CC BY 4.0', version: '2025.09' },
+  { id: 'heatscape-sealing', attribution: 'heatscape', title: 'Heatscape sealing degree (10 m)', items: 9, temporal: ['2017-01-01', '2025-01-01'], bbox: [8.39, 49.4, 8.6, 49.59], licence: 'CC BY 4.0', version: '2025.02' },
+  { id: 'lgl-lod2', attribution: 'lgl', title: 'LGL LoD2 buildings', items: 48, temporal: ['2024-01-01', null], bbox: [8.3, 49.0, 8.75, 49.6], licence: 'dl-de/by-2-0', version: '2025-08' },
 ];
 
 // Regions in onboarding order; steps: aoi, sources, indicators, validation, publish.

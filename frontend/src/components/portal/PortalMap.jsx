@@ -9,6 +9,8 @@ import { circle, CITY_MEDIAN, RADIUS_M, vsupColors, vsupGrid, walkIsochrone } fr
 import { usePortal } from '../../state/portal';
 import { useTheme } from '../../state/theme';
 import { PlacePin } from '../Geocoder';
+import { MapAttribution } from '../MapAttribution';
+import { basemapAttributions } from '../../lib/attribution';
 import { ControlButton, Group, NorthButton } from '../MapButtons';
 import { KIND_ICON } from './PortalPanel';
 
@@ -122,6 +124,15 @@ export function PortalMap({ padBottom = 0 }) {
       </div>
 
       <Legend p={p} colorOf={colorOf} hasPlace={!!location} />
+      {/* Basemap credits plus the satellite data behind the heat layer; above the mobile sheet. */}
+      <MapAttribution
+        sources={[...basemapAttributions(), 'usgs']}
+        lang={lang}
+        label={p.map.attribution}
+        improveLabel={p.map.improve}
+        className="right-3"
+        style={{ bottom: `calc(${padBottom}px + 0.75rem)` }}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { BLOCKS, DATA_VERSION, REGION, REPORT_INDICATORS, REPORT_SOURCES, SEASON } from '../data/mock';
 import { t } from '../i18n';
+import { creditLine } from './attribution';
 import { measureStatus, measureType } from './measures';
 import { richHtml } from './richText';
 
@@ -105,6 +106,8 @@ export function reportContent(report, measures) {
     indicatorRows,
     chart: { title: isMeasure ? P.chartMeasures : P.chartDistricts, rows: chartRows, unit: '°C' },
     sources: REPORT_SOURCES,
+    // Footer credit line: every listed source's required credit, plus the basemap.
+    credits: creditLine([...REPORT_SOURCES.map((x) => x.attribution), 'mapbox'], lang),
     measureRows: measures.filter(done).map((m) => ({
       name: m.name,
       type: P.types[m.type],

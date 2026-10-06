@@ -36,19 +36,19 @@ export const useNotifications = create()(
 
 const push = (item) => useNotifications.getState().push(item);
 
-// Jobs: a status change to done or failed. Failed jobs already in the list when the app
+// Jobs: a status change to done or error (failed). Failed jobs already in the list when the app
 // opens are reported once (the key keeps them from coming back).
 const jobItem = (job) =>
-  job.status === 'failed'
+  job.status === 'error'
     ? { key: `job:${job.id}:${job.started}:failed`, kind: 'jobFailed', title: n.jobFailed, text: `${job.name} · ${job.tool}`, target: { type: 'job', id: job.id } }
     : { key: `job:${job.id}:${job.started}:done`, kind: 'jobDone', title: n.jobDone, text: `${job.name} · ${job.tool}`, target: { type: 'job', id: job.id } };
 
-useJobs.getState().jobs.filter((j) => j.status === 'failed').forEach((j) => push(jobItem(j)));
+useJobs.getState().jobs.filter((j) => j.status === 'error').forEach((j) => push(jobItem(j)));
 
 const unwatchJobs = useJobs.subscribe((state, prev) => {
   const before = new Map(prev.jobs.map((j) => [j.id, j.status]));
   state.jobs.forEach((j) => {
-    if (before.get(j.id) !== j.status && (j.status === 'done' || j.status === 'failed')) push(jobItem(j));
+    if (before.get(j.id) !== j.status && (j.status === 'done' || j.status === 'error')) push(jobItem(j));
   });
 });
 
