@@ -4,6 +4,7 @@ import { authText } from '../../i18n';
 import { useAuth } from '../../state/auth';
 import { useTheme } from '../../state/theme';
 import { HeatVisual } from './HeatVisual';
+import { PartnerTicker } from './PartnerTicker';
 
 /** The strings of the current page language. */
 export const useAuthText = () => authText[useAuth((s) => s.lang)];
@@ -81,8 +82,8 @@ function Wordmark({ large = false, ref }) {
 }
 
 /*
-  Split screen from 1024 px: the heat visual with name, value statement and partner logo
-  placeholders (55 %), the form on a surface panel (45 %). Below: form only, under a slim
+  Split screen from 1024 px: the heat visual with name and value statement over the
+  partner / data provider logo row (55 %), the form on a surface panel (45 %). Below: form only, under a slim
   visual header. The visual always uses the dark tokens (data-theme="dark").
 */
 export function AuthLayout({ children }) {
@@ -91,28 +92,18 @@ export function AuthLayout({ children }) {
   // Titles the heat cells keep dark behind.
   const brand = useRef(null);
   const statement = useRef(null);
-  const partners = useRef(null);
   const slimBrand = useRef(null);
   return (
     <div lang={lang} className="flex h-full bg-bg">
-      <aside data-theme="dark" className="relative hidden w-[55%] shrink-0 overflow-hidden border-r border-border lg:block">
-        <HeatVisual className="absolute inset-0" avoid={[brand, statement, partners]} />
-        <div className="relative flex h-full flex-col justify-between p-10 xl:p-14">
+      <aside data-theme="dark" className="relative hidden w-[55%] shrink-0 flex-col overflow-hidden border-r border-border lg:flex">
+        <HeatVisual className="absolute inset-0" avoid={[brand, statement]} />
+        <div className="relative flex min-h-0 flex-1 flex-col justify-between p-10 xl:p-14">
           <Wordmark large ref={brand} />
-          <div className="max-w-xl">
-            <p ref={statement} className="w-fit text-[calc(var(--fs-2xl)*1.25)] font-semibold leading-snug text-text xl:text-[calc(1.875rem*1.25)]">{a.statement}</p>
-            <div ref={partners} className="mt-8 w-fit">
-              <p className="label-caps">{a.partners}</p>
-              <ul className="mt-3 flex gap-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <li key={i} className="grid size-16 place-items-center border border-dashed border-border-strong bg-bg-deep/60 text-center text-2xs text-muted">
-                    <span>{a.partner}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <p ref={statement} className="mb-8 w-fit max-w-xl text-[calc(var(--fs-2xl)*1.25)] font-semibold leading-snug text-text xl:text-[calc(1.875rem*1.25)]">
+            {a.statement}
+          </p>
         </div>
+        <PartnerTicker />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-surface">

@@ -168,6 +168,19 @@
     }
   }
 
+  /* Browser autofill: keep our field colours instead of the browser's blue/yellow fill.
+     The fill colour is applied through a transition delayed for days, so it never shows. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:autofill {
+    -webkit-text-fill-color: var(--text);
+    caret-color: var(--text);
+    transition:
+      background-color 0s 600000s,
+      color 0s 600000s;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
