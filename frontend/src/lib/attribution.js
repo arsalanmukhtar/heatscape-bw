@@ -30,12 +30,19 @@ export const ATTRIBUTIONS = {
   },
   dwd: { name: 'Deutscher Wetterdienst (DWD)', credit: 'Datenbasis: Deutscher Wetterdienst', url: 'https://opendata.dwd.de', licence: 'CC BY 4.0', licenceUrl: CC_BY },
   destatis: { name: 'Statistisches Bundesamt (Destatis)', credit: '© Statistisches Bundesamt (Destatis), Zensus 2022', url: 'https://www.zensus2022.de', licence: 'dl-de/by-2-0', licenceUrl: DL_DE_BY },
+  bkg: {
+    name: 'Bundesamt für Kartographie und Geodäsie (BKG)',
+    credit: `© GeoBasis-DE / BKG (${new Date().getFullYear()})`,
+    url: 'https://gdz.bkg.bund.de',
+    licence: 'dl-de/by-2-0',
+    licenceUrl: DL_DE_BY,
+  },
   lgl: { name: 'LGL Baden-Württemberg', credit: '© LGL, www.lgl-bw.de', url: 'https://www.lgl-bw.de', licence: 'dl-de/by-2-0', licenceUrl: DL_DE_BY },
   heatscape: { name: 'HEATSCAPE-BW', credit: '© HEATSCAPE-BW', url: null, licence: 'CC BY 4.0', licenceUrl: CC_BY },
 };
 
 /** Open data providers, in the order the portal and reports list them. */
-export const DATA_ATTRIBUTIONS = ['usgs', 'copernicus', 'dwd', 'destatis', 'lgl', 'osm', 'mapbox'];
+export const DATA_ATTRIBUTIONS = ['usgs', 'copernicus', 'dwd', 'destatis', 'bkg', 'lgl', 'osm', 'mapbox'];
 
 /** Credit line of a provider in a language (en | de). */
 export function credit(key, lang = 'en') {

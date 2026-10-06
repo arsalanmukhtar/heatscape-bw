@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LuBuilding2, LuChevronDown, LuCircleCheck, LuDroplets, LuPhone, LuThermometerSun, LuTrees, LuTriangleAlert, LuUmbrella } from 'react-icons/lu';
-import { HEAT_WARNING } from '../../data/mock';
 import { portalText } from '../../i18n';
+import { getPortalWarning } from '../../lib/api';
+import { Loader } from '../Loader';
 import { ATTRIBUTIONS, credit, DATA_ATTRIBUTIONS } from '../../lib/attribution';
 import { areaResult, coolPlacesNear, rankPhrase, RADIUS_M } from '../../lib/portal';
 import { usePortal } from '../../state/portal';
@@ -27,11 +28,56 @@ function Card({ id, title, children }) {
   );
 }
 
+const REFRESH_MS = 10 * 60 * 1000;
+
+/** The DWD heat warning card data (/api/portal/warning), refreshed every 10 minutes. */
+function usePortalWarning() {
+  const [state, setState] = useState({ data: null, error: null });
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      getPortalWarning()
+        .then((data) => alive && setState({ data, error: null }))
+        .catch((error) => alive && setState((s) => ({ data: s.data, error })));
+    load();
+    const id = setInterval(load, REFRESH_MS);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+  return state;
+}
+
 /** Today: DWD heat warning for the city, forecast temperatures and what to do. */
 function TodayCard({ p, lang }) {
-  const w = HEAT_WARNING;
+  const { data: w, error } = usePortalWarning();
+  const locale = lang === 'de' ? 'de-DE' : 'en-GB';
+  if (!w) {
+    return (
+      <Card id="portal-today" title={p.today.title}>
+        {error ? (
+          <p className="text-sm text-muted" role="status">
+            {p.today.unavailable}
+          </p>
+        ) : (
+          <div className="grid min-h-28 place-items-center">
+            <Loader label={p.today.loading} />
+          </div>
+        )}
+      </Card>
+    );
+  }
   const lv = LEVEL[w.level];
-  const stamp = new Date(w.updated).toLocaleString(lang === 'de' ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const stamp = w.updated ? new Date(w.updated).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–';
+  // Warning times: hh:mm today, with the weekday on other days.
+  const when = (iso) => {
+    if (!iso) return '…';
+    const d = new Date(iso);
+    const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString(locale, { weekday: 'short' })} ${time}`;
+  };
+  const deg = (v) => (v == null ? '–' : `${Math.round(v)} °C`);
   return (
     <Card id="portal-today" title={p.today.title}>
       <div className="flex items-start gap-3 border-l-4 px-3 py-3" style={{ borderColor: lv.color, background: `color-mix(in srgb, ${lv.color} 12%, transparent)` }} role="status">
@@ -40,18 +86,18 @@ function TodayCard({ p, lang }) {
         </span>
         <div className="text-cap-start min-w-0">
           <p className="text-base font-semibold text-text">{p.today.levels[w.level]}</p>
-          {w.level !== 'none' && <p className="mt-0.5 text-sm text-text">{p.today.validity(w.area, w.from, w.to)}</p>}
+          {w.level !== 'none' && <p className="mt-0.5 text-sm text-text">{p.today.validity(w.area, when(w.onset), when(w.expires))}</p>}
         </div>
       </div>
       <dl className="mt-3 grid grid-cols-3 gap-2">
         {[
-          [p.today.forecast, w.forecastMax, true],
-          [p.today.tomorrow, w.tomorrowMax],
-          [p.today.night, w.nightMin],
+          [p.today.forecast, w.forecast_max, true],
+          [p.today.tomorrow, w.tomorrow_max],
+          [p.today.night, w.night_min],
         ].map(([label, v, main]) => (
           <div key={label} className="flex flex-col justify-between border border-border bg-surface-raised px-3 py-2.5">
             <dt className="text-xs leading-snug text-muted">{label}</dt>
-            <dd className={`mt-1 font-semibold tabular-nums text-text ${main ? 'text-2xl' : 'text-xl'}`}>{v} °C</dd>
+            <dd className={`mt-1 font-semibold tabular-nums text-text ${main ? 'text-2xl' : 'text-xl'}`}>{deg(v)}</dd>
           </div>
         ))}
       </dl>

@@ -28,6 +28,7 @@ docker compose up -d --build
 | `frontend/` | Web app | React 19, Vite, Tailwind v4 (JSX), Mapbox GL | internal 80 |
 | `middleware/` | BFF, `/api` proxy, sign-in sessions (`/api/auth/*`) | Node 22, Fastify | internal 3000 |
 | `backend/` | Domain API | Python 3.12, FastAPI, asyncpg | internal 8000 |
+| `backend/` (service `worker`) | Open-data imports on a schedule (`app/ingest`): DWD, OSM, Zensus | same image, `python -m app.ingest.schedule` | none (outbound internet) |
 | `translate/` | Machine translation of report text EN ↔ DE (first start downloads the models, a few minutes) | LibreTranslate 1.6 (Argos, open source) | internal 5000 |
 | `database/` | Spatial database | PostgreSQL 17 (bookworm), PostGIS 3, h3-pg | 127.0.0.1:15432 → 5432 |
 
@@ -41,6 +42,37 @@ docker compose up -d --build
 
 - Docker dev mode: after `npm install` (new or changed dependencies) add `-V` (`--renew-anon-volumes`) to the dev command, or the container keeps its old `node_modules` volume.
 
+## Live data (Phase 1)
+
+No registration needed: DWD, OpenStreetMap and Destatis data are open and keyless.
+
+| Dataset | Source | Refresh (worker) | Shown in |
+|---|---|---|---|
+| Heat and weather warnings, warn cells Mannheim | DWD GeoServer WFS | 10 min | Portal "Today" card, `/api/weather/warnings` |
+| MOSMIX point forecast, station 10729 Mannheim | DWD Open Data | 1 h | Portal forecast highs / tonight's low, `/api/weather/forecast` |
+| Climate stations within 30 km: daily values + latest 10-min temperature | DWD CDC | 6 h / 20 min | Layer "Weather Stations (DWD)" |
+| Hospitals, drinking-water supply | OpenStreetMap (Overpass) | 7 days | Layers "Hospitals", "Water Supply", Inspector at-risk facilities |
+| Population and mean age, 100 m grid | Destatis Zensus 2022 | once (on demand) | Layer "Population (Zensus 100 m)" |
+| Admin units of BW: state, Regierungsbezirke, Stadt-/Landkreise, Verwaltungsgemeinschaften, Gemeinden (with population, area) | BKG VG250-EW | once (on demand) | Layer group "Administrative Units" |
+| City districts and quarters (admin_level 9/10) in the region | OpenStreetMap (Overpass) | 30 days | Layers "City Districts", "City Quarters" |
+
+First time (existing database volume — `database/init/` only runs on an empty volume):
+
+```powershell
+docker compose up -d --build database
+Get-Content -Raw database/init/30_live_data.sql | docker compose exec -T database sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose up -d --build backend worker middleware gateway frontend
+docker compose logs -f worker      # first pass imports everything (Zensus ≈ 1–3 min); Ctrl+C to stop following
+```
+
+| Task | Command |
+|---|---|
+| Import status (source, licence, version, last fetch, rows) | `curl.exe -s http://localhost:8180/api/datasets` |
+| Run imports now | `docker compose exec worker python -m app.ingest dwd-warnings dwd-forecast dwd-latest dwd-stations osm-facilities zensus-grid bkg-vg250 osm-admin` (or `all`) |
+| One layer as GeoJSON | `curl.exe -s http://localhost:8180/api/layers/dwd-stations` (also `hospitals`, `water`, `zensus`, `admin-land`, `admin-rbz`, `admin-krs`, `admin-vwg`, `admin-gem`, `admin-osm9`, `admin-osm10`) |
+| Portal warning card data | `curl.exe -s http://localhost:8180/api/portal/warning` |
+| Worker logs | `docker compose logs --tail 100 worker` |
+
 ## Layout
 
 ```
@@ -48,7 +80,7 @@ docker compose up -d --build
 docs/        architecture, decisions, design system, product scope
 frontend/    public/, src/{components,state,data,lib,styles,assets}
 middleware/  src/
-backend/     app/{routers}
+backend/     app/{routers,schemas,ingest}
 database/    init/ (SQL run on first start)
 gateway/     nginx.conf
 ```
@@ -57,22 +89,23 @@ gateway/     nginx.conf
 
 | Item | State |
 |---|---|
-| GIS workspace screen (layers, map, attribute table, inspector incl. raster pixel identify) | Done, MOCK data |
+| GIS workspace screen (layers, map, attribute table, inspector incl. raster pixel identify, feature popups on every vector layer) | Done; live layers: Hospitals, Water Supply, Weather Stations (DWD), Population (Zensus), Administrative Units (BKG + OSM); other layers MOCK |
+| Live data Phase 1: worker imports (DWD warnings, MOSMIX, stations; OSM facilities; Zensus grid) + `/api/datasets`, `/api/layers/*`, `/api/weather/*`, `/api/portal/warning` | Done (README → Live data) |
 | Notifications (bell: jobs finished/failed, measure changes; unread badge, opens the job or measure) | Done, from MOCK job runner and local measures |
 | Data attribution (map credit tiles, report footer, portal sources and licences, admin catalog/pipelines) | Done; credits name the real providers of the datasets the MOCK layers stand for |
 | Copilot panel (plan, tool steps, result, composer) | UI done, MOCK conversation; copilot API planned |
 | Geoprocessing panel → tool form (right panel: inputs, parameters, extent, output path, Run), Jobs History dock tab + logs, map scale bar | UI done, MOCK tools and simulated jobs; process/job API planned |
 | Scenarios workspace (editor, ranking with rank stability, priority map + swipe compare, charts tab) | UI done, ranking computed in browser from MOCK blocks; scenarios/ranking API planned |
-| Layers panel (per-layer legend, table, zoom, toggles) + Symbology panel: Style (incl. rule-based), Label, Query (builder + SQL subset), 3D (extrusion per layer, DEM terrain) tabs; saved per layer | UI done, MOCK vector and raster layers; queries run in the browser until the API exists |
+| Layers panel (per-layer legend, table, zoom, toggles, layer order overlay with drag restacking) + Symbology panel: Style (incl. rule-based), Label, Query (builder + SQL subset), 3D (extrusion per layer, DEM terrain) tabs; saved per layer | UI done, MOCK vector and raster layers; queries run in the browser until the API exists |
 | Measures register (list + filters, add form with draw (snap-close, corner editing) or GeoJSON/Shapefile upload, footprints + buffers on map, Effect panel with status change + timestamped status history + delete (soft: archived as Deprecated, confirmed in a modal), before/after + DiD chart, dock Summary + CSV/PDF reporting export) | UI done, MOCK register and effects; measures API planned (`docs/decisions.md` Open) |
 | Report Builder (Reports view: outline with drag reorder, A4 preview with zoom, section properties, map capture, EN/DE page text, templates, rich text, per-language texts with machine translation via `POST /api/translate`; Export PDF via print, DOCX, share link) | UI done, MOCK indicators; saved in the browser; translation live (LibreTranslate); reports API planned (`docs/decisions.md` Open) |
-| Public Heat Portal `/portal` (EN/DE, mobile bottom sheet, address search, DWD warning card, area result with quantile dot plot, cool places with walking time, value-suppressing heat layer, 10-min walk isochrone) | UI done, MOCK warning, places and confidence; isochrone live (Mapbox); portal API planned (`docs/decisions.md` Open) |
+| Public Heat Portal `/portal` (EN/DE, mobile bottom sheet, address search, DWD warning card, area result with quantile dot plot, cool places with walking time, value-suppressing heat layer, 10-min walk isochrone) | UI done; DWD warning card live (`/api/portal/warning`), isochrone live (Mapbox); places and confidence MOCK |
 | Admin console `/admin` (Overview KPIs + pipeline timeline + alerts, Data Pipelines with run/pause/logs + run history, STAC catalog, Regions onboarding, Users & Roles + permission matrix, Copilot usage/cost/eval, System Health, Audit Log, log dock) | UI done, MOCK except System Health (live checks of the running services); ops API planned (`docs/decisions.md` Open) |
 | Sign-in (`/signin`, split screen, EN/DE, inline validation, show password, remember me, error banner) + middleware sessions + gateway Admin-role guard on `/admin` | Done with MOCK users from `.env` (`ADMIN_*`, `PLANNER_*`); Keycloak planned (`docs/decisions.md` Open) |
 | Forgot / update password, email verification, municipality SSO button, Account settings (`/account`: profile, language & theme, active sessions, API tokens) | UI done; sessions live, the rest MOCK until Keycloak |
 | Responsive scale (root font size per screen class, rem everywhere, compact portrait-tablet view; portal ≥ 16 px; report pages fixed A4) | Done |
 | Backend health + database extensions check | Done |
-| Keycloak, workers, tiles, copilot API | Planned (`docs/architecture.md`) |
+| Keycloak, Celery workers, tiles, copilot API | Planned (`docs/architecture.md`) |
 
 ## Docs
 

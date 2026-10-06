@@ -33,6 +33,7 @@ export function SearchBar({
   className = 'w-56',
   clearOnEscape = true,
   inputProps = {},
+  trailing = null,
 }) {
   const onKeyDown = (e) => {
     if (clearOnEscape && e.key === 'Escape') onChange('');
@@ -48,6 +49,7 @@ export function SearchBar({
       iconSize={size === 'md' ? 13 : 12}
       className={`${SIZE[size]} ${VARIANT[variant]} ${className}`}
       inputProps={{ ...inputProps, onKeyDown }}
+      trailing={trailing}
     />
   );
 }

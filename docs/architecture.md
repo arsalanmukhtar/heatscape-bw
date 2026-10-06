@@ -15,13 +15,14 @@ Browser ──► gateway (nginx) ──► /        frontend (static React buil
 | backend | Domain API, spatial/non-spatial queries, process registry (OGC API – Processes) | Run long jobs in the request (use workers) |
 | database | PostGIS, h3-pg, app data | Be reachable from outside the compose network |
 | translate | LibreTranslate (EN/DE models), called only by the backend (`POST /api/translate`) | Be reachable from the browser or the internet |
+| worker | Open-data imports on intervals (`backend/app/ingest`, backend image): fetch → PostGIS, record source/licence/version in `datasets` | Serve requests; publish a port |
 
 ## Planned services
 
 | Service | Purpose |
 |---|---|
 | auth (Keycloak) | OIDC, roles: Public / Planner / Partner / Expert / Admin |
-| worker + redis | Celery jobs: ingestion, downscaling, indicators |
+| redis + Celery | Job queue for geoprocessing, downscaling, indicators (the `worker` service then runs Celery tasks instead of its interval loop) |
 | titiler | COG raster tiles; colour maps from the data tokens |
 | stac | STAC catalog (pgstac) for the data cube |
 | agent | Copilot: LLM tool calls into the backend process registry, read-only SQL role |

@@ -3,8 +3,9 @@ import MapGL, { Layer, Marker, Source, useMap } from 'react-map-gl/mapbox';
 import { LuX } from 'react-icons/lu';
 import { BLOCKS, REGION, SURFACE_GRID, blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
+import { resolveColor } from '../lib/color';
 import { cssVar, distanceKm } from '../lib/css';
-import { LAYERS, rasterCell, rasterCellAt } from '../lib/layers';
+import { featureById, isVector, LAYERS, rasterCell, rasterCellAt } from '../lib/layers';
 import { addGeneratedImage } from '../lib/mapImages';
 import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage } from '../lib/mapStyle';
 import { MAP_CONTAINER_ID, SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
@@ -19,6 +20,8 @@ import { useActiveRanking, useScenarios } from '../state/scenarios';
 import { useSymbology } from '../state/symbology';
 import { allMeasures, useMeasures } from '../state/measures';
 import { useTheme } from '../state/theme';
+import { LIVE_LAYERS, useLive } from '../state/live';
+import { useMapInfo } from '../state/mapInfo';
 import { useWorkspace } from '../state/workspace';
 import { CompareSwipe } from './CompareSwipe';
 import { MAP_OVERLAY_ID } from './Expandable';
@@ -26,6 +29,9 @@ import { Geocoder, SearchPin } from './Geocoder';
 import { MapAttribution } from './MapAttribution';
 import { MapControls } from './MapControls';
 import { MapScale } from './MapScale';
+import { FeaturePopup } from './FeaturePopup';
+import { LayerOrderPanel } from './LayerOrderPanel';
+import { MapLoader } from './Loader';
 import { FootprintDraft } from './measures/FootprintDraft';
 
 // Ruler snapping: a point within this many pixels of a vertex jumps onto it.
@@ -47,8 +53,11 @@ export function MapView() {
   return (
     <div ref={containerRef} id={MAP_CONTAINER_ID} className="relative min-h-0 flex-1 overflow-hidden bg-map-ground">
       {TOKEN ? <LiveMap /> : <MapPlaceholder />}
+      {/* Centred loader with a light dark blur while a switched-on live layer first loads. */}
+      <MapLoader />
       {TOKEN && compare && ranking && <CompareSwipe ranking={ranking} />}
       <Geocoder disabled={!TOKEN} />
+      <LayerOrderPanel />
       <MapControls disabled={!TOKEN} canCompare={!!ranking} />
       {TOKEN && <MapScale />}
       {TOKEN && <WorkspaceAttribution />}
@@ -62,11 +71,13 @@ function LiveMap() {
   const { main } = useMap();
   const resolved = useTheme((s) => s.resolved);
   const styleUrl = useMapStyleUrl();
-  const { layers, selectedId, select, tools, snap, pixel, setPixel } = useWorkspace();
+  const { layers, selectedId, select, tools, snap, pixel, setPixel, popup, setPopup, rowHighlight } = useWorkspace();
+  const [hovering, setHovering] = useState(false); // pointer over a clickable feature
   const { styles, order } = useSymbology();
   // Measures register: live data for its layers, selection, and drafting a new footprint.
   const measuresAdded = useMeasures((s) => s.added);
   const statusLog = useMeasures((s) => s.statusLog);
+  const liveData = useLive((s) => s.data);
   const { selectedId: measureId, select: selectMeasure, drawing, shaping } = useMeasures();
   const showRightView = useLayout((s) => s.showRightView);
   const selectedMeasure = allMeasures(measuresAdded, statusLog).find((m) => m.id === measureId);
@@ -81,11 +92,17 @@ function LiveMap() {
     return () => setShortcutMap(null);
   }, [main]);
 
+  // Large live layers (admin units, Zensus) load the first time they are switched on.
+  useEffect(() => {
+    Object.keys(LIVE_LAYERS).forEach((id) => layers[id] && useLive.getState().ensure(id));
+  }, [layers]);
+
   // Literal colours for the overlays' paint properties, re-read when the theme changes.
   const palette = useMemo(
     () => ({
       accent: cssVar('--accent'),
       accent2: cssVar('--accent-2'),
+      highlight: cssVar('--feature-highlight'),
       muted: cssVar('--text-muted'),
       line: cssVar('--map-line'),
       text: cssVar('--text'),
@@ -109,9 +126,25 @@ function LiveMap() {
       if (def.id === 'blocks' && layers.selection) return ['==', ['get', 'id'], selectedId];
       return null;
     };
-    return Object.fromEntries(LAYERS.map((def) => [def.id, buildLayerSpec(def, styles[def.id], !!layers[def.id], picked(def))]));
+    // Yellow 3D highlight: the popup's feature and the attribute table's highlighted row.
+    const lit = [popup && { layer: popup.item.layer, id: popup.item.props?.id }, rowHighlight].filter((x) => x && x.id != null);
+    const popped = (def) => {
+      const ids = lit.filter((x) => x.layer === def.id).map((x) => String(x.id));
+      return ids.length ? ['in', ['to-string', ['get', 'id']], ['literal', ids]] : null;
+    };
+    return Object.fromEntries(LAYERS.map((def) => [def.id, buildLayerSpec(def, styles[def.id], !!layers[def.id], picked(def), popped(def))]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [styles, layers, resolved, measuresAdded, statusLog, pixel, measureId, selectedId]);
+  }, [styles, layers, resolved, measuresAdded, statusLog, liveData, pixel, measureId, selectedId, popup, rowHighlight]);
+
+  // Yellow ground highlight in exact geometry (from the layer data, not the tile-clipped
+  // rendered shape): the popup's feature and the attribute table's highlighted row.
+  const popFeature = useMemo(() => {
+    const geometryOf = (layer, id, fallback) => featureById(LAYERS.find((d) => d.id === layer), id)?.geometry ?? fallback ?? null;
+    // The popup follows its layer's visibility; a table row stays lit even if its layer is off.
+    const geometries = [popup && layers[popup.item.layer] && geometryOf(popup.item.layer, popup.item.props?.id, popup.item.geometry), rowHighlight && geometryOf(rowHighlight.layer, rowHighlight.id)].filter(Boolean);
+    return geometries.length ? { type: 'FeatureCollection', features: geometries.map((geometry) => ({ type: 'Feature', properties: {}, geometry })) } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popup, rowHighlight, layers, liveData, measuresAdded, statusLog]);
 
   // Identified raster pixel, outlined on the ground (a raster in 3D highlights its column instead).
   const pixelCell = useMemo(() => {
@@ -236,6 +269,57 @@ function LiveMap() {
     if (!tools.measure || !snap) setSnapAt(null);
   }, [tools.measure, snap]);
 
+  // Top-nav readout: zoom and centre on every move, the pointer while it is over the map
+  // (written at most once per frame).
+  const frame = useRef(0);
+  const pending = useRef({});
+  const report = (patch) => {
+    pending.current = { ...pending.current, ...patch };
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      useMapInfo.getState().update(pending.current);
+      pending.current = {};
+    });
+  };
+  const reportView = () => {
+    const m = main?.getMap();
+    if (m) report({ zoom: m.getZoom(), center: [m.getCenter().lng, m.getCenter().lat] });
+  };
+
+  // Feature popups: vector layers drawn on the map (2D and 3D, not labels or highlights).
+  const PAD = 4; // px around the pointer, so thin lines and small points are easy to hit
+  const hitLayers = () => {
+    const m = main?.getMap();
+    if (!m) return [];
+    return LAYERS.filter((d) => isVector(d) && layers[d.id])
+      .flatMap((d) => [...specs[d.id].layers, ...(specs[d.id].solid?.layers ?? [])].map((l) => l.id))
+      .filter((id) => !id.endsWith(':selected') && !id.endsWith(':selected-fill') && m.getLayer(id));
+  };
+  // Clicked features, most specific first: points, then lines, then areas, admin units last;
+  // within a kind, the one drawn on top. The popup shows the first.
+  const RANK = { point: 0, line: 1, polygon: 2 };
+  const pickFeatures = (point) => {
+    const ids = hitLayers();
+    if (!ids.length) return [];
+    const box = [[point.x - PAD, point.y - PAD], [point.x + PAD, point.y + PAD]];
+    const seen = new Set();
+    const items = [];
+    main.queryRenderedFeatures(box, { layers: ids }).forEach((f, order) => {
+      const layer = f.layer.id.split(':')[0];
+      const key = `${layer}:${f.properties?.id ?? f.id ?? order}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const def = LAYERS.find((d) => d.id === layer);
+      const paint = f.layer.paint ?? {};
+      const c = paint['fill-extrusion-color'] ?? paint['circle-color'] ?? paint['fill-color'] ?? paint['line-color'];
+      // The feature's own drawn colour; outline-only polygons (invisible hit fill) use their outline.
+      const drawn = typeof c === 'string' ? c : c && typeof c.r === 'number' && c.a > 0 ? `rgb(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)})` : null;
+      const color = f.layer.id.endsWith(':hit') ? resolveColor(styles[layer].polygon.outline) : drawn && !/,\s*0\)$/.test(drawn) ? drawn : null;
+      items.push({ layer, props: f.properties, geometry: f.geometry, color, rank: (def.group === 'admin' ? 3 : RANK[def.geometry]) * 1000 + order });
+    });
+    return items.sort((a, b) => a.rank - b.rank);
+  };
+
   // Ruler snapping: the nearest vertex within SNAP_PX among the ruler's own points and
   // every app layer drawn under the pointer (basemap features and labels are left out).
   const snapTarget = (e) => {
@@ -286,10 +370,23 @@ function LiveMap() {
       preserveDrawingBuffer // keeps the last frame readable for map snapshots
       attributionControl={false}
       style={{ width: '100%', height: '100%' }}
-      cursor={drawing || tools.measure ? 'crosshair' : tools.select ? 'pointer' : 'grab'}
+      cursor={drawing || tools.measure ? 'crosshair' : tools.select || hovering ? 'pointer' : 'grab'}
       doubleClickZoom={!drawing && !shaping}
-      onMouseMove={(e) => tools.measure && snap && setSnapAt(snapTarget(e))}
-      onMouseOut={() => setSnapAt(null)}
+      onLoad={reportView}
+      onMove={reportView}
+      onMouseMove={(e) => {
+        report({ pointer: [e.lngLat.lng, e.lngLat.lat] });
+        if (tools.measure && snap) setSnapAt(snapTarget(e));
+        if (!drawing && !shaping && !tools.measure) {
+          const ids = hitLayers();
+          setHovering(ids.length > 0 && main.queryRenderedFeatures([[e.point.x - PAD, e.point.y - PAD], [e.point.x + PAD, e.point.y + PAD]], { layers: ids }).length > 0);
+        }
+      }}
+      onMouseOut={() => {
+        report({ pointer: null });
+        setSnapAt(null);
+        setHovering(false);
+      }}
       onClick={(e) => {
         // Clicks on HTML markers (ruler label ×, pins, corner handles) bubble to the map: ignore them.
         if (e.originalEvent?.target?.closest?.('.mapboxgl-marker')) return;
@@ -302,6 +399,9 @@ function LiveMap() {
           setMeasure((m) => [...m, at ?? p]);
           return;
         }
+        // Feature popup: the one clicked feature (points at their own position), or close it.
+        const item = pickFeatures(e.point)[0];
+        setPopup(item ? { lngLat: item.geometry?.type === 'Point' ? item.geometry.coordinates : p, item, at: Date.now() } : null);
         // A click on a measure footprint selects it and opens its effect.
         const measureLayers = specs.measures.layers.map((l) => l.id).filter((id) => main?.getMap().getLayer(id));
         const hit = layers.measures && measureLayers.length ? main?.queryRenderedFeatures(e.point, { layers: measureLayers })[0] : null;
@@ -389,11 +489,27 @@ function LiveMap() {
         </>
       )}
 
+      {/* Popup feature: yellow fill and outline (areas), line (lines) or ring (points). */}
+      {popFeature && (
+        <Source id="popup-feature" type="geojson" data={popFeature}>
+          <Layer id="popup-feature-fill" type="fill" filter={['==', ['geometry-type'], 'Polygon']} paint={{ 'fill-color': palette.highlight, 'fill-opacity': 0.22 }} />
+          <Layer id="popup-feature-line" type="line" filter={['!=', ['geometry-type'], 'Point']} layout={{ 'line-join': 'round', 'line-cap': 'round' }} paint={{ 'line-color': palette.highlight, 'line-width': 3 }} />
+          <Layer
+            id="popup-feature-point"
+            type="circle"
+            filter={['==', ['geometry-type'], 'Point']}
+            paint={{ 'circle-radius': 11, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': palette.highlight, 'circle-stroke-width': 3 }}
+          />
+        </Source>
+      )}
+
       {pixelCell && (
         <Source id="pixel-selected" type="geojson" data={pixelCell}>
           <Layer id="pixel-selected-line" type="line" paint={{ 'line-color': palette.accent2, 'line-width': 2.5 }} />
         </Source>
       )}
+
+      <FeaturePopup />
 
       {/* Footprint drafted in the Add measure form (drawing, corner editing). */}
       <FootprintDraft color={palette.accent2} surface={palette.surface} />

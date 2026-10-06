@@ -292,6 +292,7 @@ function vectorLayers(def, style, op) {
   const patterned = g.pattern !== 'solid';
   const outlineDash = dashArray(g.outlineDash);
   return [
+    g.noFill && withFilter({ id: `${id}:hit`, type: 'fill', paint: { 'fill-color': '#000000', 'fill-opacity': 0 } }, filter),
     !g.noFill &&
       (!patterned || g.patternBackground) &&
       withFilter(
@@ -442,31 +443,32 @@ function selectionLayers(def, accent2) {
 
 /**
  * The 3D layer, split when features are picked (selected measure, block, raster pixel, query
- * selection): the picked ones draw as their own extrusion in the map selection colour, so the
- * whole solid is highlighted, not just its footprint.
+ * selection) or have the popup open: those draw as their own extrusion, in the map selection
+ * colour or the popup highlight (yellow), so the whole solid is highlighted, not its footprint.
  */
-function extrudeLayers(def, style, op, picked) {
+function extrudeLayers(def, style, op, picked, popped) {
   const layer = extrudeLayer(def, style, op);
-  if (!picked) return [layer];
-  const where = (f) => (layer.filter ? ['all', layer.filter, f] : f);
+  if (!picked && !popped) return [layer];
+  const where = (...f) => {
+    const all = [layer.filter, ...f].filter(Boolean);
+    return all.length === 1 ? all[0] : ['all', ...all];
+  };
+  const solid = (id, filter, color) => ({ ...layer, id, filter, paint: { ...layer.paint, 'fill-extrusion-color': resolveColor(color), 'fill-extrusion-opacity': Math.max(0.9, layer.paint['fill-extrusion-opacity']) } });
   return [
-    { ...layer, filter: where(['!', picked]) },
-    {
-      ...layer,
-      id: `${def.id}:extrude-selected`,
-      filter: where(picked),
-      paint: { ...layer.paint, 'fill-extrusion-color': resolveColor('var(--accent-2)'), 'fill-extrusion-opacity': Math.max(0.9, layer.paint['fill-extrusion-opacity']) },
-    },
-  ];
+    { ...layer, filter: where(...[picked, popped].filter(Boolean).map((f) => ['!', f])) },
+    picked && solid(`${def.id}:extrude-selected`, where(picked, popped && ['!', popped]), 'var(--accent-2)'),
+    popped && solid(`${def.id}:extrude-popup`, where(popped), 'var(--feature-highlight)'),
+  ].filter(Boolean);
 }
 
 /**
  * { sourceId, sourceKey, source, layers, solid, terrain, extra } for one map layer. sourceKey
  * changes when the source itself must be rebuilt (clustering on/off), since Mapbox cannot
  * change it in place. solid: the 3D source and layer; terrain: { source, exaggeration } or null.
- * picked: filter of the features to highlight in 3D (2D selections are map overlays).
+ * picked: filter of the features to highlight in 3D (2D selections are map overlays);
+ * popped: filter of the feature whose popup is open (yellow in 3D).
  */
-export function buildLayerSpec(def, style, visible, picked = null) {
+export function buildLayerSpec(def, style, visible, picked = null, popped = null) {
   const op = style.opacity;
   const dem = def.kind === 'dem';
   // 3D on: polygons extrude from their own source, points, lines and rasters from a derived
@@ -489,7 +491,7 @@ export function buildLayerSpec(def, style, visible, picked = null) {
   const flat = def.raster || dem ? rasterLayers(def, style, op) : vectorLayers(def, style, op);
   // In 3D a query selection is highlighted with the picked features instead of a ground outline.
   const hl = [picked, solid && selecting && ['==', ['get', '__sel'], true]].filter(Boolean);
-  const solids = solid ? extrudeLayers(def, style, op, hl.length > 1 ? ['any', ...hl] : (hl[0] ?? null)) : [];
+  const solids = solid ? extrudeLayers(def, style, op, hl.length > 1 ? ['any', ...hl] : (hl[0] ?? null), popped) : [];
   const layers = [
     ...(solid ? (def.geometry === 'polygon' ? solids : []) : flat),
     ...(selecting && !solid ? selectionLayers(def, resolveColor('var(--accent-2)')) : []),

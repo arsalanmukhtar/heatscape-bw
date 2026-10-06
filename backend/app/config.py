@@ -17,5 +17,19 @@ class Settings(BaseSettings):
     translate_url: str = "http://translate:5000"
     translate_timeout_s: float = 60.0
 
+    # Region the live-data imports cover (Mannheim). bbox: west, south, east, north (EPSG:4326).
+    region_name: str = "Mannheim"
+    region_bbox: tuple[float, float, float, float] = (8.41, 49.40, 8.59, 49.59)
+    region_center: tuple[float, float] = (8.466, 49.4875)
+    # DWD: warn cells (municipality and district of Mannheim), MOSMIX station (Mannheim),
+    # climate stations within this radius of the region centre.
+    dwd_warncells: tuple[int, ...] = (808222000, 108222000)
+    dwd_mosmix_station: str = "10729"
+    dwd_station_radius_km: float = 30.0
+    overpass_url: str = "https://overpass-api.de/api/interpreter"
+    # Sent with every import request (providers ask for an identifying user agent).
+    ingest_user_agent: str = "heatscape-bw/0.1 (open-data import; research project)"
+    ingest_timeout_s: float = 120.0
+
 
 settings = Settings()

@@ -1,7 +1,6 @@
 import {
   AIR_GRID,
   BLOCKS,
-  FACILITIES,
   HAZARD_RASTER,
   LST_RASTER,
   SEALING_POINTS,
@@ -11,6 +10,7 @@ import {
 import { t } from '../i18n';
 import { MEASURE_STATUSES, MEASURE_TYPES, measuresFC } from './measures';
 import { allMeasures, useMeasures } from '../state/measures';
+import { liveData } from '../state/live';
 
 /*
   Map layers that can be styled. Each entry: id (also the visibility key in
@@ -31,11 +31,6 @@ const BLOCKS_FC = {
   }),
 };
 
-const facilities = (kind) => ({
-  type: 'FeatureCollection',
-  features: FACILITIES.filter((f) => f.kind === kind).map(({ position, ...props }) => toFeature(props, { type: 'Point', coordinates: position })),
-});
-
 const c = t.layers.fields;
 const COORDS = [
   { key: 'lon', label: c.lon, kind: 'coord', type: 'number' },
@@ -47,12 +42,58 @@ const GRID_FIELDS = [
   { key: 'heatClass', label: c.heatClass, kind: 'chip', type: 'string' },
   ...COORDS,
 ];
-// Capacity unit differs by facility: hospital beds, or pumped water in m³/h.
-const facilityFields = (capacityLabel) => [
+// Live open-data layers (state/live.js; GeoJSON from /api/layers/…, imported by the worker).
+const live = (id) => () => liveData(id);
+const HOSPITAL_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 'name', label: c.name, kind: 'text', type: 'string' },
+  { key: 'operator', label: c.operator, kind: 'text', type: 'string' },
+  { key: 'beds', label: c.beds, kind: 'int', type: 'number' },
+  { key: 'emergency', label: c.emergency, kind: 'text', type: 'string' },
+  ...COORDS,
+];
+const WATER_FIELDS = [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 'name', label: c.name, kind: 'text', type: 'string' },
   { key: 'kind', label: c.kind, kind: 'text', type: 'string' },
-  { key: 'capacity', label: capacityLabel, kind: 'int', type: 'number' },
+  { key: 'operator', label: c.operator, kind: 'text', type: 'string' },
+  ...COORDS,
+];
+const STATION_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 'name', label: c.name, kind: 'text', type: 'string' },
+  { key: 'latestTemp', label: c.latestTemp, kind: 'num', type: 'number' },
+  { key: 'observedAt', label: c.observedAt, kind: 'text', type: 'string' },
+  { key: 'lastDay', label: c.lastDay, kind: 'text', type: 'string' },
+  { key: 'lastDayMax', label: c.lastDayMax, kind: 'num', type: 'number' },
+  { key: 'lastDayMin', label: c.lastDayMin, kind: 'num', type: 'number' },
+  { key: 'season', label: c.season, kind: 'text', type: 'string' },
+  { key: 'summerDays', label: c.summerDays, kind: 'int', type: 'number' },
+  { key: 'heatDays', label: c.heatDays, kind: 'int', type: 'number' },
+  { key: 'tropicalNights', label: c.tropicalNights, kind: 'int', type: 'number' },
+  { key: 'summerMax', label: c.summerMax, kind: 'num', type: 'number' },
+  { key: 'elevation', label: c.elevation, kind: 'int', type: 'number' },
+  ...COORDS,
+];
+// Administrative units (BKG VG250-EW for Baden-Württemberg; OSM city districts / quarters).
+const ADMIN_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 'name', label: c.name, kind: 'text', type: 'string' },
+  { key: 'type', label: c.adminType, kind: 'text', type: 'string' },
+  { key: 'ars', label: c.ars, kind: 'text', type: 'string' },
+  { key: 'population', label: c.population, kind: 'int', type: 'number' },
+  { key: 'area', label: c.areaKm2, kind: 'num', type: 'number' },
+  { key: 'density', label: c.density, kind: 'int', type: 'number' },
+  { key: 'district', label: c.parentDistrict, kind: 'text', type: 'string' },
+  { key: 'region', label: c.parentRegion, kind: 'text', type: 'string' },
+  { key: 'nuts', label: c.nuts, kind: 'text', type: 'string' },
+  ...COORDS,
+];
+const admin = (id, attribution) => ({ id, attribution, group: 'admin', geometry: 'polygon', label: t.layers[id], getData: live(id), fields: ADMIN_FIELDS });
+const POPULATION_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 'population', label: c.population, kind: 'int', type: 'number' },
+  { key: 'meanAge', label: c.meanAge, kind: 'num', type: 'number' },
   ...COORDS,
 ];
 
@@ -76,6 +117,7 @@ export const LAYER_GROUPS = [
   { id: 'adaptation', label: t.layers.adaptation },
   { id: 'urban', label: t.layers.urban },
   { id: 'infrastructure', label: t.layers.infrastructure },
+  { id: 'admin', label: t.layers.admin },
   { id: 'raster', label: t.layers.rasters },
 ];
 
@@ -116,10 +158,19 @@ export const LAYERS = [
       ...COORDS,
     ],
   },
-  { id: 'hospitals', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, data: facilities('hospital'), fields: facilityFields(c.capacityBeds) },
-  { id: 'water', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.water, data: facilities('water'), fields: facilityFields(c.capacityWater) },
+  { id: 'hospitals', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, getData: live('hospitals'), fields: HOSPITAL_FIELDS },
+  { id: 'water', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.water, getData: live('water'), fields: WATER_FIELDS },
+  { id: 'dwdStations', attribution: ['dwd'], group: 'heat', geometry: 'point', label: t.layers.dwdStations, getData: live('dwdStations'), fields: STATION_FIELDS },
+  { id: 'population', attribution: ['destatis'], group: 'urban', geometry: 'polygon', label: t.layers.population, getData: live('population'), fields: POPULATION_FIELDS },
   { id: 'measures', attribution: ['usgs', 'copernicus'], group: 'adaptation', geometry: 'polygon', label: t.layers.measures, getData: measureData('footprints'), fields: MEASURE_FIELDS },
   { id: 'measureBuffers', attribution: [], group: 'adaptation', geometry: 'line', label: t.layers.measureBuffers, getData: measureData('buffers'), fields: MEASURE_FIELDS },
+  admin('adminLand', ['bkg']),
+  admin('adminRbz', ['bkg']),
+  admin('adminKrs', ['bkg']),
+  admin('adminVwg', ['bkg']),
+  admin('adminGem', ['bkg']),
+  admin('adminOsm9', ['osm']),
+  admin('adminOsm10', ['osm']),
   { id: 'lstRaster', attribution: ['usgs'], group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
   { id: 'hazardRaster', attribution: ['usgs', 'dwd'], group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
   { id: 'hillshade', attribution: ['mapbox'], group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },
@@ -128,7 +179,7 @@ export const LAYERS = [
 export const layerById = (id) => LAYERS.find((l) => l.id === id);
 
 /** Draw order, bottom to top. 'priority' is the scenario overlay, kept in the stack so data can sit above or below it. */
-export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'blocks', 'airTemp', 'priority', 'measureBuffers', 'measures', 'sealing', 'hospitals', 'water'];
+export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'population', 'blocks', 'airTemp', 'priority', 'measureBuffers', 'measures', 'adminGem', 'adminVwg', 'adminOsm10', 'adminOsm9', 'adminKrs', 'adminRbz', 'adminLand', 'sealing', 'hospitals', 'water', 'dwdStations'];
 
 // Centre of a feature's coordinates (good enough for points and grid cells).
 function centerOf(geometry) {
@@ -197,6 +248,12 @@ export function rasterCell(def, lon, lat) {
   const [w, s, e, n] = bounds;
   if (lon < w || lon >= e || lat <= s || lat > n) return null;
   return rasterCellAt(def, Math.floor((n - lat) / ((n - s) / rows)) * cols + Math.floor((lon - w) / ((e - w) / cols)));
+}
+
+/** The GeoJSON feature of a vector layer with this id (properties.id), or null. */
+export function featureById(def, id) {
+  if (id == null) return null;
+  return layerData(def)?.features.find((f) => String(f.properties.id) === String(id)) ?? null;
 }
 
 /** [[west, south], [east, north]] of a layer, for zoom to layer. */

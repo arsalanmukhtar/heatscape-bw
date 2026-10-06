@@ -120,6 +120,12 @@ export const useSymbology = create()(
 
       importStyle: (id, style) => get().commit(id, normalizeStyle(layerById(id), style)),
 
+      /** Replace the draw order (bottom → top), e.g. after a drag in the layer order panel; must hold the same ids. */
+      setOrder: (order) => {
+        const now = get().order;
+        if (order.length === now.length && order.every((id) => now.includes(id))) set({ order });
+      },
+
       /** Move a layer one step up (+1) or down (-1) in the draw order. */
       move: (id, dir) => {
         const order = [...get().order];

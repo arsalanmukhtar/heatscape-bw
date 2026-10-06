@@ -50,12 +50,13 @@ export function BottomDock() {
       )}
 
       <div className="flex shrink-0 items-stretch border-b border-border pr-4" style={{ height: 'var(--dock-bar-h)' }}>
-        {/* Compact tabs: smaller type and chips so all four fit beside the tab actions;
-            the strip scrolls sideways (no scrollbar) rather than overlapping them. */}
+        {/* Compact tabs: smaller type and chips so all four fit beside the tab actions. When
+            space runs short the actions give way first (the filter box shrinks), then the
+            strip scrolls sideways (no scrollbar) rather than overlapping them. */}
         <div
           role="tablist"
           aria-label="Dock"
-          className="flex min-w-0 shrink items-stretch overflow-x-auto [scrollbar-width:none] [&_.level-chip]:w-[var(--dock-chip-w)] [&_.level-chip]:px-1.5 [&_.level-chip]:py-1"
+          className="flex min-w-0 shrink-[0.25] items-stretch overflow-x-auto [scrollbar-width:none] [&_.level-chip]:w-[var(--dock-chip-w)] [&_.level-chip]:px-1.5 [&_.level-chip]:py-1"
         >
           {Object.entries(TABS).map(([id, { label, Icon, Badges }]) => {
             const active = id === dockTab;
@@ -77,7 +78,7 @@ export function BottomDock() {
             );
           })}
         </div>
-        <div className="ml-auto flex min-w-0 items-center gap-1 pl-2">
+        <div className="ml-auto flex min-w-0 shrink items-center gap-1 pl-2">
           {dockOpen && <tab.Actions />}
           {dockOpen && <ExpandButton id={`dock-${dockTab}`} keepSpace={false} />}
           <button

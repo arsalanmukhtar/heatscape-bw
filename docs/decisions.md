@@ -50,6 +50,9 @@ Append-only. One line each: decision — reason.
 44. Data attribution has one home, `frontend/src/lib/attribution.js` (provider → required credit line EN/DE, link, licence); layers, report sources, pipelines and catalog collections carry provider keys. Map tiles (workspace: basemap + visible layers; portal: basemap + Landsat) unroll on hover/focus and pin on click or tap; reports print every listed source's credit in the footer; the portal lists all providers under About the data; admin shows licence links and credit lines — licences (ODbL, Mapbox ToS, CC BY, dl-de/by-2-0, Copernicus) require visible credit wherever the data shows.
 45. Layer visibility and the grid overlay persist in localStorage (`hs-workspace`) — the map should open as the user left it; layers added later start at their default.
 46. Geoprocessing runs only from a tool form: a tool in the left list opens its form as the right view `tool` (inputs, parameters, extent, output name/folder/format → path), validated before Run (bottom right); the job carries that configuration and its log prints it. Tool definitions mirror OGC API – Processes descriptions so the process registry can replace the MOCK list — a click must never queue a run with unseen defaults.
+47. Live data starts with keyless open sources (Phase 1: DWD warnings/MOSMIX/CDC stations, OSM via Overpass, Zensus 2022 grid), imported by a `worker` service (backend image, interval loop `app.ingest.schedule`, CLI `python -m app.ingest`) into PostGIS and served as GeoJSON/JSON by the backend; replaced MOCK modules are deleted, not kept as fallbacks — no accounts needed to get real data flowing, and one import pattern serves the later EO phases. Celery replaces the loop when geoprocessing jobs need a queue.
+48. Administrative units come from BKG VG250-EW for Baden-Württemberg (state → Regierungsbezirk → Kreis → Verwaltungsgemeinschaft → Gemeinde, land parts only, with population and area) plus OSM admin_level 9/10 for sub-municipal districts in the region (VG250 stops at the municipality); one `admin_units` table, one layer per level drawn as outlines weighted by level, large levels (Gemeinden, VWG, Zensus) loaded on first use — official keys (ARS) link the levels, and nothing heavy loads until it is needed.
+49. Live layers that load empty or fail are fetched again every minute, with a loading / waiting / error mark on the layer row — the page may open before the worker's first import, and a once-only fetch left layers empty until a reload.
 
 ## UI overrides
 
@@ -81,6 +84,7 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 
 - Sign-in logo row: no pause button (removed by request); it pauses on hover and keyboard focus only; the strip is soft ash white (light tokens) in both themes, logos in their own colours, one file each.
 - Notification badge: a small round red (`--destructive`) circle (14 px, `clip-path: circle()`, since the square rule zeroes radii) with a white count in both themes — the one round element in the square UI, by request.
+- Backend loader: the circular two-ring loader (by request) for data loading, round despite the square rule (scoped `border-radius` exception in the base layer); its outer ring follows the theme ink, the inner ring stays orange #ff3d00.
 
 ## Open
 

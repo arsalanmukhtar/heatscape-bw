@@ -1,13 +1,16 @@
 import { LuDroplet, LuHospital, LuScanSearch, LuX } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
 import { VscCollapseAll } from 'react-icons/vsc';
-import { REGION, SEASON, atRiskFacilities, blockById } from '../data/mock';
+import { REGION, SEASON, blockById } from '../data/mock';
 import { t } from '../i18n';
+import { distanceKm } from '../lib/css';
 import { LAYERS, rasterCell } from '../lib/layers';
+import { useLive } from '../state/live';
 import { useLayout } from '../state/layout';
 import { useWorkspace } from '../state/workspace';
 import { PanelHeader } from './SidePanel';
 import { ExpandButton, ExpandSlot } from './Expandable';
+import { OverflowText } from './OverflowText';
 import { TempChart } from './TempChart';
 
 const tempClass = (v) => (v >= 38 ? 'text-level-severe' : v >= 36 ? 'text-level-high' : v >= 34 ? 'text-level-moderate' : 'text-text');
@@ -16,7 +19,7 @@ const vulnColor = (v) => (v >= 70 ? 'var(--level-severe)' : v >= 45 ? 'var(--lev
 export function InspectorPanel() {
   const block = blockById(useWorkspace((s) => s.selectedId));
   const toggleRight = useLayout((s) => s.toggleRight);
-  const facilities = atRiskFacilities(block);
+  const facilities = useNearestFacilities(block.center);
   const { main } = useMap();
   const vColor = vulnColor(block.vulnerability);
 
@@ -109,6 +112,7 @@ export function InspectorPanel() {
 
         <section className="mt-6">
           <p className="label-caps mb-2">{t.inspector.atRisk}</p>
+          {facilities.length === 0 && <p className="text-xs text-muted">{t.inspector.noFacilities}</p>}
           <ul className="flex flex-col gap-2">
             {facilities.map((f) => (
               <li key={f.name} className="flex h-10 items-center gap-3 border border-border bg-field pl-3 pr-1.5">
@@ -117,8 +121,9 @@ export function InspectorPanel() {
                 ) : (
                   <LuDroplet size={15} className="shrink-0 text-accent-2" aria-label="Water supply" />
                 )}
-                <span className="flex-1 truncate text-sm text-text">{f.name}</span>
-                <span className="text-xs tabular-nums text-level-high">+{f.km.toFixed(1)}km</span>
+                {/* The name gives way (ellipsis, full name in a tooltip); distance and zoom keep their size. */}
+                <OverflowText className="flex-1 text-sm text-text">{f.name}</OverflowText>
+                <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-level-high">+{f.km.toFixed(1)}km</span>
                 <button
                   type="button"
                   onClick={() => main?.flyTo({ center: f.position, zoom: Math.max(main.getZoom(), 15), duration: 800 })}
@@ -171,6 +176,21 @@ function PixelSection() {
       </ul>
     </section>
   );
+}
+
+/** Nearest hospital and nearest drinking-water facility to a point (live OSM layers). */
+function useNearestFacilities(center) {
+  const data = useLive((s) => s.data);
+  return [
+    ['hospital', data.hospitals],
+    ['water', data.water],
+  ]
+    .map(([kind, fc]) =>
+      (fc?.features ?? [])
+        .map((f) => ({ name: f.properties.name, kind, position: f.geometry.coordinates, km: distanceKm(center, f.geometry.coordinates) }))
+        .sort((a, b) => a.km - b.km)[0],
+    )
+    .filter(Boolean);
 }
 
 function Stat({ label, children }) {

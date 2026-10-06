@@ -7,6 +7,8 @@ import { useJobs } from '../state/jobs';
 import { useLayout } from '../state/layout';
 import { useMeasures } from '../state/measures';
 import { useNotifications } from '../state/notifications';
+import { useMapInfo } from '../state/mapInfo';
+import { fmtLatLon } from '../lib/coords';
 import { useTheme } from '../state/theme';
 
 const REGIONS = ['Mannheim', 'Stuttgart', 'Karlsruhe'];
@@ -54,6 +56,7 @@ export function TopNav() {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
+        <MapReadout />
         <div
           className="flex h-[1.875rem] items-center gap-2 whitespace-nowrap border border-nav-border bg-bg-deep px-2 text-xs text-nav-text lg:px-3"
           title={`${t.nav.season}: ${SEASON.label} (${SEASON.range})`}
@@ -97,6 +100,39 @@ export function Brand() {
         <span className="text-xs font-bold uppercase tracking-[var(--tracking-caps)] text-accent">{t.appRegion}</span>
       </span>
     </div>
+  );
+}
+
+/* Map readout (between the view tabs and the season): zoom, and the pointer position while
+   it is over the map, else the map centre. Click copies the coordinates (lat, lon). */
+function MapReadout() {
+  const view = useLayout((s) => s.view);
+  const { zoom, center, pointer } = useMapInfo();
+  const [copied, setCopied] = useState(false);
+  if (view !== 'gis' || zoom == null) return null;
+  const at = pointer ?? center;
+  const copy = () => {
+    navigator.clipboard?.writeText(`${at[1].toFixed(6)}, ${at[0].toFixed(6)}`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    });
+  };
+  const r = t.nav.readout;
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={copied ? r.copied : r.copy}
+      className="hidden h-[1.875rem] items-center gap-2.5 whitespace-nowrap border border-nav-border bg-bg-deep px-3 font-mono text-2xs tabular-nums text-nav-muted hover:text-nav-text xl:flex"
+    >
+      <span>
+        <span className="text-nav-muted">{r.zoom}</span> <span className="text-nav-text">{zoom.toFixed(2)}</span>
+      </span>
+      <span className="h-3.5 w-px bg-nav-border" aria-hidden />
+      <span className="inline-block w-[15.5rem] text-left">
+        <span className="text-nav-muted">{pointer ? r.pointer : r.center}</span> <span className={copied ? 'text-accent' : 'text-nav-text'}>{copied ? r.copied : fmtLatLon(at)}</span>
+      </span>
+    </button>
   );
 }
 

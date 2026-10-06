@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuArrowDown, LuArrowUp, LuBox, LuCopy, LuDownload, LuFilter, LuImage, LuMapPin, LuMountain, LuPalette, LuRotateCcw, LuSpline, LuSquare, LuTags, LuUndo2, LuUpload } from 'react-icons/lu';
 import { VscCollapseAll } from 'react-icons/vsc';
 import { t } from '../../i18n';
@@ -6,6 +6,7 @@ import { LAYERS, layerById } from '../../lib/layers';
 import { saveFile } from '../../lib/saveFile';
 import { renderersFor } from '../../lib/styleModel';
 import { useLayout } from '../../state/layout';
+import { useLive } from '../../state/live';
 import { useSymbology } from '../../state/symbology';
 import { Check, Field, NumberField, Section, Select, Slider } from '../controls';
 import { PanelHeader } from '../SidePanel';
@@ -45,6 +46,10 @@ export function SymbologyPanel() {
   const { editing, edit, tab, setTab, history, undo, reset } = useSymbology();
   const def = layerById(editing) ?? LAYERS[0];
   const canUndo = (history[def.id] ?? []).length > 0;
+  // Classes and field values need the data: a lazy live layer loads when it is styled.
+  useEffect(() => {
+    useLive.getState().ensure(def.id);
+  }, [def.id]);
 
   return (
     <>

@@ -1,11 +1,15 @@
 import { useId, useState } from 'react';
-import { LuEye, LuEyeOff, LuFilter, LuGrid2X2, LuImage, LuMapPin, LuMountain, LuScanSearch, LuSpline, LuSquare, LuSquareDashed, LuTable2, LuTarget } from 'react-icons/lu';
+import { LuCircleAlert, LuEye, LuEyeOff, LuFilter, LuGrid2X2, LuHourglass, LuImage, LuMapPin, LuMountain, LuScanSearch, LuSpline, LuSquare, LuSquareDashed, LuTable2, LuTarget } from 'react-icons/lu';
 import { LiaPaletteSolid } from 'react-icons/lia';
 import { useMap } from 'react-map-gl/mapbox';
 import { blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
 import { isVector, LAYER_GROUPS, LAYERS, layerBounds, layerData } from '../lib/layers';
 import { useLayout } from '../state/layout';
+import { LIVE_LAYERS, useLive } from '../state/live';
+import { LayerOrderButton } from './LayerOrderPanel';
+import { Loader } from './Loader';
+import { OverflowText } from './OverflowText';
 import { useSymbology } from '../state/symbology';
 import { useWorkspace } from '../state/workspace';
 import { LayerLegend, LegendSwatch } from './LayerLegend';
@@ -41,15 +45,18 @@ export function LayersPanel() {
       <PanelHeader
         title={t.layers.title}
         actions={
-          <button
-            type="button"
-            onClick={() => setAllLayers(!anyOn)}
-            aria-label={allLabel}
-            title={allLabel}
-            className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text"
-          >
-            {anyOn ? <LuEyeOff size={14} /> : <LuEye size={14} />}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setAllLayers(!anyOn)}
+              aria-label={allLabel}
+              title={allLabel}
+              className="grid size-7 place-items-center text-muted hover:bg-hover hover:text-text"
+            >
+              {anyOn ? <LuEyeOff size={14} /> : <LuEye size={14} />}
+            </button>
+            <LayerOrderButton />
+          </>
         }
       />
       <div className="shrink-0 px-3 pt-3">
@@ -141,6 +148,26 @@ function layerKind(def) {
   return { type: k[def.geometry], detail: k.features(layerData(def).features.length) };
 }
 
+/** Load state of a live layer beside its name: loading, waiting for its first import, or failed. */
+function LiveStatus({ id }) {
+  const status = useLive((s) => s.status[id]);
+  const error = useLive((s) => s.error[id]);
+  if (!LIVE_LAYERS[id] || !status || status === 'ok' || status === 'idle') return null;
+  const st = t.layers.live;
+  if (status === 'loading')
+    return (
+      <span className="grid size-5 shrink-0 place-items-center">
+        <Loader size={14} label={st.loading} />
+      </span>
+    );
+  const [Icon, cls, text] = status === 'empty' ? [LuHourglass, 'text-warning', st.empty] : [LuCircleAlert, 'text-danger', st.error(error)];
+  return (
+    <span role="status" aria-label={text} title={text} className="grid size-5 shrink-0 place-items-center">
+      <Icon size={12} className={cls} aria-hidden />
+    </span>
+  );
+}
+
 function Row({ Icon, label, title, kind, active, actions, children, badge }) {
   return (
     <li className={`border bg-field ${active ? 'border-accent-line' : 'border-border'}`}>
@@ -163,9 +190,10 @@ function Row({ Icon, label, title, kind, active, actions, children, badge }) {
         <div className="min-w-0 flex-1">
           <div className="flex h-7 items-center gap-0.5">
             <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span className="min-w-0 truncate text-sm text-text" title={title}>
+              {/* Full name in a tooltip when it does not fit. */}
+              <OverflowText className="text-sm text-text" tip={title ?? label}>
                 {label}
-              </span>
+              </OverflowText>
               {badge}
             </span>
             {actions}
@@ -207,7 +235,9 @@ function LayerItem({ def }) {
       label={def.label}
       kind={layerKind(def)}
       badge={
-        style.query?.applied && (
+        <>
+          <LiveStatus id={def.id} />
+          {style.query?.applied && (
           <button
             type="button"
             onClick={() => {
@@ -221,7 +251,8 @@ function LayerItem({ def }) {
           >
             <LuFilter size={12} />
           </button>
-        )
+          )}
+        </>
       }
       active={styling}
       actions={
@@ -229,7 +260,7 @@ function LayerItem({ def }) {
           <ActionButton label={def.raster || def.kind === 'dem' ? t.layers.noTable : t.layers.openTable} active={tabling} disabled={!isVector(def)} onClick={openTable}>
             <LuTable2 size={13} />
           </ActionButton>
-          <ActionButton label={t.layers.zoomTo} onClick={() => main?.fitBounds(layerBounds(def), FLY)}>
+          <ActionButton label={t.layers.zoomTo} onClick={() => useLive.getState().ensure(def.id).then(() => main?.fitBounds(layerBounds(def), FLY))}>
             <LuScanSearch size={13} />
           </ActionButton>
           <ActionButton label={t.layers.symbology} active={styling} onClick={openSymbology}>

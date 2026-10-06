@@ -24,6 +24,7 @@ export const useLayout = create()(
       dockTab: 'table', // table | jobs | charts | summary
       dockMax: false, // dock fills the map area (not persisted)
       mapControlsOpen: true,
+      layerOrderOpen: false, // layer order overlay on the map (Layers panel header button)
       expanded: null, // id of the element shown in the map overlay (not persisted)
       panelW: null,
       dockH: null,
@@ -64,6 +65,7 @@ export const useLayout = create()(
       toggleExpanded: (id) => set({ expanded: get().expanded === id ? null : id, dockMax: false }),
       closeExpanded: () => set({ expanded: null }),
       toggleMapControls: () => set({ mapControlsOpen: !get().mapControlsOpen }),
+      toggleLayerOrder: () => set({ layerOrderOpen: !get().layerOrderOpen }),
       toggleDockMax: () => set({ dockMax: !get().dockMax, dockOpen: true }),
       // Picking a tab also opens a collapsed dock.
       setDockTab: (dockTab) => set({ dockTab, dockOpen: true }),

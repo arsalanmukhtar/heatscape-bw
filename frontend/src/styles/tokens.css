@@ -54,6 +54,8 @@
      (4.8:1). Not a status colour: it marks an action, never a state. */
   --destructive: #dc2626;
   --on-destructive: #ffffff;
+  /* The feature whose popup is open, on the map (both themes). */
+  --feature-highlight: #ffd60a;
 
   /* The vertical variant runs down the right edge of a layer row, edge to edge, so the
      chips of a group stack into one unbroken column. The row carries no vertical

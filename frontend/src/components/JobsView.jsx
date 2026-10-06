@@ -13,15 +13,26 @@ const STATUS_ORDER = { running: 3, queued: 2, error: 1, done: 0 };
 const jobSearch = (j) => [j.id, j.name, j.tool, j.region, t.jobs.status[j.status], j.started];
 const jobValue = (j, key) => (key === 'status' ? STATUS_ORDER[j.status] : key === 'duration' ? j.durationSec : j[key]);
 
+// Status count boxes on the Jobs tab: solid colour, white count; zero counts are left out.
+const COUNT_BOXES = [
+  { status: 'running', color: 'var(--level-high)', label: t.jobs.running },
+  { status: 'done', color: 'var(--success)', label: t.jobs.done },
+  { status: 'error', color: 'var(--danger)', label: t.jobs.failed },
+];
+
 export function JobsBadges() {
   const jobs = useJobs((s) => s.jobs);
-  const running = jobs.filter((j) => j.status === 'running').length;
-  const failed = jobs.filter((j) => j.status === 'error').length;
   return (
-    <>
-      {running > 0 && <span className="level-chip tabular-nums" style={{ '--chip': 'var(--info)' }}>{t.jobs.running(running)}</span>}
-      {failed > 0 && <span className="level-chip tabular-nums" style={{ '--chip': 'var(--danger)' }}>{t.jobs.failed(failed)}</span>}
-    </>
+    <span className="flex items-center gap-1">
+      {COUNT_BOXES.map(({ status, color, label }) => {
+        const n = jobs.filter((j) => j.status === status).length;
+        return n > 0 ? (
+          <span key={status} role="status" aria-label={label(n)} title={label(n)} className="grid h-4 min-w-4 place-items-center px-1 text-2xs font-semibold tabular-nums leading-none text-white" style={{ background: color }}>
+            {n}
+          </span>
+        ) : null;
+      })}
+    </span>
   );
 }
 

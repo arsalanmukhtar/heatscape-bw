@@ -3,7 +3,9 @@ import { Marker, useMap } from 'react-map-gl/mapbox';
 import { create } from 'zustand';
 import { REGION } from '../data/mock';
 import { t } from '../i18n';
+import { fmtLatLon, parseCoords } from '../lib/coords';
 import { geocode } from '../lib/geocode';
+import { useWorkspace } from '../state/workspace';
 import { SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { SearchBar } from './SearchBar';
 
@@ -57,11 +59,15 @@ export function Geocoder({ disabled }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const listRef = useRef(null);
+  // Coordinates in the box go first in the list ("Go to …"); the chip sets lat/lon order.
+  const { coordOrder, toggleCoordOrder } = useWorkspace();
+  const coords = parseCoords(query, coordOrder);
+  const options = coords ? [{ id: 'coords', name: fmtLatLon(coords), place: t.map.coordsHint, center: coords, type: 'coords' }, ...results] : results;
 
   // Debounced lookup; a newer keystroke aborts the pending request.
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
+    if (q.length < 2 || parseCoords(q)) {
       setResults([]);
       return;
     }
@@ -94,7 +100,8 @@ export function Geocoder({ disabled }) {
     setPin(null);
     if (!main) return;
     main.once('moveend', () => setPin(r));
-    if (r.bbox) main.fitBounds([[r.bbox[0], r.bbox[1]], [r.bbox[2], r.bbox[3]]], { padding: 80, maxZoom: 17, duration: 1000 });
+    if (r.type === 'coords') main.flyTo({ center: r.center, zoom: Math.max(main.getZoom(), 16), duration: 1000 });
+    else if (r.bbox) main.fitBounds([[r.bbox[0], r.bbox[1]], [r.bbox[2], r.bbox[3]]], { padding: 80, maxZoom: 17, duration: 1000 });
     else main.flyTo({ center: r.center, zoom: TYPE_ZOOM[r.type] ?? 15, duration: 1000 });
   };
 
@@ -108,12 +115,12 @@ export function Geocoder({ disabled }) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setOpen(true);
-      setActive((i) => Math.min(i + 1, results.length - 1));
+      setActive((i) => Math.min(i + 1, options.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActive((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && results.length) {
-      pick(results[Math.max(active, 0)]);
+    } else if (e.key === 'Enter' && options.length) {
+      pick(options[Math.max(active, 0)]);
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
@@ -132,6 +139,18 @@ export function Geocoder({ disabled }) {
         variant="floating"
         className="w-full"
         clearOnEscape={false}
+        trailing={
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={toggleCoordOrder}
+            title={t.map.coordOrderHint}
+            aria-label={t.map.coordOrderHint}
+            className={`flex h-5 shrink-0 items-center border px-1.5 font-mono text-2xs uppercase ${coords ? 'border-accent-line bg-accent-soft text-accent' : 'border-border text-muted hover:text-text'}`}
+          >
+            {coordOrder === 'latlon' ? t.map.latLon : t.map.lonLat}
+          </button>
+        }
         inputProps={{
           role: 'combobox',
           'aria-label': t.map.search,
@@ -146,12 +165,12 @@ export function Geocoder({ disabled }) {
       />
       {showList && (
         <ul ref={listRef} id={listId} role="listbox" className="max-h-50 overflow-y-auto border border-t-0 border-border-strong bg-surface-strong shadow-[var(--shadow-glass)] backdrop-blur-md">
-          {results.length === 0 ? (
+          {options.length === 0 ? (
             <li className="flex h-10 items-center justify-center px-3 text-xs text-muted">
               <span>{t.map.searchEmpty}</span>
             </li>
           ) : (
-            results.map((r, i) => (
+            options.map((r, i) => (
               <li
                 key={r.id}
                 id={`${listId}-${i}`}

@@ -36,7 +36,7 @@ const tool = (id) => ({ run: () => W().toggleTool(id), on: () => W().tools[id] }
 // Esc belongs to an open menu, popover or dialog first, and to footprint drafting.
 const overlayOpen = () => !!document.querySelector('dialog[open], [aria-expanded="true"], [aria-modal="true"]');
 const M = () => useMeasures.getState();
-const hasSelection = () => !!(W().pixel || M().selectedId) && !M().drawing && !M().shaping && !overlayOpen();
+const hasSelection = () => !!(W().popup || W().pixel || W().rowHighlight || M().selectedId) && !M().drawing && !M().shaping && !overlayOpen();
 
 const reportZoom = (dir) => () => {
   const r = useReports.getState();
@@ -96,7 +96,10 @@ export const SHORTCUTS = [
     label: s.deselect,
     when: hasSelection,
     run: () => {
+      // A popup closes on its own first; the next Esc clears the selections.
+      if (W().popup) return W().setPopup(null);
       W().setPixel(null);
+      W().setRowHighlight(null);
       M().select(null);
     },
   },

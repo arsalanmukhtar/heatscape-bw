@@ -8,6 +8,15 @@ const DEFAULT_LAYERS = {
   sealing: true,
   hospitals: true,
   water: false,
+  dwdStations: true,
+  population: false,
+  adminLand: true,
+  adminRbz: false,
+  adminKrs: true,
+  adminVwg: false,
+  adminGem: false,
+  adminOsm9: false,
+  adminOsm10: false,
   measures: true,
   measureBuffers: true,
   lstRaster: false,
@@ -30,6 +39,13 @@ export const useWorkspace = create()(
       layers: DEFAULT_LAYERS,
       selectedId: 'M-14',
       pixel: null, // raster identify: { lon, lat } of the clicked point, or null
+      // Feature popup: { lngLat, item: { layer, props, geometry, color }, at } or null.
+      popup: null,
+      // Attribute table: row click flies to the feature and highlights it (toggle in the
+      // table toolbar, saved); rowHighlight: { layer, id } of the highlighted row, or null.
+      tableFly: true,
+      coordOrder: 'latlon', // address search: order of typed or pasted coordinates (latlon | lonlat)
+      rowHighlight: null,
       tools: { select: true, measure: false, grid: false },
       snap: true, // ruler points snap to nearby vertices (magnet beside the ruler)
       tableLayer: 'blocks', // vector layer shown in the attribute table; null = none open
@@ -43,6 +59,10 @@ export const useWorkspace = create()(
         set({ layers: Object.fromEntries(Object.keys(get().layers).map((k) => [k, on])), tools: { ...get().tools, grid: on } }),
       select: (selectedId) => set({ selectedId }),
       setPixel: (pixel) => set({ pixel }),
+      setPopup: (popup) => set({ popup }),
+      toggleTableFly: () => set({ tableFly: !get().tableFly, rowHighlight: null }),
+      setRowHighlight: (rowHighlight) => set({ rowHighlight }),
+      toggleCoordOrder: () => set({ coordOrder: get().coordOrder === 'latlon' ? 'lonlat' : 'latlon' }),
       // Select and measure are exclusive pointer modes; the grid overlay toggles on its own.
       toggleSnap: () => set({ snap: !get().snap }),
       toggleTool: (tool) => {
@@ -67,13 +87,13 @@ export const useWorkspace = create()(
       name: 'hs-workspace',
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ layers, tools }) => ({ layers, grid: tools.grid }),
+      partialize: ({ layers, tools, tableFly, coordOrder }) => ({ layers, grid: tools.grid, tableFly, coordOrder }),
       merge: (saved, current) => {
         const layers = { ...DEFAULT_LAYERS };
         Object.keys(layers).forEach((k) => {
           if (typeof saved?.layers?.[k] === 'boolean') layers[k] = saved.layers[k];
         });
-        return { ...current, layers, tools: { ...current.tools, grid: !!saved?.grid } };
+        return { ...current, layers, tools: { ...current.tools, grid: !!saved?.grid }, tableFly: saved?.tableFly ?? true, coordOrder: saved?.coordOrder === 'lonlat' ? 'lonlat' : 'latlon' };
       },
     },
   ),

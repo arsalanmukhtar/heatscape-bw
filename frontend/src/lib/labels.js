@@ -114,8 +114,9 @@ export function labelLayers(def, style) {
       label: true,
       layout,
       paint,
-      minzoom: L.minZoom,
-      maxzoom: L.maxZoom,
+      // Within the layer's visible zoom range (Style tab) as well as the label's own.
+      minzoom: Math.max(L.minZoom, style.minZoom ?? 0),
+      maxzoom: Math.min(L.maxZoom, style.maxZoom ?? 24),
       ...(hidden.length ? { filter: ['!', ['in', ['get', '__lclass'], ['literal', hidden]]] } : {}),
     },
   ];

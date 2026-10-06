@@ -11,7 +11,7 @@ import { LuSearch, LuX } from 'react-icons/lu';
   input's horizontal scroll so the caret stays on the letters when the text overflows.
   inputProps: extra attributes for the input (ARIA, focus and key handlers).
 */
-export function SearchField({ value, onChange, placeholder, onClear, clearLabel, iconSize = 12, className = '', inputProps = {} }) {
+export function SearchField({ value, onChange, placeholder, onClear, clearLabel, iconSize = 12, className = '', inputProps = {}, trailing = null }) {
   const inputRef = useRef(null);
   const [scrollX, setScrollX] = useState(0);
   const sync = () => requestAnimationFrame(() => setScrollX(inputRef.current?.scrollLeft ?? 0));
@@ -65,6 +65,7 @@ export function SearchField({ value, onChange, placeholder, onClear, clearLabel,
           <LuX size={12} />
         </button>
       )}
+      {trailing}
     </label>
   );
 }

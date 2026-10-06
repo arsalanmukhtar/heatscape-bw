@@ -6,7 +6,6 @@
            greenCover %, popDensity (per km²), risk, vulnerability (0–100),
            center [lon, lat], weekly: { block[4], city[4] } (July, weeks 1–4) }
 */
-import { distanceKm } from '../lib/css';
 import { rectAround } from '../lib/measures';
 
 export const REGION = { name: 'Mannheim', state: 'Baden-Württemberg', center: [8.4805, 49.4875] };
@@ -102,26 +101,6 @@ export function blockBounds(b) {
     [lon - 0.0075, lat - 0.004],
     [lon + 0.0075, lat + 0.004],
   ];
-}
-
-// capacity: hospital beds, or pumped water in m³/h.
-export const FACILITIES = [
-  { id: 'H-01', name: 'St. Vincent Hospital', kind: 'hospital', capacity: 420, position: [8.4895, 49.4985] },
-  { id: 'H-02', name: 'Klinikum Süd', kind: 'hospital', capacity: 860, position: [8.4705, 49.4555] },
-  { id: 'H-03', name: 'Klinik Käfertal', kind: 'hospital', capacity: 240, position: [8.5205, 49.5155] },
-  { id: 'W-04', name: 'Pump Station 4', kind: 'water', capacity: 1800, position: [8.4605, 49.5057] },
-  { id: 'W-02', name: 'Pump Station 2', kind: 'water', capacity: 1250, position: [8.5505, 49.4705] },
-  { id: 'W-07', name: 'Pump Station 7', kind: 'water', capacity: 950, position: [8.4405, 49.5355] },
-];
-
-/** Nearest hospital and nearest water facility to a block. */
-export function atRiskFacilities(b) {
-  return ['hospital', 'water'].map(
-    (kind) =>
-      FACILITIES.filter((f) => f.kind === kind)
-        .map((f) => ({ ...f, km: distanceKm(b.center, f.position) }))
-        .sort((x, y) => x.km - y.km)[0],
-  );
 }
 
 /* Synthetic surface-temperature field on a ~250 m grid: warm in the dense centre and
@@ -588,13 +567,10 @@ export const REPORT_SOURCES = [
 ];
 
 /*
-  MOCK public Heat Portal content (until the DWD warning feed, the cool-places register
-  and per-cell confidence come from the API). Place names are real Mannheim places;
-  positions are approximate and opening hours illustrative.
-  Heat warning: DWD warns per district (Stadtkreis); level none | strong | extreme
-  ("starke" / "extreme Wärmebelastung"). Temperatures in °C (air, 2 m).
+  MOCK public Heat Portal content (until the cool-places register and per-cell confidence
+  come from the API; the DWD heat warning card is live: /api/portal/warning). Place names
+  are real Mannheim places; positions are approximate and opening hours illustrative.
 */
-export const HEAT_WARNING = { area: 'Stadtkreis Mannheim', level: 'strong', from: '11:00', to: '19:00', forecastMax: 34, tomorrowMax: 35, nightMin: 21, updated: '2025-07-31T06:30' };
 // kind: park | shade | water | coolroom. hours: null = always open. note: fee | aircon (translated).
 export const COOL_PLACES = [
   { id: 'cp-01', kind: 'park', name: 'Luisenpark', center: [8.4945, 49.4835], hours: '09:00–21:00', note: 'fee', shade: true, water: true, seats: true },

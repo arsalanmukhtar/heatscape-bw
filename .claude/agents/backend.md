@@ -9,6 +9,7 @@ Scope: `backend/` only.
 ## Structure
 - `app/main.py` app + router registration · `app/config.py` settings from env · `app/db.py` asyncpg pool (`Depends(get_pool)`) · `app/routers/<area>.py` one router per area · `app/schemas/<area>.py` Pydantic models (create when first needed).
 - Every route is under `/api` (Swagger `/api/docs`). Routers declare `prefix` and `tags`.
+- `app/ingest/` open-data imports (one module per source, `JOBS` registry with intervals, `record()` writes the `datasets` row); run by the `worker` service. New tables: idempotent SQL in `database/init/`.
 
 ## Conventions
 - Async endpoints; SQL via asyncpg with `$1` parameters only — never string-format SQL.

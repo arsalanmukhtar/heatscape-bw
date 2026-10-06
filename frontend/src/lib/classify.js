@@ -132,7 +132,9 @@ export function computeBreaks(values, method, n, opts = {}) {
   const s = stats(values);
   const min = opts.range ? opts.range[0] : s.min;
   const max = opts.range ? opts.range[1] : s.max;
-  if (!s.sorted.length || min === max) return [min, max];
+  if (min === max || (!s.sorted.length && !opts.range)) return [min, max];
+  // A manual range classifies before any data arrive (live layers); data-driven methods then use equal steps.
+  if (!s.sorted.length && ['quantile', 'jenks', 'stddev'].includes(method)) return equal(min, max, n);
   switch (method) {
     case 'quantile':
       return quantile(s.sorted, n);

@@ -25,6 +25,7 @@ import { useMediaQuery } from './lib/useMediaQuery';
 import { takeSharedReport } from './lib/reportExport';
 import { handleShortcut } from './lib/shortcuts';
 import { useLayout } from './state/layout';
+import { useLive } from './state/live';
 import { useReports } from './state/reports';
 
 const SECTIONS = {
@@ -50,6 +51,10 @@ const VIEWS = {
 
 export default function App() {
   const layout = useLayout();
+  // Live open-data layers: loaded once here; a new layer's data re-renders the workspace, so
+  // the map, tables, legends and Inspector read it (lib/layers.js getData).
+  useLive((s) => s.data);
+  useEffect(() => useLive.getState().start(), []);
   const narrow = useMediaQuery('(max-width: 1023px)');
   const Section = SECTIONS[layout.leftSection] ?? LayersPanel;
   const view = VIEWS[layout.rightView] ?? VIEWS.inspector;

@@ -24,6 +24,10 @@ export async function translateText(text, source, target, html = true) {
   return out;
 }
 
+// Open-data layers (GeoJSON) and the portal's DWD heat warning card (backend, live data).
+export const getLayer = (name) => api('GET', `/layers/${encodeURIComponent(name)}`);
+export const getPortalWarning = () => api('GET', '/portal/warning');
+
 // Sign-in session (middleware, httpOnly cookie). getMe resolves to null when signed out.
 export const signIn = (email, password, remember) => apiPost('/auth/login', { email, password, remember });
 export const signOut = () => api('POST', '/auth/logout');

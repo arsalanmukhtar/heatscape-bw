@@ -1,4 +1,4 @@
-import { LuFileSpreadsheet, LuPrinter } from 'react-icons/lu';
+import { BsFiletypeCsv, BsFiletypePdf } from 'react-icons/bs';
 import { t } from '../../i18n';
 import { downloadCsv } from '../../lib/csv';
 import { resolveLight } from '../../lib/css';
@@ -134,15 +134,11 @@ export function MeasuresSummaryActions() {
   const { rows } = useSummaryMeasures();
   return (
     <>
-      <span className="mr-1 text-xs text-muted">{s.exportLabel}</span>
-      <button type="button" onClick={() => downloadCsv('heatscape-measures-report.csv', CSV_HEADER, rows.map(csvRow))} className="flex h-7 items-center gap-1.5 px-2 text-xs text-accent hover:bg-hover">
-        <LuFileSpreadsheet size={12} aria-hidden />
-        {/* All-caps labels: the uppercase class gives them cap-height centring beside the icon. */}
-        <span className="uppercase">{s.csv}</span>
+      <button type="button" onClick={() => downloadCsv('heatscape-measures-report.csv', CSV_HEADER, rows.map(csvRow))} aria-label={s.csvHint} title={s.csvHint} className="grid size-7 place-items-center text-accent hover:bg-hover">
+        <BsFiletypeCsv size={15} aria-hidden />
       </button>
-      <button type="button" onClick={() => printReport(rows)} className="flex h-7 items-center gap-1.5 px-2 text-xs text-accent hover:bg-hover">
-        <LuPrinter size={12} aria-hidden />
-        <span className="uppercase">{s.pdf}</span>
+      <button type="button" onClick={() => printReport(rows)} aria-label={s.pdfHint} title={s.pdfHint} className="grid size-7 place-items-center text-accent hover:bg-hover">
+        <BsFiletypePdf size={15} aria-hidden />
       </button>
     </>
   );

@@ -14,4 +14,26 @@ export const BW_BOUNDS = [
 ];
 
 /** Whole-world view for the "zoom to world" control. */
+/** [[west, south], [east, north]] of a GeoJSON geometry. */
+export function geometryBounds(geometry) {
+  let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (c) => {
+    if (typeof c[0] === 'number') {
+      w = Math.min(w, c[0]);
+      e = Math.max(e, c[0]);
+      s = Math.min(s, c[1]);
+      n = Math.max(n, c[1]);
+    } else c.forEach(visit);
+  };
+  visit(geometry.coordinates);
+  return [[w, s], [e, n]];
+}
+
+/** Moves a map to a geometry: points fly in (street level at least), others fit their bounds. */
+export function flyToGeometry(map, geometry) {
+  if (!map || !geometry) return;
+  if (geometry.type === 'Point') map.flyTo({ center: geometry.coordinates, zoom: Math.max(map.getZoom(), 15), duration: 800 });
+  else map.fitBounds(geometryBounds(geometry), { padding: 80, maxZoom: 16, duration: 800 });
+}
+
 export const WORLD_VIEW = { center: [10, 25], zoom: 1.2 };
