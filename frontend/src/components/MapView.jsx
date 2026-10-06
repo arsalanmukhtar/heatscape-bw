@@ -4,7 +4,7 @@ import { LuX } from 'react-icons/lu';
 import { BLOCKS, REGION, SURFACE_GRID, blockBounds, blockById } from '../data/mock';
 import { t } from '../i18n';
 import { cssVar, distanceKm } from '../lib/css';
-import { LAYERS } from '../lib/layers';
+import { LAYERS, rasterCell, rasterCellAt } from '../lib/layers';
 import { addGeneratedImage } from '../lib/mapImages';
 import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage } from '../lib/mapStyle';
 import { MAP_CONTAINER_ID, SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
@@ -61,7 +61,7 @@ function LiveMap() {
   const { main } = useMap();
   const resolved = useTheme((s) => s.resolved);
   const styleUrl = useMapStyleUrl();
-  const { layers, selectedId, select, tools, snap } = useWorkspace();
+  const { layers, selectedId, select, tools, snap, pixel, setPixel } = useWorkspace();
   const { styles, order } = useSymbology();
   // Measures register: live data for its layers, selection, and drafting a new footprint.
   const measuresAdded = useMeasures((s) => s.added);
@@ -73,6 +73,7 @@ function LiveMap() {
   const [snapAt, setSnapAt] = useState(null); // ruler: vertex under the pointer
   const selected = blockById(selectedId);
   const firstSelection = useRef(true);
+  const pickedOnMap = useRef(false); // the next block selection came from a map click
 
   useEffect(() => {
     setShortcutMap(main ?? null);
@@ -96,11 +97,29 @@ function LiveMap() {
 
   // Styleable layers, drawn from their symbology (lib/symbology.js). Token colours are
   // resolved at build time, so the theme is a dependency.
-  const specs = useMemo(
-    () => Object.fromEntries(LAYERS.map((def) => [def.id, buildLayerSpec(def, styles[def.id], !!layers[def.id])])),
+  // Features picked on the map, highlighted as whole solids when their layer is in 3D.
+  const specs = useMemo(() => {
+    const picked = (def) => {
+      if (def.raster) {
+        const cell = pixel && rasterCell(def, pixel.lon, pixel.lat);
+        return cell ? ['==', ['get', 'i'], cell.index] : null;
+      }
+      if (def.id === 'measures' && measureId && layers.measures) return ['==', ['get', 'id'], measureId];
+      if (def.id === 'blocks' && layers.selection) return ['==', ['get', 'id'], selectedId];
+      return null;
+    };
+    return Object.fromEntries(LAYERS.map((def) => [def.id, buildLayerSpec(def, styles[def.id], !!layers[def.id], picked(def))]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [styles, layers, resolved, measuresAdded, statusLog],
-  );
+  }, [styles, layers, resolved, measuresAdded, statusLog, pixel, measureId, selectedId]);
+
+  // Identified raster pixel, outlined on the ground (a raster in 3D highlights its column instead).
+  const pixelCell = useMemo(() => {
+    if (!pixel) return null;
+    const def = LAYERS.find((d) => d.raster && layers[d.id] && rasterCell(d, pixel.lon, pixel.lat));
+    if (!def || styles[def.id].extrude.enabled) return null;
+    const [w, s, e, n] = rasterCell(def, pixel.lon, pixel.lat).bounds;
+    return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } };
+  }, [pixel, layers, styles]);
 
   // Scenario priority: shown while the scenario workspace (left panel or ranking view) is in use.
   const ranking = useActiveRanking();
@@ -130,7 +149,7 @@ function LiveMap() {
   // Labels of every layer sit above all data layers (as in QGIS), in the same layer order.
   const stack = useMemo(
     () => [
-      ...order.flatMap((id) => (id === 'priority' ? PRIORITY_IDS : (specs[id]?.layers.map((l) => l.id) ?? []))),
+      ...order.flatMap((id) => (id === 'priority' ? PRIORITY_IDS : [...(specs[id]?.layers ?? []), ...(specs[id]?.solid?.layers ?? [])].map((l) => l.id))),
       ...order.flatMap((id) => specs[id]?.extra.flatMap((x) => x.layers.map((l) => l.id)) ?? []),
     ],
     [order, specs],
@@ -158,10 +177,37 @@ function LiveMap() {
     return () => map.off('styledata', apply);
   }, [main, stack]);
 
-  // Fly to a block when it is picked from the table (not on first load).
+  // Terrain (3D tab of the DEM layer): set once its source exists, re-applied after style
+  // changes (a basemap switch drops it), removed when 3D or the layer is off.
+  const terrain = LAYERS.map((def) => specs[def.id].terrain).find(Boolean) ?? null;
+  const terrainKey = terrain ? `${terrain.source}:${terrain.exaggeration}` : '';
   useEffect(() => {
-    if (firstSelection.current) {
+    const map = main?.getMap();
+    if (!map) return;
+    const apply = () => {
+      try {
+        const current = map.getTerrain();
+        if (!terrain) {
+          if (current) map.setTerrain(null);
+        } else if (map.getSource(terrain.source) && (current?.source !== terrain.source || current?.exaggeration !== terrain.exaggeration)) {
+          map.setTerrain({ source: terrain.source, exaggeration: terrain.exaggeration });
+        }
+      } catch {
+        // Style still loading: the next styledata event applies it.
+      }
+    };
+    apply();
+    map.on('styledata', apply);
+    return () => map.off('styledata', apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [main, terrainKey]);
+
+  // Fly to a block when it is picked from the table (not on first load, and not after a map
+  // click: the camera stays where the user clicked, e.g. on an identified pixel).
+  useEffect(() => {
+    if (firstSelection.current || pickedOnMap.current) {
       firstSelection.current = false;
+      pickedOnMap.current = false;
       return;
     }
     main?.fitBounds(blockBounds(selected), { padding: 140, maxZoom: 14, duration: 800 });
@@ -264,14 +310,33 @@ function LiveMap() {
           return;
         }
         if (!tools.select) return;
+        // Raster identify: the pixel under the click (a 3D column under the pointer wins over
+        // the ground behind it) opens in the Inspector.
+        const rasters = LAYERS.filter((d) => d.raster && layers[d.id]);
+        if (rasters.length) {
+          const ids = rasters.flatMap((d) => [`${d.id}:extrude`, `${d.id}:extrude-selected`]).filter((id) => main?.getMap().getLayer(id));
+          const column = ids.length ? main?.queryRenderedFeatures(e.point, { layers: ids })[0] : null;
+          const def = column && rasters.find((d) => column.layer.id.startsWith(`${d.id}:`));
+          let at = p;
+          if (def) {
+            const [w, s, east, n] = rasterCellAt(def, column.properties.i).bounds;
+            at = [(w + east) / 2, (s + n) / 2];
+          }
+          const hit = rasters.some((d) => rasterCell(d, at[0], at[1]));
+          setPixel(hit ? { lon: at[0], lat: at[1] } : null);
+          if (hit) showRightView('inspector');
+        }
         // Pick the nearest block within 1.5 km of the click.
         const nearest = BLOCKS.map((b) => ({ b, km: distanceKm(b.center, p) })).sort((x, y) => x.km - y.km)[0];
-        if (nearest && nearest.km < 1.5) select(nearest.b.id);
+        if (nearest && nearest.km < 1.5 && nearest.b.id !== selectedId) {
+          pickedOnMap.current = true;
+          select(nearest.b.id);
+        }
       }}
     >
       {LAYERS.flatMap((def) => {
         const spec = specs[def.id];
-        return [spec, ...spec.extra].map((src) => (
+        return [spec, ...(spec.solid ? [spec.solid] : []), ...spec.extra].map((src) => (
           <Source key={src.sourceKey} id={src.sourceId} {...src.source}>
             {src.layers.map(({ label, ...l }) => (
               <Layer key={l.id} {...l} />
@@ -309,15 +374,24 @@ function LiveMap() {
       {/* Selected measure: its footprint outlined (map selection colour) and its control area dotted. */}
       {selectedMeasure && layers.measures && (
         <>
-          <Source id="measure-selected" type="geojson" data={selectedMeasure.geometry}>
-            <Layer id="measure-selected-line" type="line" paint={{ 'line-color': palette.accent2, 'line-width': 3 }} />
-          </Source>
+          {/* In 3D the whole footprint solid is highlighted instead (lib/symbology.js). */}
+          {!styles.measures.extrude.enabled && (
+            <Source id="measure-selected" type="geojson" data={selectedMeasure.geometry}>
+              <Layer id="measure-selected-line" type="line" paint={{ 'line-color': palette.accent2, 'line-width': 3 }} />
+            </Source>
+          )}
           {selectedMeasure.control && (
             <Source id="measure-control" type="geojson" data={selectedMeasure.control}>
               <Layer id="measure-control-line" type="line" layout={{ 'line-cap': 'round' }} paint={{ 'line-color': palette.muted, 'line-width': 1.5, 'line-dasharray': [0.1, 2] }} />
             </Source>
           )}
         </>
+      )}
+
+      {pixelCell && (
+        <Source id="pixel-selected" type="geojson" data={pixelCell}>
+          <Layer id="pixel-selected-line" type="line" paint={{ 'line-color': palette.accent2, 'line-width': 2.5 }} />
+        </Source>
       )}
 
       {/* Footprint drafted in the Add measure form (drawing, corner editing). */}

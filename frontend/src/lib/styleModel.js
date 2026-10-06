@@ -73,10 +73,29 @@ const BASE = {
     outlineOpacity: 1,
     outlineDash: 'solid',
     outlineFromClass: false, // categorized/graduated: outline in each class colour
-    extrude: false,
-    extrudeField: null,
-    extrudeScale: 10,
-    extrudeBase: 0,
+  },
+  // 3D tab: when on, the layer is drawn as fill-extrusions instead of its 2D symbols
+  // (polygons raised, columns on points and raster cells, walls along lines; terrain for the DEM).
+  extrude: {
+    enabled: false,
+    heightMode: 'field', // field (raster: cell value) | constant
+    field: null,
+    rangeMode: 'data', // data | manual: the values mapped onto minHeight…maxHeight
+    rangeMin: 0,
+    rangeMax: 100,
+    scale: 'linear', // linear | sqrt
+    minHeight: 20, // m
+    maxHeight: 800, // m
+    height: 200, // m, constant mode
+    base: 0, // m above ground
+    colorMode: 'style', // style (the Style tab's colours) | single
+    color: 'var(--accent)',
+    opacity: 0.9,
+    gradient: true, // sides darken toward the ground
+    shape: 'square', // points: square | circle | hex
+    size: 150, // points: footprint width, m
+    width: 25, // lines: wall thickness, m
+    exaggeration: 1.5, // DEM: terrain height factor
   },
   // Categorized / graduated.
   field: null,
@@ -199,6 +218,7 @@ const OVERRIDES = {
     sizeMin: 1,
     sizeMax: 8,
     point: { fill: 'var(--seal-4)', fillOpacity: 0.65, strokeWidth: 0 },
+    extrude: { size: 300 },
   },
   hospitals: { point: { fill: 'var(--level-high)', size: 12, strokeWidth: 2 } },
   water: { point: { fill: 'var(--accent-2)', size: 12, strokeWidth: 2 } },
@@ -277,6 +297,9 @@ export function defaultStyle(def) {
   if (!style.field && def.fields) style.field = (def.fields.find((f) => f.type === 'number' && f.kind !== 'coord') ?? def.fields[1] ?? def.fields[0])?.key ?? null;
   // Labels default to the layer's name-like field, else its main value.
   if (def.fields) style.label.field = (def.fields.find((f) => f.kind === 'text') ?? def.fields.find((f) => f.key === style.field) ?? def.fields[0]).key;
+  // 3D height defaults to the main value field (a number field for categorized layers).
+  const numeric = (def.fields ?? []).filter((f) => f.type === 'number' && f.kind !== 'coord');
+  style.extrude.field = numeric.find((f) => f.key === style.field)?.key ?? numeric[0]?.key ?? null;
   style.classes = style.presetClasses ?? buildClasses(def, style);
   delete style.presetClasses;
   return style;
@@ -288,7 +311,12 @@ export const DEFAULT_STYLES = Object.fromEntries(LAYERS.map((def) => [def.id, de
 export function normalizeStyle(def, saved) {
   const base = DEFAULT_STYLES[def.id];
   if (!saved || typeof saved !== 'object') return clone(base);
+  // Styles saved before the 3D tab kept polygon extrusion under polygon.extrude*.
+  const old = saved.polygon;
+  if (old?.extrude && !saved.extrude) saved = { ...saved, extrude: { enabled: true, field: old.extrudeField ?? base.extrude.field, base: old.extrudeBase ?? 0 } };
   const style = deepMerge(base, saved);
+  if (style.polygon) ['extrude', 'extrudeField', 'extrudeScale', 'extrudeBase'].forEach((k) => delete style.polygon[k]);
+  if (def.fields && !def.fields.some((f) => f.key === style.extrude.field && f.type === 'number')) style.extrude.field = base.extrude.field;
   if (!renderersFor(def).includes(style.renderer)) style.renderer = base.renderer;
   if (def.fields && style.field && !def.fields.some((f) => f.key === style.field)) {
     style.field = base.field;

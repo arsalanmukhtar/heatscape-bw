@@ -144,7 +144,6 @@ export function LineSymbolSection({ id, style }) {
 export function PolygonSymbolSection({ def, id, style }) {
   const set = useSetter(id);
   const g = style.polygon;
-  const numeric = numericFields(def);
   return (
     <Section title={classed(style) ? s.baseSymbol : s.symbol}>
       <Check checked={g.noFill} onChange={set('polygon.noFill')} label={s.noFill} />
@@ -187,24 +186,6 @@ export function PolygonSymbolSection({ def, id, style }) {
           <Slider label={s.outlineOpacity} value={g.outlineOpacity} min={0} max={1} step={0.05} onChange={set('polygon.outlineOpacity')} format={pct} />
           <Field label={s.dash}>
             <DashSelect value={g.outlineDash} onChange={set('polygon.outlineDash')} label={s.dash} symbol={{ ...style.line, width: 2 }} allowCustom={false} />
-          </Field>
-        </>
-      )}
-      <Check checked={g.extrude} onChange={set('polygon.extrude')} label={s.extrude} hint={s.extrudeHint} />
-      {g.extrude && (
-        <>
-          <Field label={s.heightField}>
-            <Select
-              value={g.extrudeField ?? ''}
-              onChange={(v) => set('polygon.extrudeField')(v || null)}
-              label={s.heightField}
-              options={[{ value: '', label: s.none }, ...numeric.map((f) => ({ value: f.key, label: f.label }))]}
-            />
-          </Field>
-          <Slider label={s.heightScale} value={g.extrudeScale} min={1} max={200} onChange={set('polygon.extrudeScale')} format={(v) => `× ${v}`} />
-          <Field label={s.base}>
-            <NumberField value={g.extrudeBase} min={0} label={s.base} onChange={set('polygon.extrudeBase')} />
-            <span className="text-xs text-muted">m</span>
           </Field>
         </>
       )}

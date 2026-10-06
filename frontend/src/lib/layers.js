@@ -177,6 +177,25 @@ export function fieldValues(def, field, normalizeBy) {
   });
 }
 
+/** Raster cell by index: { index, row, col, value, bounds: [w, s, e, n], size (m) }. */
+export function rasterCellAt(def, index) {
+  const { cols, rows, values, bounds } = def.raster;
+  const [w, s, e, n] = bounds;
+  const dLon = (e - w) / cols;
+  const dLat = (n - s) / rows;
+  const row = Math.floor(index / cols);
+  const col = index % cols;
+  return { index, row, col, value: values[index] ?? null, bounds: [w + col * dLon, n - (row + 1) * dLat, w + (col + 1) * dLon, n - row * dLat], size: Math.round(dLat * 111320) };
+}
+
+/** The raster cell under a point, or null outside the raster. */
+export function rasterCell(def, lon, lat) {
+  const { cols, rows, bounds } = def.raster;
+  const [w, s, e, n] = bounds;
+  if (lon < w || lon >= e || lat <= s || lat > n) return null;
+  return rasterCellAt(def, Math.floor((n - lat) / ((n - s) / rows)) * cols + Math.floor((lon - w) / ((e - w) / cols)));
+}
+
 /** [[west, south], [east, north]] of a layer, for zoom to layer. */
 export function layerBounds(def) {
   if (def?.raster) {

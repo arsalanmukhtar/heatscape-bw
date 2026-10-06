@@ -44,6 +44,9 @@ Append-only. One line each: decision — reason.
 38. Responsive by one root scale: the root font size steps per screen class (16 px base at 1440–1919; 17/18/20/24 px from 1920/2240/2560/3200; 15 px at 1280–1439; 14 px at 1024–1279 and on tablets 768–1023; 16 px below 768) and every size is rem, so the whole UI scales proportionally without per-component breakpoints; portrait tablets (768–1023) get a compact view through tokens (narrower panels, taller dock, tighter nav and chips) with panels floating over the map; 14 px is the floor (body text ≥ 11.4 px); the public portal never goes below 16 px (44 px touch targets); A4 report pages stay px (paper) and print pins the root at 16 px — proportional scaling in one place, no layout drift between screens.
 39. Measures are never hard-deleted: Delete (Effect panel, confirmed in a modal) appends a final `deprecated` event to the status trail, which removes the measure from the register, map and summaries but keeps its record and full history as a historic archive (`archivedMeasures`); in the API this is `DELETE /api/measures/{id}` writing a `deprecated` status event, never a row delete — audit trail and reporting history must survive.
 40. One universal alignment rule: icon box centre = text cap-band centre in every row, enforced in CSS (controls centre by default, cap trim on label spans, sideways-only clipping, `icon-cap` + `text-cap-start` for multi-line) instead of per-component fixes; the earlier x-height centring beside icons is dropped because it left icons hanging below the baseline — alignment must hold everywhere without hand nudges.
+41. 3D is a per-layer Symbology tab (`style.extrude`, built in `lib/extrude.js` + `lib/symbology.js`): 3D replaces the layer's 2D drawing rather than adding to it, and non-polygon layers extrude from a derived polygon source (point footprints, line walls, raster cells) — Mapbox extrudes polygons only, and one switch per layer keeps the map readable. Picked features (selected measure or block, identified pixel, query selection) draw as their own extrusion in the selection colour, so the whole solid highlights, not its footprint.
+42. Raster identify: a select-tool click on a visible raster (or on its 3D column) puts that pixel's values for every visible raster in the Inspector and outlines the cell — rasters had no way to read a value; one pixel is identified at a time.
+43. Notifications (top-nav bell) come only from events the workspace already has — jobs finished/failed and measure registered/status changed/archived — watched in `state/notifications.js` and saved in localStorage (`hs-notifications`, last 50; reported event keys kept so cleared items stay gone); server push replaces the watchers when the jobs and measures APIs exist.
 
 ## UI overrides
 
@@ -74,6 +77,7 @@ User removed or changed these. Snapshots never bring them back; only an explicit
 - Panel widths: every left panel section and every right panel view share one width, 352 px (22rem) (`--panel-w`, one saved drag width `panelW` for both sides); no per-section or per-view widths.
 
 - Sign-in logo row: no pause button (removed by request); it pauses on hover and keyboard focus only; the strip is soft ash white (light tokens) in both themes, logos in their own colours, one file each.
+- Notification badge: a small round red (`--destructive`) circle (14 px, `clip-path: circle()`, since the square rule zeroes radii) with a white count in both themes — the one round element in the square UI, by request.
 
 ## Open
 

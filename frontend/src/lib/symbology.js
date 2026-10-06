@@ -1,5 +1,6 @@
 import { contrastText, resolveColor, withAlpha } from './color';
 import { stats } from './classify';
+import { heightExpr, solidData } from './extrude';
 import { labelLayers } from './labels';
 import { fieldValues } from './layers';
 import { activeQuery, labelData, preparedData } from './prepared';
@@ -288,23 +289,6 @@ function vectorLayers(def, style, op) {
   // Polygon.
   const g = style.polygon;
   const filter = classFilter(style);
-  if (g.extrude && g.extrudeField) {
-    return [
-      withFilter(
-        {
-          id: `${id}:extrude`,
-          type: 'fill-extrusion',
-          paint: {
-            'fill-extrusion-color': byClass(style, g.fill),
-            'fill-extrusion-height': ['*', ['to-number', ['get', g.extrudeField], 0], g.extrudeScale],
-            'fill-extrusion-base': g.extrudeBase,
-            'fill-extrusion-opacity': g.fillOpacity * op,
-          },
-        },
-        filter,
-      ),
-    ];
-  }
   const patterned = g.pattern !== 'solid';
   const outlineDash = dashArray(g.outlineDash);
   return [
@@ -411,10 +395,39 @@ function rasterLayers(def, style, op) {
   ];
 }
 
-/**
- * { sourceId, sourceKey, source, layers } for one map layer. sourceKey changes when the
- * source itself must be rebuilt (clustering on/off), since Mapbox cannot change it in place.
- */
+// Swaps the raster-value input of a raster-color expression for a feature's value property.
+const fromValue = (e) => (Array.isArray(e) ? (e.length === 1 && e[0] === 'raster-value' ? ['get', 'value'] : e.map(fromValue)) : e);
+
+/** The 3D layer (fill-extrusion) that replaces a layer's 2D drawing while its 3D tab is on. */
+function extrudeLayer(def, style, op) {
+  const x = style.extrude;
+  let color = resolveColor(x.color);
+  let filter = null;
+  if (x.colorMode === 'style') {
+    if (def.raster) color = fromValue(rasterColorExpr(def, style));
+    else color = byClass(style, def.geometry === 'point' ? style.point.fill : def.geometry === 'line' ? style.line.color : style.polygon.fill);
+  }
+  if (def.raster) {
+    // Classes switched off in a paletted raster drop their cells.
+    const hidden = style.renderer === 'paletted' ? style.classes.filter((c) => !c.visible).map((c) => c.value) : [];
+    if (hidden.length) filter = ['!', ['in', ['get', 'value'], ['literal', hidden]]];
+  } else filter = classFilter(style);
+  return withFilter(
+    {
+      id: `${def.id}:extrude`,
+      type: 'fill-extrusion',
+      paint: {
+        'fill-extrusion-color': color,
+        'fill-extrusion-height': heightExpr(def, x),
+        'fill-extrusion-base': x.base,
+        'fill-extrusion-opacity': x.opacity * op,
+        'fill-extrusion-vertical-gradient': x.gradient,
+      },
+    },
+    filter,
+  );
+}
+
 /** Highlight for features picked by a selection query (map selection colour, above the layer). */
 function selectionLayers(def, accent2) {
   const sel = ['==', ['get', '__sel'], true];
@@ -427,11 +440,41 @@ function selectionLayers(def, accent2) {
   ];
 }
 
-export function buildLayerSpec(def, style, visible) {
+/**
+ * The 3D layer, split when features are picked (selected measure, block, raster pixel, query
+ * selection): the picked ones draw as their own extrusion in the map selection colour, so the
+ * whole solid is highlighted, not just its footprint.
+ */
+function extrudeLayers(def, style, op, picked) {
+  const layer = extrudeLayer(def, style, op);
+  if (!picked) return [layer];
+  const where = (f) => (layer.filter ? ['all', layer.filter, f] : f);
+  return [
+    { ...layer, filter: where(['!', picked]) },
+    {
+      ...layer,
+      id: `${def.id}:extrude-selected`,
+      filter: where(picked),
+      paint: { ...layer.paint, 'fill-extrusion-color': resolveColor('var(--accent-2)'), 'fill-extrusion-opacity': Math.max(0.9, layer.paint['fill-extrusion-opacity']) },
+    },
+  ];
+}
+
+/**
+ * { sourceId, sourceKey, source, layers, solid, terrain, extra } for one map layer. sourceKey
+ * changes when the source itself must be rebuilt (clustering on/off), since Mapbox cannot
+ * change it in place. solid: the 3D source and layer; terrain: { source, exaggeration } or null.
+ * picked: filter of the features to highlight in 3D (2D selections are map overlays).
+ */
+export function buildLayerSpec(def, style, visible, picked = null) {
   const op = style.opacity;
-  const prepared = def.raster || def.kind === 'dem' ? null : preparedData(def, style);
+  const dem = def.kind === 'dem';
+  // 3D on: polygons extrude from their own source, points, lines and rasters from a derived
+  // one (spec.solid); the DEM keeps its hillshade and lends a second source to the terrain.
+  const solid = style.extrude.enabled && !dem;
+  const prepared = def.raster || dem ? null : preparedData(def, style);
   let source;
-  if (def.kind === 'dem') source = { type: 'raster-dem', url: DEM_URL, tileSize: 512 };
+  if (dem) source = { type: 'raster-dem', url: DEM_URL, tileSize: 512 };
   else if (def.raster) {
     const { url, coordinates } = rasterSource(def);
     source = { type: 'image', url, coordinates };
@@ -441,16 +484,27 @@ export function buildLayerSpec(def, style, visible) {
   const clustered = source.cluster ? `c${style.cluster.radius}-${style.cluster.maxZoom}` : 'p';
   const sourceId = `${def.id}-src`;
   const show = (l) => ({ ...l, layout: { ...l.layout, visibility: visible ? (l.layout?.visibility ?? 'visible') : 'none' } });
+  const zoomed = (l) => show({ ...l, minzoom: style.minZoom, maxzoom: style.maxZoom });
   const selecting = prepared && activeQuery(def, style)?.mode === 'selection' && style.renderer !== 'cluster';
+  const flat = def.raster || dem ? rasterLayers(def, style, op) : vectorLayers(def, style, op);
+  // In 3D a query selection is highlighted with the picked features instead of a ground outline.
+  const hl = [picked, solid && selecting && ['==', ['get', '__sel'], true]].filter(Boolean);
+  const solids = solid ? extrudeLayers(def, style, op, hl.length > 1 ? ['any', ...hl] : (hl[0] ?? null)) : [];
   const layers = [
-    ...(def.raster || def.kind === 'dem' ? rasterLayers(def, style, op) : vectorLayers(def, style, op)),
-    ...(selecting ? selectionLayers(def, resolveColor('var(--accent-2)')) : []),
-  ].map((l) => show({ ...l, minzoom: style.minZoom, maxzoom: style.maxZoom }));
+    ...(solid ? (def.geometry === 'polygon' ? solids : []) : flat),
+    ...(selecting && !solid ? selectionLayers(def, resolveColor('var(--accent-2)')) : []),
+  ].map(zoomed);
+
+  let solidSpec = null;
+  if (dem) solidSpec = { sourceId: `${def.id}-terrain`, sourceKey: `${def.id}-terrain`, source: { type: 'raster-dem', url: DEM_URL, tileSize: 512 }, layers: [] };
+  else if (solid && def.geometry !== 'polygon')
+    solidSpec = { sourceId: `${def.id}-3d`, sourceKey: `${def.id}-3d`, source: { type: 'geojson', data: solidData(def, style, prepared?.data) }, layers: solids.map(zoomed) };
+  const terrain = dem && visible && style.extrude.enabled ? { source: `${def.id}-terrain`, exaggeration: style.extrude.exaggeration } : null;
 
   // Labels draw from their own point/line source (centroids, inside points, outlines).
   const labels = prepared ? labelData(def, style) : null;
   const extra = labels
     ? [{ sourceId: `${def.id}-labels`, sourceKey: `${def.id}-labels`, source: { type: 'geojson', data: labels }, layers: labelLayers(def, style).map(show) }]
     : [];
-  return { sourceId, sourceKey: `${sourceId}-${clustered}`, source, layers, extra };
+  return { sourceId, sourceKey: `${sourceId}-${clustered}`, source, layers, solid: solidSpec, terrain, extra };
 }

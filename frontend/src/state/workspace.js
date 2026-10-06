@@ -19,6 +19,7 @@ export const useWorkspace = create()((set, get) => ({
     selection: true,
   },
   selectedId: 'M-14',
+  pixel: null, // raster identify: { lon, lat } of the clicked point, or null
   tools: { select: true, measure: false, grid: false },
   snap: true, // ruler points snap to nearby vertices (magnet beside the ruler)
   tableLayer: 'blocks', // vector layer shown in the attribute table; null = none open
@@ -31,6 +32,7 @@ export const useWorkspace = create()((set, get) => ({
   setAllLayers: (on) =>
     set({ layers: Object.fromEntries(Object.keys(get().layers).map((k) => [k, on])), tools: { ...get().tools, grid: on } }),
   select: (selectedId) => set({ selectedId }),
+  setPixel: (pixel) => set({ pixel }),
   // Select and measure are exclusive pointer modes; the grid overlay toggles on its own.
   toggleSnap: () => set({ snap: !get().snap }),
   toggleTool: (tool) => {

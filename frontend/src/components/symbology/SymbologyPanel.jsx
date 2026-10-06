@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { LuArrowDown, LuArrowUp, LuCopy, LuDownload, LuFilter, LuImage, LuMapPin, LuMountain, LuPalette, LuRotateCcw, LuSpline, LuSquare, LuTags, LuUndo2, LuUpload } from 'react-icons/lu';
+import { LuArrowDown, LuArrowUp, LuBox, LuCopy, LuDownload, LuFilter, LuImage, LuMapPin, LuMountain, LuPalette, LuRotateCcw, LuSpline, LuSquare, LuTags, LuUndo2, LuUpload } from 'react-icons/lu';
 import { VscCollapseAll } from 'react-icons/vsc';
 import { t } from '../../i18n';
 import { LAYERS, layerById } from '../../lib/layers';
@@ -10,6 +10,7 @@ import { useSymbology } from '../../state/symbology';
 import { Check, Field, NumberField, Section, Select, Slider } from '../controls';
 import { PanelHeader } from '../SidePanel';
 import { ClassificationSection, RasterBandSection } from './Classification';
+import { ExtrudeTab } from './ExtrudeTab';
 import { LabelTab } from './LabelTab';
 import { QueryTab } from './QueryTab';
 import { RulesSection } from './Rules';
@@ -30,13 +31,14 @@ const TABS = [
   { id: 'style', label: s.tabs.style, Icon: LuPalette },
   { id: 'label', label: s.tabs.label, Icon: LuTags },
   { id: 'query', label: s.tabs.query, Icon: LuFilter },
+  { id: 'extrude', label: s.tabs.extrude, Icon: LuBox },
 ];
 const headerBtn = 'grid size-7 place-items-center text-muted hover:bg-hover hover:text-text disabled:opacity-40 disabled:hover:bg-transparent';
 const outlineBtn = 'flex h-7 items-center gap-1.5 border border-border px-2 text-xs text-text hover:bg-hover disabled:opacity-40 disabled:hover:bg-transparent';
 
 /*
   Symbology (right panel): styles the layer picked here or from a layer row's paint bucket.
-  Tabs Style · Label · Query. Every change applies to the map at once and is saved (state/symbology.js).
+  Tabs Style · Label · Query · 3D. Every change applies to the map at once and is saved (state/symbology.js).
 */
 export function SymbologyPanel() {
   const toggleRight = useLayout((st) => st.toggleRight);
@@ -96,6 +98,7 @@ export function SymbologyPanel() {
         {tab === 'style' && <StyleTab key={def.id} def={def} />}
         {tab === 'label' && <LabelTab key={def.id} def={def} />}
         {tab === 'query' && <QueryTab key={def.id} def={def} />}
+        {tab === 'extrude' && <ExtrudeTab key={def.id} def={def} />}
       </div>
     </>
   );

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuBell, LuCalendar, LuChartLine, LuChevronDown, LuFileText, LuFlame, LuGlobe, LuLogIn, LuLogOut, LuMap, LuMoon, LuSettings, LuShieldCheck, LuSun, LuUser } from 'react-icons/lu';
+import { LuArchive, LuArrowRightLeft, LuBell, LuCalendar, LuChartLine, LuChevronDown, LuCircleAlert, LuCircleCheck, LuFileText, LuFlame, LuGlobe, LuLogIn, LuLogOut, LuMap, LuMoon, LuPlus, LuSettings, LuShieldCheck, LuSun, LuUser } from 'react-icons/lu';
 import { REGION, SEASON } from '../data/mock';
 import { t } from '../i18n';
 import { isAdmin, useSession } from '../state/auth';
+import { useJobs } from '../state/jobs';
 import { useLayout } from '../state/layout';
+import { useMeasures } from '../state/measures';
+import { useNotifications } from '../state/notifications';
 import { useTheme } from '../state/theme';
 
 const REGIONS = ['Mannheim', 'Stuttgart', 'Karlsruhe'];
@@ -72,14 +75,7 @@ export function TopNav() {
           {resolved === 'dark' ? <LuSun size={15} /> : <LuMoon size={15} />}
         </button>
 
-        <button
-          type="button"
-          aria-label={t.nav.notifications}
-          title={t.nav.notifications}
-          className="grid size-[1.875rem] place-items-center text-nav-muted hover:bg-nav-hover hover:text-nav-text"
-        >
-          <LuBell size={15} />
-        </button>
+        <NotificationsMenu />
 
         <AccountMenu />
       </div>
@@ -100,6 +96,116 @@ export function Brand() {
         <span className="text-base font-bold tracking-[-0.01em] text-nav-text">{t.appBrand}</span>
         <span className="text-xs font-bold uppercase tracking-[var(--tracking-caps)] text-accent">{t.appRegion}</span>
       </span>
+    </div>
+  );
+}
+
+const KIND = {
+  jobDone: { Icon: LuCircleCheck, color: 'var(--success)' },
+  jobFailed: { Icon: LuCircleAlert, color: 'var(--danger)' },
+  measureAdded: { Icon: LuPlus, color: 'var(--accent)' },
+  measureStatus: { Icon: LuArrowRightLeft, color: 'var(--accent-2)' },
+  measureDeprecated: { Icon: LuArchive, color: 'var(--text-muted)' },
+};
+
+function ago(at) {
+  const min = Math.round((Date.now() - at) / 60000);
+  const n = t.notifications;
+  if (min < 1) return n.justNow;
+  if (min < 60) return n.minutes(min);
+  if (min < 24 * 60) return n.hours(Math.round(min / 60));
+  return new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+/* Notifications: job and measure events (state/notifications.js). The badge counts unread
+   items; an item opens what it is about (the job in the Jobs dock, the measure's effect). */
+function NotificationsMenu() {
+  const { open, setOpen, ref } = useMenu();
+  const { items, markRead, markAllRead, clear } = useNotifications();
+  const unread = items.filter((x) => !x.read).length;
+  const n = t.notifications;
+  const label = unread ? n.unread(unread) : t.nav.notifications;
+
+  const go = (x) => {
+    markRead(x.key);
+    setOpen(false);
+    const L = useLayout.getState();
+    if (L.view !== 'gis') L.setView('gis');
+    if (x.target.type === 'job') {
+      L.setDockTab('jobs');
+      useJobs.getState().select(x.target.id);
+    } else if (x.kind === 'measureDeprecated') {
+      // Archived measures are not selectable: open the register instead (openSection toggles).
+      if (!(L.leftOpen && L.leftSection === 'measures')) L.openSection('measures');
+    } else {
+      useMeasures.getState().select(x.target.id);
+      L.showRightView('effect');
+    }
+  };
+  const textBtn = 'h-6 px-1.5 text-2xs text-muted hover:bg-hover hover:text-text disabled:opacity-40 disabled:hover:bg-transparent';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        title={label}
+        onClick={() => setOpen(!open)}
+        className={`relative grid size-[1.875rem] place-items-center hover:bg-nav-hover hover:text-nav-text ${open ? 'bg-nav-hover text-nav-text' : 'text-nav-muted'}`}
+      >
+        <LuBell size={15} />
+        {unread > 0 && (
+          // Round by clip-path: the square-UI rule zeroes every border-radius (index.css).
+          <span
+            className="absolute -right-0.5 -top-0.5 grid size-3.5 place-items-center bg-[var(--destructive)] text-[0.5625rem] font-semibold tabular-nums leading-none tracking-[-0.02em] text-[var(--on-destructive)]"
+            style={{ clipPath: 'circle(50%)' }}
+            aria-hidden
+          >
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div role="menu" aria-label={t.nav.notifications} className="absolute right-0 top-[calc(100%+4px)] z-50 w-80 border border-border-strong bg-surface-strong shadow-[var(--shadow-glass)]">
+          <div className="flex h-9 items-center gap-1 border-b border-border pl-3 pr-1.5">
+            <span className="label-caps mr-auto">{t.nav.notifications}</span>
+            <button type="button" onClick={markAllRead} disabled={!unread} className={textBtn}>
+              <span>{n.markAllRead}</span>
+            </button>
+            <button type="button" onClick={clear} disabled={!items.length} className={textBtn}>
+              <span>{n.clear}</span>
+            </button>
+          </div>
+          {items.length ? (
+            <ul className="max-h-96 overflow-y-auto">
+              {items.map((x) => {
+                const { Icon, color } = KIND[x.kind] ?? KIND.jobDone;
+                return (
+                  <li key={x.key}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => go(x)}
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 gap-y-1 border-b border-l-2 border-b-border px-3 py-2 text-left hover:bg-hover ${x.read ? 'border-l-transparent' : 'border-l-accent bg-accent-soft'}`}
+                    >
+                      <span className="row-span-2 grid size-7 place-items-center border border-border" style={{ color }} aria-hidden>
+                        <Icon size={13} />
+                      </span>
+                      <span className={`truncate text-xs text-text ${x.read ? '' : 'font-semibold'}`}>{x.title}</span>
+                      <span className="justify-self-end whitespace-nowrap text-2xs tabular-nums text-muted">{ago(x.at)}</span>
+                      <span className="col-start-2 col-end-4 truncate text-2xs text-muted">{x.text}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="px-3 py-6 text-center text-xs text-muted">{n.empty}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

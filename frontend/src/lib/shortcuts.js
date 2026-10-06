@@ -13,7 +13,8 @@ import { captureMap } from './mapSnapshot';
   Settings, where clicking a row runs it. Single keys without Ctrl/Alt/Cmd, ignored while
   typing in a field. combo: lower-case key ('l', '[', '`'), 'shift+<key>' for letters and
   digits (digits by physical key, so Shift+1 works on every layout). on(): current state of
-  a toggle (shown as On). Report actions are sent to the open Report Builder as an event.
+  a toggle (shown as On). when(): the shortcut only applies (and takes the key) while it returns
+  true, so Esc falls through to other handlers when nothing is selected. Report actions are sent to the open Report Builder as an event.
 */
 let mainMap = null;
 /** The main map (set by MapView), for zoom and extent shortcuts. */
@@ -32,6 +33,11 @@ const section = (id) => ({ run: () => L().openSection(id), on: () => L().leftOpe
 const view = (id) => ({ run: () => L().openRightView(id), on: () => L().rightOpen && L().rightView === id });
 const dockTab = (id) => ({ run: () => L().setDockTab(id), on: () => L().dockOpen && L().dockTab === id });
 const tool = (id) => ({ run: () => W().toggleTool(id), on: () => W().tools[id] });
+// Esc belongs to an open menu, popover or dialog first, and to footprint drafting.
+const overlayOpen = () => !!document.querySelector('dialog[open], [aria-expanded="true"], [aria-modal="true"]');
+const M = () => useMeasures.getState();
+const hasSelection = () => !!(W().pixel || M().selectedId) && !M().drawing && !M().shaping && !overlayOpen();
+
 const reportZoom = (dir) => () => {
   const r = useReports.getState();
   const next = ZOOMS[ZOOMS.indexOf(r.zoom) + dir];
@@ -83,6 +89,17 @@ export const SHORTCUTS = [
   { id: 'hideAll', group: 'map', combo: 'shift+h', label: s.hideAll, run: () => W().setAllLayers(!Object.values(W().layers).some(Boolean)) },
   { id: 'compare', group: 'map', combo: 'shift+c', label: s.compare, run: () => useScenarios.getState().toggleCompare(), on: () => useScenarios.getState().compare },
   { id: 'snapshot', group: 'map', combo: 'shift+s', label: s.snapshot, run: () => captureMap() },
+  {
+    id: 'deselect',
+    group: 'map',
+    combo: 'Escape',
+    label: s.deselect,
+    when: hasSelection,
+    run: () => {
+      W().setPixel(null);
+      M().select(null);
+    },
+  },
   // Measures
   {
     id: 'addMeasure',
@@ -118,11 +135,11 @@ export function handleShortcut(e) {
   if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return false;
   if (e.target.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable=""]')) return false;
   const sc = BY_COMBO.get(comboOf(e));
-  if (!sc) return false;
+  if (!sc || (sc.when && !sc.when())) return false;
   e.preventDefault();
   sc.run();
   return true;
 }
 
 /** Keys of a combo for display: 'shift+1' → ['Shift', '1']. */
-export const comboKeys = (combo) => (combo.startsWith('shift+') ? ['Shift', combo.slice(6).toUpperCase()] : [combo.length === 1 ? combo.toUpperCase() : combo]);
+export const comboKeys = (combo) => (combo.startsWith('shift+') ? ['Shift', combo.slice(6).toUpperCase()] : [combo === 'Escape' ? 'Esc' : combo.length === 1 ? combo.toUpperCase() : combo]);

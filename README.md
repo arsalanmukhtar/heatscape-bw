@@ -57,11 +57,12 @@ gateway/     nginx.conf
 
 | Item | State |
 |---|---|
-| GIS workspace screen (layers, map, attribute table, inspector) | Done, MOCK data |
+| GIS workspace screen (layers, map, attribute table, inspector incl. raster pixel identify) | Done, MOCK data |
+| Notifications (bell: jobs finished/failed, measure changes; unread badge, opens the job or measure) | Done, from MOCK job runner and local measures |
 | Copilot panel (plan, tool steps, result, composer) | UI done, MOCK conversation; copilot API planned |
 | Geoprocessing panel, Jobs History dock tab + logs, map scale bar | UI done, MOCK tools and simulated jobs; process/job API planned |
 | Scenarios workspace (editor, ranking with rank stability, priority map + swipe compare, charts tab) | UI done, ranking computed in browser from MOCK blocks; scenarios/ranking API planned |
-| Layers panel (per-layer legend, table, zoom, toggles) + Symbology panel: Style (incl. rule-based), Label, Query (builder + SQL subset) tabs; saved per layer | UI done, MOCK vector and raster layers; queries run in the browser until the API exists |
+| Layers panel (per-layer legend, table, zoom, toggles) + Symbology panel: Style (incl. rule-based), Label, Query (builder + SQL subset), 3D (extrusion per layer, DEM terrain) tabs; saved per layer | UI done, MOCK vector and raster layers; queries run in the browser until the API exists |
 | Measures register (list + filters, add form with draw (snap-close, corner editing) or GeoJSON/Shapefile upload, footprints + buffers on map, Effect panel with status change + timestamped status history + delete (soft: archived as Deprecated, confirmed in a modal), before/after + DiD chart, dock Summary + CSV/PDF reporting export) | UI done, MOCK register and effects; measures API planned (`docs/decisions.md` Open) |
 | Report Builder (Reports view: outline with drag reorder, A4 preview with zoom, section properties, map capture, EN/DE page text, templates, rich text, per-language texts with machine translation via `POST /api/translate`; Export PDF via print, DOCX, share link) | UI done, MOCK indicators; saved in the browser; translation live (LibreTranslate); reports API planned (`docs/decisions.md` Open) |
 | Public Heat Portal `/portal` (EN/DE, mobile bottom sheet, address search, DWD warning card, area result with quantile dot plot, cool places with walking time, value-suppressing heat layer, 10-min walk isochrone) | UI done, MOCK warning, places and confidence; isochrone live (Mapbox); portal API planned (`docs/decisions.md` Open) |
