@@ -72,6 +72,8 @@ function AdminConsole() {
   useEffect(() => {
     document.title = `${a.title} · ${t.appName}`;
   }, []);
+  // Live pipelines and runs while the console is open.
+  useEffect(() => useAdmin.getState().startPolling(), []);
 
   // Rail: clicking the active section folds the panel, any other opens it there.
   const open = (id) => {

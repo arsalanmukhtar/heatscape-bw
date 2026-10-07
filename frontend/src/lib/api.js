@@ -28,6 +28,12 @@ export async function translateText(text, source, target, html = true) {
 export const getLayer = (name) => api('GET', `/layers/${encodeURIComponent(name)}`);
 export const getPortalWarning = () => api('GET', '/portal/warning');
 
+// Import pipelines (worker jobs) for the admin console; run and pause need the admin role.
+export const getPipelines = () => api('GET', '/pipelines');
+export const getPipelineRuns = (limit = 500) => api('GET', `/pipelines/runs?limit=${limit}`);
+export const runPipeline = (job) => apiPost(`/pipelines/${encodeURIComponent(job)}/run`);
+export const pausePipeline = (job, paused) => apiPost(`/pipelines/${encodeURIComponent(job)}/pause`, { paused });
+
 // Sign-in session (middleware, httpOnly cookie). getMe resolves to null when signed out.
 export const signIn = (email, password, remember) => apiPost('/auth/login', { email, password, remember });
 export const signOut = () => api('POST', '/auth/logout');

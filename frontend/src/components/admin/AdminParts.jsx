@@ -5,7 +5,7 @@ import { ExpandButton, ExpandSlot } from '../Expandable';
 const a = t.admin;
 
 // Pipeline run states and alert severities use the status tokens (never heat levels).
-export const STATUS_COLOR = { ok: 'var(--success)', running: 'var(--info)', failed: 'var(--danger)', paused: 'var(--text-muted)' };
+export const STATUS_COLOR = { ok: 'var(--success)', running: 'var(--info)', queued: 'var(--info)', failed: 'var(--danger)', paused: 'var(--text-muted)', never: 'var(--text-muted)' };
 export const SEVERITY_COLOR = { critical: 'var(--danger)', warning: 'var(--warning)', info: 'var(--info)' };
 
 export const fmtTime = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–');

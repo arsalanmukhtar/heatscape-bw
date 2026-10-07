@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.db import create_pool
-from app.routers import datasets, health, layers, translate, weather
+from app.routers import datasets, health, layers, pipelines, translate, weather
 
 
 @asynccontextmanager
@@ -29,3 +29,4 @@ app.include_router(translate.router, prefix="/api")
 app.include_router(datasets.router, prefix="/api")
 app.include_router(layers.router, prefix="/api")
 app.include_router(weather.router, prefix="/api")
+app.include_router(pipelines.router, prefix="/api")

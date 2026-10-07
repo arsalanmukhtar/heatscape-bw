@@ -84,7 +84,7 @@ function LiveMap() {
   const [measure, setMeasure] = useState([]);
   const [snapAt, setSnapAt] = useState(null); // ruler: vertex under the pointer
   const selected = blockById(selectedId);
-  const firstSelection = useRef(true);
+  const lastSelected = useRef(selected.id); // block the camera last followed (the selection at load is not flown to)
   const pickedOnMap = useRef(false); // the next block selection came from a map click
 
   useEffect(() => {
@@ -236,15 +236,17 @@ function LiveMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [main, terrainKey]);
 
-  // Fly to a block when it is picked from the table (not on first load, and not after a map
-  // click: the camera stays where the user clicked, e.g. on an identified pixel).
+  // Fly to a block when it is picked from the table: only when the selection changes, so not
+  // on load or when the map becomes ready (the saved camera stays), and not after a map click
+  // (the camera stays where the user clicked, e.g. on an identified pixel).
   useEffect(() => {
-    if (firstSelection.current || pickedOnMap.current) {
-      firstSelection.current = false;
+    if (!main || selected.id === lastSelected.current) return;
+    lastSelected.current = selected.id;
+    if (pickedOnMap.current || !useWorkspace.getState().selectFly) {
       pickedOnMap.current = false;
       return;
     }
-    main?.fitBounds(blockBounds(selected), { padding: 140, maxZoom: 14, duration: 800 });
+    main.fitBounds(blockBounds(selected), { padding: 140, maxZoom: 14, duration: 800 });
   }, [selected, main]);
 
   // Ruler keys (the ruler itself stays on; ignored while typing in a field or editing
@@ -285,6 +287,24 @@ function LiveMap() {
     const m = main?.getMap();
     if (m) report({ zoom: m.getZoom(), center: [m.getCenter().lng, m.getCenter().lat] });
   };
+
+  // Camera persistence (state/workspace.js view): read from the map itself and saved when a
+  // move ends and when the page is hidden or closed; restored on load (initialViewState, and
+  // a jump in onLoad in case anything moved the camera while the map was starting).
+  const saveView = (m) => {
+    if (!m) return;
+    const c = m.getCenter();
+    useWorkspace.getState().setView({ longitude: c.lng, latitude: c.lat, zoom: m.getZoom(), pitch: m.getPitch(), bearing: m.getBearing() });
+  };
+  useEffect(() => {
+    const onHide = () => saveView(main?.getMap());
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, [main]);
 
   // Feature popups: vector layers drawn on the map (2D and 3D, not labels or highlights).
   const PAD = 4; // px around the pointer, so thin lines and small points are easy to hit
@@ -363,7 +383,8 @@ function LiveMap() {
     <MapGL
       id="main"
       mapboxAccessToken={TOKEN}
-      initialViewState={{ longitude: REGION.center[0], latitude: REGION.center[1], zoom: 12.2 }}
+      // The camera from the last visit (state/workspace.js), else the region start view.
+      initialViewState={useWorkspace.getState().view ?? { longitude: REGION.center[0], latitude: REGION.center[1], zoom: 12.2 }}
       mapStyle={styleUrl}
       projection={MAP_PROJECTION}
       fog={MAP_FOG}
@@ -372,8 +393,13 @@ function LiveMap() {
       style={{ width: '100%', height: '100%' }}
       cursor={drawing || tools.measure ? 'crosshair' : tools.select || hovering ? 'pointer' : 'grab'}
       doubleClickZoom={!drawing && !shaping}
-      onLoad={reportView}
+      onLoad={(e) => {
+        const v = useWorkspace.getState().view;
+        if (v) e.target.jumpTo({ center: [v.longitude, v.latitude], zoom: v.zoom, pitch: v.pitch, bearing: v.bearing });
+        reportView();
+      }}
       onMove={reportView}
+      onMoveEnd={(e) => saveView(e.target)}
       onMouseMove={(e) => {
         report({ pointer: [e.lngLat.lng, e.lngLat.lat] });
         if (tools.measure && snap) setSnapAt(snapTarget(e));

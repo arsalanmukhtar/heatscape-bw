@@ -11,17 +11,10 @@ const a = t.admin;
 const l = a.logs;
 const LEVEL_COLOR = { info: 'var(--text-muted)', warn: 'var(--warning)', error: 'var(--danger)' };
 const DOCK_MIN = 120;
-// MOCK heartbeat lines so the stream visibly lives (until the log API streams over SSE).
-const HEARTBEAT = [
-  ['bff', 'info', 'GET /api/health 200 2 ms'],
-  ['api', 'info', 'GET /api/health/db 200 6 ms'],
-  ['sentinel3', 'info', 'Processing tile 32UMV: cloud mask, emissivity, LST'],
-  ['api', 'info', 'POST /api/translate 200 380 ms'],
-];
 
-/** Bottom dock: the log stream, filtered by source, level and text; follows new lines. */
+/** Bottom dock: pipeline runs (live) and console actions, filtered by source, level and text; follows new lines. */
 export function AdminLogs() {
-  const { logs, logFilter, setLogFilter, follow, setFollow, dockOpen, toggleDock, dockH, setDockH, pipelines, log } = useAdmin();
+  const { logs, logFilter, setLogFilter, follow, setFollow, dockOpen, toggleDock, dockH, setDockH, pipelines } = useAdmin();
   const ref = useRef(null);
   const bodyRef = useRef(null);
   const sources = useMemo(() => [...new Set([...pipelines.map((p) => p.id), ...logs.map((x) => x.source)])], [pipelines, logs]);
@@ -29,15 +22,6 @@ export function AdminLogs() {
   const shown = logs.filter(
     (x) => (!logFilter.source || x.source === logFilter.source) && (!logFilter.level || x.level === logFilter.level) && matchesSearch(logFilter.query, [x.message, x.source]),
   );
-
-  useEffect(() => {
-    let i = 0;
-    const id = setInterval(() => {
-      const [src, lv, msg] = HEARTBEAT[i++ % HEARTBEAT.length];
-      log(src, lv, msg);
-    }, 6000);
-    return () => clearInterval(id);
-  }, [log]);
 
   useEffect(() => {
     if (follow && bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -89,7 +73,7 @@ export function AdminLogs() {
                 <span className="w-10 shrink-0 uppercase" style={{ color: LEVEL_COLOR[x.level] }}>
                   {x.level}
                 </span>
-                <span className="w-20 shrink-0 truncate text-muted">{x.source}</span>
+                <span className="w-32 shrink-0 truncate text-muted" title={nameOf(x.source)}>{x.source}</span>
                 <span className="min-w-0 flex-1 text-text">{x.message}</span>
               </div>
             ))

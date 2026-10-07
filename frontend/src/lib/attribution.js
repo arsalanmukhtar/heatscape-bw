@@ -13,6 +13,13 @@ const CC_BY = 'https://creativecommons.org/licenses/by/4.0/';
 export const ATTRIBUTIONS = {
   mapbox: { name: 'Mapbox', credit: '© Mapbox', url: 'https://www.mapbox.com/about/maps/', licence: 'Mapbox Terms of Service', licenceUrl: 'https://www.mapbox.com/legal/tos' },
   osm: { name: 'OpenStreetMap', credit: '© OpenStreetMap contributors', url: 'https://www.openstreetmap.org/copyright', licence: 'ODbL 1.0', licenceUrl: 'https://opendatacommons.org/licenses/odbl/1-0/' },
+  overture: {
+    name: 'Overture Maps Foundation',
+    credit: '© Overture Maps Foundation',
+    url: 'https://overturemaps.org',
+    licence: 'CDLA-Permissive-2.0 (places); ODbL 1.0 (divisions, from OpenStreetMap)',
+    licenceUrl: 'https://docs.overturemaps.org/attribution/',
+  },
   maxar: { name: 'Maxar', credit: '© Maxar', url: 'https://www.maxar.com/', licence: 'Mapbox Terms of Service', licenceUrl: 'https://www.mapbox.com/legal/tos' },
   usgs: {
     name: 'U.S. Geological Survey (Landsat)',
@@ -42,7 +49,7 @@ export const ATTRIBUTIONS = {
 };
 
 /** Open data providers, in the order the portal and reports list them. */
-export const DATA_ATTRIBUTIONS = ['usgs', 'copernicus', 'dwd', 'destatis', 'bkg', 'lgl', 'osm', 'mapbox'];
+export const DATA_ATTRIBUTIONS = ['usgs', 'copernicus', 'dwd', 'destatis', 'bkg', 'lgl', 'overture', 'osm', 'mapbox'];
 
 /** Credit line of a provider in a language (en | de). */
 export function credit(key, lang = 'en') {

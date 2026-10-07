@@ -1,6 +1,7 @@
 import { t } from '../i18n';
 import { SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
 import { LIVE_LAYERS, useLive } from '../state/live';
+import { useMapInfo } from '../state/mapInfo';
 import { useWorkspace } from '../state/workspace';
 
 /**
@@ -23,17 +24,19 @@ export function LoaderBlock({ label }) {
 
 /**
  * Map overlay while a switched-on live layer loads for the first time: the loader centred
- * over the map on a light dark blur. Later refreshes (and retries of not-yet-imported layers)
+ * over the map on a very slight blur, no tint (map and layers stay readable); no backdrop
+ * at all before the map has drawn (nothing to soften yet). Later refreshes (and retries of not-yet-imported layers)
  * load quietly. Not in map snapshots; the map stays usable underneath.
  */
 export function MapLoader() {
   const layers = useWorkspace((s) => s.layers);
   const status = useLive((s) => s.status);
   const data = useLive((s) => s.data);
+  const mapReady = useMapInfo((s) => s.zoom != null); // set once the map has loaded
   const busy = Object.keys(LIVE_LAYERS).some((id) => layers[id] && status[id] === 'loading' && !data[id]);
   if (!busy) return null;
   return (
-    <div className="pop-in pointer-events-none absolute inset-0 z-20 grid place-items-center bg-black/25 backdrop-blur-[2px]" {...SNAPSHOT_EXCLUDE}>
+    <div className={`pop-in pointer-events-none absolute inset-0 z-20 grid place-items-center ${mapReady ? 'backdrop-blur-[0.5px]' : ''}`} {...SNAPSHOT_EXCLUDE}>
       <Loader label={t.layers.live.loading} />
     </div>
   );

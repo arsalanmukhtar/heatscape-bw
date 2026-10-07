@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { LuPause, LuPlay, LuScrollText } from 'react-icons/lu';
-import { PIPELINE_RUNS } from '../../data/mock';
 import { t } from '../../i18n';
 import { ATTRIBUTIONS, credit } from '../../lib/attribution';
 import { useSearch } from '../../lib/search';
 import { useSort } from '../../lib/useSort';
 import { useAdmin } from '../../state/admin';
+import { LoaderBlock } from '../Loader';
 import { SearchBar, SearchEmpty } from '../SearchBar';
 import { SortTh } from '../SortTh';
 import { Bars } from './AdminCharts';
@@ -14,18 +14,18 @@ import { Card, Chip, fmtInt, fmtTime, PageHead, relTime, STATUS_COLOR, tdCls, th
 const a = t.admin;
 const c = a.pipelines.columns;
 const COLUMNS = ['name', 'schedule', 'lastRun', 'nextRun', 'status', 'records', 'duration'];
-const searchValues = (p) => [p.name, p.source, p.schedule, a.status[p.status]];
+const searchValues = (p) => [p.name, p.id, p.source, p.schedule, a.status[p.status]];
 const sortValue = (p, key) => (key === 'lastRun' || key === 'nextRun' ? p[key] ?? '' : p[key]);
 const iconBtn = 'grid size-7 place-items-center text-muted hover:text-accent disabled:opacity-40 disabled:hover:text-muted';
 
-/** Data pipelines: table with actions, and the run history of the selected one. */
+/** Data pipelines (live: the worker's import jobs): table with actions, and the run history of the selected one. */
 export function AdminPipelines() {
-  const { pipelines, selectedPipeline, selectPipeline, runNow, togglePause, showLogs } = useAdmin();
+  const { pipelines, pipelinesStatus, pipelinesError, runs: runsByJob, selectedPipeline, selectPipeline, runNow, togglePause, showLogs } = useAdmin();
   const [query, setQuery] = useState('');
   const found = useSearch(pipelines, searchValues, query);
   const { rows, sort, sortBy } = useSort(found, sortValue);
   const sel = pipelines.find((p) => p.id === selectedPipeline);
-  const runs = sel ? PIPELINE_RUNS[sel.id] : [];
+  const runs = sel ? (runsByJob[sel.id] ?? []).slice(-14) : [];
 
   return (
     <>
@@ -50,15 +50,20 @@ export function AdminPipelines() {
                     <td className={tdCls}>
                       <span className="block text-text">{p.name}</span>
                       <span className="block text-2xs text-muted">
-                        {p.source} · {ATTRIBUTIONS[p.attribution]?.licence}
+                        <span className="font-mono">{p.id}</span> · {p.source} · {p.licence}
                       </span>
+                      {p.message && (
+                        <span className="block max-w-[28rem] truncate text-2xs text-danger" title={p.message}>
+                          {p.message}
+                        </span>
+                      )}
                     </td>
                     <td className={`${tdCls} text-text`}>{p.schedule}</td>
                     <td className={`${tdCls} text-text`} title={fmtTime(p.lastRun)}>
                       {relTime(p.lastRun)}
                     </td>
                     <td className={`${tdCls} text-text`} title={p.nextRun ? fmtTime(p.nextRun) : undefined}>
-                      {p.status === 'paused' ? '–' : p.nextRun ? relTime(p.nextRun) : a.pipelines.manual}
+                      {p.paused ? '–' : !p.nextRun ? a.pipelines.manual : new Date(p.nextRun) <= Date.now() ? a.pipelines.due : relTime(p.nextRun)}
                     </td>
                     <td className={tdCls}>
                       <Chip color={STATUS_COLOR[p.status]}>{a.status[p.status]}</Chip>
@@ -67,7 +72,7 @@ export function AdminPipelines() {
                     <td className={`${tdCls} text-right tabular-nums text-text`}>{a.duration(p.duration)}</td>
                     <td className={tdCls}>
                       <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
-                        <button type="button" onClick={() => runNow(p.id)} disabled={p.status === 'running'} aria-label={`${a.pipelines.runNow}: ${p.name}`} title={a.pipelines.runNow} className={iconBtn}>
+                        <button type="button" onClick={() => runNow(p.id)} disabled={p.status === 'running' || p.status === 'queued'} aria-label={`${a.pipelines.runNow}: ${p.name}`} title={a.pipelines.runNow} className={iconBtn}>
                           <LuPlay size={14} />
                         </button>
                         <button type="button" onClick={() => togglePause(p.id)} disabled={p.status === 'running'} aria-label={`${p.status === 'paused' ? a.pipelines.resume : a.pipelines.pause}: ${p.name}`} title={p.status === 'paused' ? a.pipelines.resume : a.pipelines.pause} className={iconBtn}>
@@ -82,7 +87,10 @@ export function AdminPipelines() {
                 ))}
               </tbody>
             </table>
-            {rows.length === 0 && <SearchEmpty />}
+            {pipelinesStatus === 'loading' && !pipelines.length && <LoaderBlock label={a.pipelines.loading} />}
+            {pipelinesStatus === 'error' && !pipelines.length && <SearchEmpty>{a.pipelines.loadError(pipelinesError)}</SearchEmpty>}
+            {pipelinesStatus === 'ok' && pipelines.length === 0 && <SearchEmpty>{a.pipelines.empty}</SearchEmpty>}
+            {pipelines.length > 0 && rows.length === 0 && <SearchEmpty />}
           </div>
         </Card>
 
@@ -110,7 +118,7 @@ export function AdminPipelines() {
                 <p className="text-xs text-muted">
                   {a.pipelines.licence}:{' '}
                   <a href={ATTRIBUTIONS[sel.attribution]?.licenceUrl} target="_blank" rel="noopener noreferrer" className="text-text underline-offset-2 hover:text-accent hover:underline">
-                    {ATTRIBUTIONS[sel.attribution]?.licence}
+                    {sel.licence}
                   </a>{' '}
                   · {a.pipelines.credit}: {credit(sel.attribution)}
                 </p>

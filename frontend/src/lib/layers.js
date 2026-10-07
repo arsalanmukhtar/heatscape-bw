@@ -47,9 +47,12 @@ const live = (id) => () => liveData(id);
 const HOSPITAL_FIELDS = [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 'name', label: c.name, kind: 'text', type: 'string' },
-  { key: 'operator', label: c.operator, kind: 'text', type: 'string' },
-  { key: 'beds', label: c.beds, kind: 'int', type: 'number' },
-  { key: 'emergency', label: c.emergency, kind: 'text', type: 'string' },
+  { key: 'address', label: c.address, kind: 'text', type: 'string' },
+  { key: 'postcode', label: c.postcode, kind: 'text', type: 'string' },
+  { key: 'locality', label: c.locality, kind: 'text', type: 'string' },
+  { key: 'phone', label: c.phone, kind: 'text', type: 'string' },
+  { key: 'website', label: c.website, kind: 'text', type: 'string' },
+  { key: 'confidence', label: c.confidence, kind: 'num', type: 'number' },
   ...COORDS,
 ];
 const WATER_FIELDS = [
@@ -75,7 +78,7 @@ const STATION_FIELDS = [
   { key: 'elevation', label: c.elevation, kind: 'int', type: 'number' },
   ...COORDS,
 ];
-// Administrative units (BKG VG250-EW for Baden-Württemberg; OSM city districts / quarters).
+// Administrative units (BKG VG250-EW for Baden-Württemberg and neighbouring Länder; OSM city districts / quarters).
 const ADMIN_FIELDS = [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 'name', label: c.name, kind: 'text', type: 'string' },
@@ -86,6 +89,7 @@ const ADMIN_FIELDS = [
   { key: 'density', label: c.density, kind: 'int', type: 'number' },
   { key: 'district', label: c.parentDistrict, kind: 'text', type: 'string' },
   { key: 'region', label: c.parentRegion, kind: 'text', type: 'string' },
+  { key: 'state', label: c.parentState, kind: 'text', type: 'string' },
   { key: 'nuts', label: c.nuts, kind: 'text', type: 'string' },
   ...COORDS,
 ];
@@ -113,11 +117,11 @@ const MEASURE_FIELDS = [
 ];
 
 export const LAYER_GROUPS = [
+  { id: 'admin', label: t.layers.admin },
   { id: 'heat', label: t.layers.heatIslands },
   { id: 'adaptation', label: t.layers.adaptation },
   { id: 'urban', label: t.layers.urban },
   { id: 'infrastructure', label: t.layers.infrastructure },
-  { id: 'admin', label: t.layers.admin },
   { id: 'raster', label: t.layers.rasters },
 ];
 
@@ -158,7 +162,7 @@ export const LAYERS = [
       ...COORDS,
     ],
   },
-  { id: 'hospitals', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, getData: live('hospitals'), fields: HOSPITAL_FIELDS },
+  { id: 'hospitals', attribution: ['overture'], group: 'infrastructure', geometry: 'point', label: t.layers.hospitals, getData: live('hospitals'), fields: HOSPITAL_FIELDS },
   { id: 'water', attribution: ['osm'], group: 'infrastructure', geometry: 'point', label: t.layers.water, getData: live('water'), fields: WATER_FIELDS },
   { id: 'dwdStations', attribution: ['dwd'], group: 'heat', geometry: 'point', label: t.layers.dwdStations, getData: live('dwdStations'), fields: STATION_FIELDS },
   { id: 'population', attribution: ['destatis'], group: 'urban', geometry: 'polygon', label: t.layers.population, getData: live('population'), fields: POPULATION_FIELDS },
@@ -169,8 +173,8 @@ export const LAYERS = [
   admin('adminKrs', ['bkg']),
   admin('adminVwg', ['bkg']),
   admin('adminGem', ['bkg']),
-  admin('adminOsm9', ['osm']),
-  admin('adminOsm10', ['osm']),
+  admin('adminOsm9', ['overture', 'osm']),
+  admin('adminOsm10', ['overture', 'osm']),
   { id: 'lstRaster', attribution: ['usgs'], group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
   { id: 'hazardRaster', attribution: ['usgs', 'dwd'], group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
   { id: 'hillshade', attribution: ['mapbox'], group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },

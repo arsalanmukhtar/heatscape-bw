@@ -357,14 +357,30 @@ export function compiled(src, fields) {
    op, value, value2 }] }. ops: eq ne lt le gt ge contains starts in between null notnull.
    Only flat AND/OR lists of these round-trip; anything richer stays SQL-only.
    ---------------------------------------------------------------------------------- */
-export const BUILDER_OPS = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'contains', 'starts', 'in', 'between', 'null', 'notnull'];
+export const BUILDER_OPS = ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'contains', 'starts', 'in', 'notin', 'between', 'notbetween', 'null', 'notnull'];
+/** Operators that take a list of values (condition.values), and those that take two (value, value2). */
+export const MULTI_OPS = new Set(['in', 'notin']);
+export const RANGE_OPS = new Set(['between', 'notbetween']);
+/** Values of an IN / NOT IN condition: the values list, or a comma-separated value (older conditions). */
+export const listValues = (c) =>
+  (Array.isArray(c.values) ? c.values : String(c.value ?? '').split(','))
+    .map((x) => String(x).trim())
+    .filter((x) => x !== '');
 const SYMBOL = { eq: '=', ne: '<>', lt: '<', le: '<=', gt: '>', ge: '>=' };
 const quoteId = (f) => (/^[A-Za-z_]\w*$/.test(f) && !KEYWORDS.has(f.toUpperCase()) ? f : `"${f}"`);
 const quoteVal = (v, numeric) => (numeric && v !== '' && Number.isFinite(Number(v)) ? String(Number(v)) : `'${String(v).replace(/'/g, "''")}'`);
 
 export function builderToSql({ combinator, conditions }, numericFields = []) {
+  const filled = (c) =>
+    c.op === 'null' || c.op === 'notnull'
+      ? true
+      : MULTI_OPS.has(c.op)
+        ? listValues(c).length > 0
+        : RANGE_OPS.has(c.op)
+          ? String(c.value ?? '').trim() !== '' && String(c.value2 ?? '').trim() !== ''
+          : String(c.value ?? '').trim() !== '';
   const parts = conditions
-    .filter((c) => c.field && (c.op === 'null' || c.op === 'notnull' || String(c.value ?? '').trim() !== ''))
+    .filter((c) => c.field && filled(c))
     .map((c) => {
       const f = quoteId(c.field);
       const num = numericFields.includes(c.field);
@@ -374,14 +390,13 @@ export function builderToSql({ combinator, conditions }, numericFields = []) {
         case 'starts':
           return `${f} ILIKE ${quoteVal(`${c.value}%`, false)}`;
         case 'in':
-          return `${f} IN (${String(c.value)
-            .split(',')
-            .map((x) => x.trim())
-            .filter(Boolean)
+        case 'notin':
+          return `${f} ${c.op === 'notin' ? 'NOT IN' : 'IN'} (${listValues(c)
             .map((x) => quoteVal(x, num))
             .join(', ')})`;
         case 'between':
-          return `${f} BETWEEN ${quoteVal(c.value, num)} AND ${quoteVal(c.value2 ?? c.value, num)}`;
+        case 'notbetween':
+          return `${f} ${c.op === 'notbetween' ? 'NOT BETWEEN' : 'BETWEEN'} ${quoteVal(c.value, num)} AND ${quoteVal(c.value2, num)}`;
         case 'null':
           return `${f} IS NULL`;
         case 'notnull':
@@ -406,8 +421,8 @@ function conditionFrom(n) {
     if (/^[^%_]*%$/.test(v)) return { field: n.a.name, op: 'starts', value: v.slice(0, -1) };
     return null;
   }
-  if (n.t === 'in' && !n.neg && n.a.t === 'field' && n.list.every((x) => lit(x) != null)) return { field: n.a.name, op: 'in', value: n.list.map(lit).join(', ') };
-  if (n.t === 'between' && !n.neg && n.a.t === 'field' && lit(n.lo) != null && lit(n.hi) != null) return { field: n.a.name, op: 'between', value: lit(n.lo), value2: lit(n.hi) };
+  if (n.t === 'in' && n.a.t === 'field' && n.list.every((x) => lit(x) != null)) return { field: n.a.name, op: n.neg ? 'notin' : 'in', values: n.list.map(lit) };
+  if (n.t === 'between' && n.a.t === 'field' && lit(n.lo) != null && lit(n.hi) != null) return { field: n.a.name, op: n.neg ? 'notbetween' : 'between', value: lit(n.lo), value2: lit(n.hi) };
   if (n.t === 'isnull' && n.a.t === 'field') return { field: n.a.name, op: n.neg ? 'notnull' : 'null', value: '' };
   return null;
 }

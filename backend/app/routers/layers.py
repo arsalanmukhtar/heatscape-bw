@@ -10,24 +10,26 @@ from app.db import get_pool
 
 router = APIRouter(prefix="/layers", tags=["layers"])
 
-# The FeatureCollection is built in the database; {props} is a json_build_object(...) body.
-# Only the fixed SQL below is formatted in (the layer name is checked against LAYERS), no input.
+# The FeatureCollection is built in the database (with its feature count); {props} is a
+# json_build_object(...) body. Only the fixed SQL below is formatted in (the layer name is
+# checked against LAYERS), no input.
 FC = """
-SELECT json_build_object(
+SELECT count(*) AS n, json_build_object(
   'type', 'FeatureCollection',
   'features', COALESCE(json_agg(json_build_object(
     'type', 'Feature',
     'geometry', ST_AsGeoJSON(geom, {precision})::json,
     'properties', json_build_object({props})
   )), '[]'::json)
-)::text
+)::text AS body
 FROM ({source}) src
 """
 
 LAYERS = {
     "hospitals": (
-        "SELECT * FROM osm_facilities WHERE kind = 'hospital' ORDER BY name",
-        "'id', osm_id, 'name', COALESCE(name, 'Hospital (unnamed)'), 'operator', operator, 'beds', beds, 'emergency', emergency",
+        "SELECT * FROM overture_places WHERE category = 'hospital' ORDER BY name",
+        """'id', id, 'name', name, 'address', address, 'postcode', postcode, 'locality', locality,
+           'phone', phone, 'website', website, 'confidence', round(confidence::numeric, 2)""",
     ),
     "water": (
         "SELECT * FROM osm_facilities WHERE kind = 'water' ORDER BY name",
@@ -72,7 +74,7 @@ LAYERS = {
             f"SELECT * FROM admin_units WHERE level = '{level}' ORDER BY name",
             """'id', id, 'name', name, 'type', type, 'ars', ars, 'ags', ags, 'population', population,
                'area', round(area_km2::numeric, 2), 'density', round((population / NULLIF(area_km2, 0))::numeric),
-               'district', district, 'region', region, 'nuts', nuts""",
+               'district', district, 'region', region, 'state', state, 'nuts', nuts""",
         )
         for level in ("land", "rbz", "krs", "vwg", "gem", "osm9", "osm10")
     },
@@ -84,12 +86,15 @@ PRECISION = {name: 5 for name in LAYERS if name.startswith("admin-")}
 @router.get("/{layer}", responses={200: {"content": {"application/geo+json": {}}}})
 async def layer(layer: str, pool: asyncpg.Pool = Depends(get_pool)) -> Response:
     """GeoJSON of an open-data layer: hospitals, water (OSM), dwd-stations (DWD), zensus (Destatis 100 m grid),
-    admin-{land|rbz|krs|vwg|gem} (BKG VG250-EW, Baden-Württemberg), admin-{osm9|osm10} (OSM city districts / quarters).
+    admin-{land|rbz|krs|vwg|gem} (BKG VG250-EW, Baden-Württemberg and neighbouring Länder), admin-{osm9|osm10} (OSM city districts / quarters).
 
     Empty until the worker (or `python -m app.ingest …`) has imported the data; see /api/datasets.
     """
     if layer not in LAYERS:
         raise HTTPException(status_code=404, detail=f"Unknown layer '{layer}'. Layers: {', '.join(LAYERS)}")
     source, props = LAYERS[layer]
-    body = await pool.fetchval(FC.format(source=source, props=props, precision=PRECISION.get(layer, 6)))
-    return Response(content=body, media_type="application/geo+json", headers={"Cache-Control": "max-age=300"})
+    row = await pool.fetchrow(FC.format(source=source, props=props, precision=PRECISION.get(layer, 6)))
+    # Cached for 5 min once there is data; an empty layer (not imported yet) is never cached,
+    # so the client's retries see the import as soon as it lands.
+    cache = "max-age=300" if row["n"] else "no-store"
+    return Response(content=row["body"], media_type="application/geo+json", headers={"Cache-Control": cache})

@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { LuFilter, LuPlay, LuPlus, LuSave, LuScanSearch, LuTable2, LuTrash2, LuX } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
-import { uniqueValues } from '../../lib/classify';
 import { fieldText, layerData } from '../../lib/layers';
 import { exprFields } from '../../lib/prepared';
-import { builderToSql, BUILDER_OPS, compiled, evaluate, sqlToBuilder } from '../../lib/sqlExpr';
+import { builderToSql, BUILDER_OPS, compiled, evaluate, listValues, MULTI_OPS, RANGE_OPS, sqlToBuilder } from '../../lib/sqlExpr';
 import { t } from '../../i18n';
 import { useLayout } from '../../state/layout';
 import { useSymbology } from '../../state/symbology';
@@ -12,12 +11,12 @@ import { useWorkspace } from '../../state/workspace';
 import { Field, Section, Segmented, Select, TextField } from '../controls';
 import { SearchEmpty } from '../SearchBar';
 import { SqlField } from './SqlField';
+import { ValuePicker } from './ValuePicker';
 
 const q = t.symbology.query;
 const btn = 'flex h-7 items-center gap-1.5 border border-border px-2.5 text-xs text-text hover:bg-hover disabled:opacity-40 disabled:hover:bg-transparent';
 const primary = 'flex h-7 items-center gap-1.5 bg-accent px-3 text-xs font-semibold text-on-accent hover:brightness-110 disabled:opacity-40';
 const iconBtn = 'grid size-7 shrink-0 place-items-center text-muted hover:text-accent';
-const MAX_PICK = 30; // fields with up to this many distinct values get a value list
 
 function featuresMatching(def, sql) {
   const data = layerData(def);
@@ -33,39 +32,57 @@ function boundsOf(features) {
   return [[w, s], [e, n]];
 }
 
-/** One builder condition: field, operator, value(s). */
+/** Distinct values of a field, sorted (numbers by value, text alphabetically, numbers in text naturally). */
+function distinctOptions(def, field) {
+  const seen = new Set();
+  (layerData(def)?.features ?? []).forEach((f) => {
+    const x = f.properties[field.key];
+    if (x != null && x !== '') seen.add(x);
+  });
+  const list = [...seen];
+  const numeric = list.every((x) => typeof x === 'number');
+  list.sort(numeric ? (a, b) => a - b : (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+  return list.map((x) => ({ value: String(x), label: String(fieldText(field, x)) }));
+}
+
+/*
+  One builder condition: field, operator, value(s). Values are picked from the field's
+  distinct values (ValuePicker): one with a radio list (typing allowed), IN / NOT IN several
+  with checkboxes, BETWEEN a from and a to; empty / not empty take none.
+*/
 function Condition({ def, fields, cond, onChange, onRemove }) {
   const field = fields.find((f) => f.key === cond.field) ?? fields[0];
-  const values = useMemo(() => {
-    const raw = (layerData(def)?.features ?? []).map((f) => f.properties[field.key]);
-    const u = uniqueValues(raw, MAX_PICK + 1);
-    return u.length <= MAX_PICK ? u.map((x) => x.value).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })) : null;
-  }, [def, field.key]);
+  const options = useMemo(() => distinctOptions(def, field), [def, field]);
   const set = (patch) => onChange({ ...cond, ...patch });
-  const pick = (value, key = 'value') =>
-    values && ['eq', 'ne'].includes(cond.op) ? (
-      <Select value={String(cond[key] ?? '')} onChange={(v) => set({ [key]: v })} label={q.value} options={[{ value: '', label: q.chooseValue }, ...values.map((v) => ({ value: String(v), label: String(fieldText(field, v)) }))]} className="min-w-0 flex-1" />
-    ) : (
-      <TextField value={value} onChange={(v) => set({ [key]: v })} label={q.value} placeholder={cond.op === 'in' ? q.listPlaceholder : q.valuePlaceholder} className="min-w-0 flex-1" />
-    );
+  // Switching between single and list operators carries the value(s) over.
+  const setOp = (op) => {
+    if (MULTI_OPS.has(op) && !MULTI_OPS.has(cond.op)) return set({ op, values: cond.value ? [String(cond.value)] : [], value: '' });
+    if (!MULTI_OPS.has(op) && MULTI_OPS.has(cond.op)) return set({ op, value: listValues(cond)[0] ?? '', values: undefined });
+    set({ op });
+  };
+  const one = (key, placeholder) => <ValuePicker options={options} value={String(cond[key] ?? '')} onChange={(x) => set({ [key]: x })} label={`${q.value}: ${field.label}`} placeholder={placeholder} />;
 
   return (
     <li className="flex flex-col gap-1.5 border border-border bg-field p-2">
       <div className="flex items-center gap-1.5">
-        <Select value={field.key} onChange={(v) => set({ field: v, value: '', value2: '' })} label={q.field} options={fields.map((f) => ({ value: f.key, label: f.label }))} className="min-w-0 flex-1" />
-        <Select value={cond.op} onChange={(v) => set({ op: v })} label={q.operator} options={BUILDER_OPS.map((o) => ({ value: o, label: q.ops[o] }))} className="w-44" menuWidth={208} />
+        <Select value={field.key} onChange={(v) => set({ field: v, value: '', value2: '', values: MULTI_OPS.has(cond.op) ? [] : undefined })} label={q.field} options={fields.map((f) => ({ value: f.key, label: f.label }))} className="min-w-0 flex-1" />
+        <Select value={cond.op} onChange={setOp} label={q.operator} options={BUILDER_OPS.map((o) => ({ value: o, label: q.ops[o] }))} className="w-44" menuWidth={208} />
         <button type="button" onClick={onRemove} aria-label={q.removeCondition} title={q.removeCondition} className={iconBtn}>
           <LuX size={13} />
         </button>
       </div>
-      {cond.op === 'between' ? (
+      {MULTI_OPS.has(cond.op) ? (
+        <div className="flex">
+          <ValuePicker mode="multi" options={options} values={listValues(cond)} onChange={(values) => set({ values })} label={`${q.value}: ${field.label}`} />
+        </div>
+      ) : RANGE_OPS.has(cond.op) ? (
         <div className="flex items-center gap-1.5">
-          {pick(cond.value)}
+          {one('value', q.picker.from)}
           <span className="text-xs text-muted">{q.and}</span>
-          {pick(cond.value2 ?? '', 'value2')}
+          {one('value2', q.picker.to)}
         </div>
       ) : (
-        cond.op !== 'null' && cond.op !== 'notnull' && <div className="flex">{pick(cond.value ?? '')}</div>
+        cond.op !== 'null' && cond.op !== 'notnull' && <div className="flex">{one('value')}</div>
       )}
     </li>
   );
@@ -93,6 +110,16 @@ export function QueryTab({ def }) {
   const builder = query.builder;
 
   const setBuilder = (b) => set({ builder: b, sql: builderToSql(b, numeric) });
+  // × on a condition: while a query is applied, the map follows at once (the rest re-applied,
+  // or nothing when none is left); otherwise it only edits the draft.
+  const removeCondition = (i) => {
+    const b = { ...builder, conditions: builder.conditions.filter((_, j) => j !== i) };
+    const sql = builderToSql(b, numeric).trim();
+    const applied = !query.applied ? '' : !sql ? '' : compiled(sql, keys) ? sql : query.applied;
+    set({ builder: b, sql, applied });
+  };
+  // Clear: removes every condition and the applied query.
+  const clearAll = () => set({ builder: { combinator: builder?.combinator ?? 'AND', conditions: [] }, sql: '', applied: '' });
   const setSql = (sql) => set({ sql, builder: sqlToBuilder(sql, keys) });
 
   return (
@@ -127,7 +154,7 @@ export function QueryTab({ def }) {
                     fields={fields}
                     cond={c}
                     onChange={(next) => setBuilder({ ...builder, conditions: builder.conditions.map((x, j) => (j === i ? next : x)) })}
-                    onRemove={() => setBuilder({ ...builder, conditions: builder.conditions.filter((_, j) => j !== i) })}
+                    onRemove={() => removeCondition(i)}
                   />
                 ))}
               </ul>
@@ -151,7 +178,7 @@ export function QueryTab({ def }) {
         <SqlField value={query.sql} onChange={setSql} fields={fields} label={q.sqlTitle} placeholder={q.sqlPlaceholder} />
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-2xs tabular-nums text-muted">{draftHits ? q.draftMatches(draftHits.length, total) : q.noDraft}</span>
-          <button type="button" onClick={() => set({ applied: '' })} disabled={!query.applied} className={btn}>
+          <button type="button" onClick={clearAll} disabled={!query.applied && !query.sql.trim() && !builder?.conditions.length} className={btn}>
             <span>{q.clear}</span>
           </button>
           <button type="button" onClick={() => set({ applied: query.sql.trim() })} disabled={!draftOk || !query.sql.trim() || query.applied === query.sql.trim()} className={primary}>

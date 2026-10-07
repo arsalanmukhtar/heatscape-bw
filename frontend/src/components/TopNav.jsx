@@ -104,14 +104,17 @@ export function Brand() {
 }
 
 /* Map readout (between the view tabs and the season): zoom, and the pointer position while
-   it is over the map, else the map centre. Click copies the coordinates (lat, lon). */
+   it is over the map, else the map centre. Click copies the coordinates (lat, lon). Fixed
+   size (monospace, every part in ch) so neither it nor its neighbours shift as the values
+   change; dashes until the map reports its first view. */
 function MapReadout() {
   const view = useLayout((s) => s.view);
   const { zoom, center, pointer } = useMapInfo();
   const [copied, setCopied] = useState(false);
-  if (view !== 'gis' || zoom == null) return null;
+  if (view !== 'gis') return null;
   const at = pointer ?? center;
   const copy = () => {
+    if (!at) return;
     navigator.clipboard?.writeText(`${at[1].toFixed(6)}, ${at[0].toFixed(6)}`).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
@@ -123,14 +126,16 @@ function MapReadout() {
       type="button"
       onClick={copy}
       title={copied ? r.copied : r.copy}
-      className="hidden h-[1.875rem] items-center gap-2.5 whitespace-nowrap border border-nav-border bg-bg-deep px-3 font-mono text-2xs tabular-nums text-nav-muted hover:text-nav-text xl:flex"
+      className="hidden h-[1.875rem] shrink-0 items-center gap-2.5 overflow-hidden whitespace-nowrap border border-nav-border bg-bg-deep px-3 font-mono text-2xs tabular-nums text-nav-muted hover:text-nav-text xl:flex"
     >
-      <span>
-        <span className="text-nav-muted">{r.zoom}</span> <span className="text-nav-text">{zoom.toFixed(2)}</span>
+      <span className="flex shrink-0 gap-[1ch]">
+        <span className="w-[4ch] text-nav-muted">{r.zoom}</span>
+        <span className="w-[5ch] text-right text-nav-text">{zoom == null ? '–' : zoom.toFixed(2)}</span>
       </span>
-      <span className="h-3.5 w-px bg-nav-border" aria-hidden />
-      <span className="inline-block w-[15.5rem] text-left">
-        <span className="text-nav-muted">{pointer ? r.pointer : r.center}</span> <span className={copied ? 'text-accent' : 'text-nav-text'}>{copied ? r.copied : fmtLatLon(at)}</span>
+      <span className="h-3.5 w-px shrink-0 bg-nav-border" aria-hidden />
+      <span className="flex shrink-0 gap-[1ch]">
+        <span className="w-[6ch] text-nav-muted">{pointer ? r.pointer : r.center}</span>
+        <span className={`w-[25ch] text-left ${copied ? 'text-accent' : 'text-nav-text'}`}>{copied ? r.copied : at ? fmtLatLon(at) : '–'}</span>
       </span>
     </button>
   );

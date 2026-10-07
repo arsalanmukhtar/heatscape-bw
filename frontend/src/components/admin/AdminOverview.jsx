@@ -1,5 +1,5 @@
 import { LuX } from 'react-icons/lu';
-import { ADMIN_KPIS, PIPELINE_RUNS } from '../../data/mock';
+import { ADMIN_KPIS } from '../../data/mock';
 import { t } from '../../i18n';
 import { adminNow, useAdmin } from '../../state/admin';
 import { SearchEmpty } from '../SearchBar';
@@ -11,23 +11,26 @@ const o = a.overview;
 
 /** Overview: KPI tiles, the last 24 h of pipeline runs, open alerts. */
 export function AdminOverview() {
-  const { pipelines, alerts, dismissed, dismissAlert } = useAdmin();
+  const { pipelines, runs, alerts, dismissed, dismissAlert } = useAdmin();
   const open = alerts.filter((x) => !dismissed.includes(x.id));
   const running = pipelines.filter((p) => p.status === 'running').length;
   const to = adminNow().getTime();
   const from = to - 24 * 3600e3;
-  // Past runs plus the current run of a pipeline that is running now.
+  // Live runs per job (a running one ends now).
   const rows = pipelines.map((p) => ({
     id: p.id,
-    label: p.name,
-    runs: [
-      ...PIPELINE_RUNS[p.id].map((r) => {
-        const start = new Date(r.start).getTime();
-        return { id: r.id, start, end: start + r.duration * 1000, status: r.status, title: `${p.name}: ${a.status[r.status]}, ${a.duration(r.duration)}` };
-      }),
-      ...(p.status === 'running' ? [{ id: `${p.id}-now`, start: new Date(p.lastRun).getTime(), end: to, status: 'running', title: `${p.name}: ${a.status.running}` }] : []),
-    ],
+    label: `${p.name} · ${p.id}`,
+    runs: (runs[p.id] ?? []).map((r) => {
+      const start = new Date(r.start).getTime();
+      return { id: r.id, start, end: r.status === 'running' ? to : start + r.duration * 1000, status: r.status, title: `${p.name}: ${a.status[r.status]}, ${a.duration(r.duration)}` };
+    }),
   }));
+  // Latest successful import of any job.
+  const latest = Object.values(runs)
+    .flat()
+    .filter((r) => r.status === 'ok')
+    .sort((m, n) => new Date(n.start) - new Date(m.start))[0];
+  const latestName = latest && pipelines.find((p) => p.id === latest.job)?.name;
 
   return (
     <>
@@ -35,7 +38,7 @@ export function AdminOverview() {
       <div className="flex flex-col gap-4 px-6 pb-6">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <Kpi label={o.kpis.datasets} value={fmtInt(ADMIN_KPIS.datasets)} />
-          <Kpi label={o.kpis.latest} value={relTime(ADMIN_KPIS.latestIngestion)} hint={ADMIN_KPIS.latestSource} />
+          <Kpi label={o.kpis.latest} value={relTime(latest?.start)} hint={latestName} />
           <Kpi label={o.kpis.running} value={fmtInt(running)} tone={running ? 'var(--info)' : undefined} />
           <Kpi label={o.kpis.failed} value={fmtInt(pipelines.filter((p) => p.status === 'failed').length)} tone="var(--danger)" />
           <Kpi label={o.kpis.users} value={fmtInt(ADMIN_KPIS.activeUsers7d)} />

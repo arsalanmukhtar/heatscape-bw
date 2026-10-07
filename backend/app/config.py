@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     dwd_mosmix_station: str = "10729"
     dwd_station_radius_km: float = 30.0
     overpass_url: str = "https://overpass-api.de/api/interpreter"
+    # Public mirrors tried in turn when the main server is busy (504/429) or unreachable.
+    overpass_mirrors: tuple[str, ...] = (
+        "https://overpass.private.coffee/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    )
+    # Overture Maps release to read (e.g. "2026-09-17.0"); empty = the latest in the bucket.
+    overture_release: str = ""
     # Sent with every import request (providers ask for an identifying user agent).
     ingest_user_agent: str = "heatscape-bw/0.1 (open-data import; research project)"
     ingest_timeout_s: float = 120.0

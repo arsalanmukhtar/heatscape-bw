@@ -58,10 +58,11 @@ const TEMPLATES = {
   }),
   hospitals: (r) => ({
     title: r.name,
-    subtitle: r.operator ?? p.osm,
-    chips: [r.emergency === 'yes' && { label: p.emergency, color: 'var(--danger)' }],
-    stats: [stat(f.beds, fmt(r.beds))],
-    rows: [row(f.id, r.id)],
+    subtitle: [r.address, [r.postcode, r.locality].filter(Boolean).join(' ')].filter(Boolean).join(', ') || p.overture,
+    // Overture's confidence that the place exists (0–1): low values are flagged.
+    chips: [isNum(r.confidence) && r.confidence < 0.5 && { label: p.lowConfidence, color: 'var(--warning)' }],
+    stats: [stat(f.confidence, fmt(r.confidence, 2))],
+    rows: [row(f.phone, r.phone ?? '–'), row(f.website, r.website ?? '–'), row(f.id, r.id)],
   }),
   water: (r) => ({
     title: r.name,
@@ -100,7 +101,7 @@ TEMPLATES.measureBuffers = (r) => ({ ...TEMPLATES.measures(r), subtitle: p.buffe
 
 const admin = (r) => ({
   title: r.name,
-  subtitle: [r.district, r.region].filter(Boolean).join(' · ') || null,
+  subtitle: [r.district, r.region, r.state].filter((v) => v && v !== r.name).join(' · ') || null,
   chips: [r.type && { label: r.type, color: 'var(--accent)' }],
   stats: [stat(f.population, fmt(r.population), 'var(--accent)'), stat(f.areaKm2, unit(r.area, 'km²', 1)), stat(f.density, unit(r.density, '/km²'))],
   rows: [row(f.ars, r.ars ?? '–'), row(f.nuts, r.nuts ?? '–'), row(f.id, r.id)],

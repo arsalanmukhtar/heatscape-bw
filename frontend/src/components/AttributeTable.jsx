@@ -314,7 +314,13 @@ export function AttributeTable() {
   // A live layer's first load from the backend shows the loader (no backdrop).
   const loading = useLive((s) => !!def && !!LIVE_LAYERS[def.id] && s.status[def.id] === 'loading' && !s.data[def.id]);
   if (!def) return <SearchEmpty>{t.table.noLayer}</SearchEmpty>;
-  if (loading) return <LoaderBlock label={t.layers.live.loading} />;
+  if (loading)
+    return (
+      <>
+        <TableTitle def={def} />
+        <LoaderBlock label={t.layers.live.loading} />
+      </>
+    );
   const shown = rows.slice(0, ROW_LIMIT);
   const isBlocks = def.id === 'blocks';
 
@@ -363,19 +369,27 @@ export function AttributeTable() {
     else rows.slice(0, 5000).forEach((r) => (w = Math.max(w, textWidth(cellText(f, r[f.key]), font) + pad)));
     setWidth(def.id, f.key, w / k);
   };
-  // Blocks select (Inspector; the map flies to the block). With "Fly to features" on, a click
-  // also highlights the feature in yellow and flies to it; a second click on the same row
-  // clears the highlight.
-  const onRow = (r) => {
-    if (isBlocks) select(r.id);
-    else setPicked(r.id);
-    if (!tableFly) return;
-    if (lit(r)) return setRowHighlight(null);
+  // A click selects the row (blocks: the Inspector's block) and highlights its feature in
+  // yellow on the map and in the table, without moving the map; a second click on the same
+  // row clears it. A double-click flies to the feature when "Fly to features" is on (its two
+  // clicks are not taken as clear-again).
+  const geometryOf = (r) => featureById(def, r.id)?.geometry ?? (r.lon != null ? { type: 'Point', coordinates: [r.lon, r.lat] } : null);
+  const pick = (r) => (isBlocks ? select(r.id, false) : setPicked(r.id));
+  const onRow = (e, r) => {
+    if (e.detail > 1) return;
+    pick(r);
+    setRowHighlight(lit(r) ? null : { layer: def.id, id: r.id });
+  };
+  const onRowDouble = (r) => {
+    pick(r);
     setRowHighlight({ layer: def.id, id: r.id });
-    if (!isBlocks) flyToGeometry(main, featureById(def, r.id)?.geometry ?? { type: 'Point', coordinates: [r.lon, r.lat] });
+    const g = tableFly && geometryOf(r);
+    if (g) flyToGeometry(main, g);
   };
 
   return (
+    <>
+    <TableTitle def={def} />
     <div className="flex min-h-0 flex-1 flex-col overflow-auto">
       <table ref={tableRef} className="table-fixed border-collapse text-xs [&_td]:overflow-hidden [&_td]:text-ellipsis [&_td]:whitespace-nowrap" style={{ width: `max(100%, ${total / 16}rem)` }}>
         <colgroup>
@@ -411,12 +425,13 @@ export function AttributeTable() {
             return (
               <tr
                 key={r.id}
-                onClick={() => onRow(r)}
+                onClick={(e) => onRow(e, r)}
+                onDoubleClick={() => onRowDouble(r)}
                 aria-selected={selected}
                 aria-current={hl ? 'true' : undefined}
-                title={tableFly ? (hl ? t.table.rowClear : t.table.rowFly) : undefined}
+                title={`${hl ? t.table.rowClear : t.table.rowHighlight}${tableFly ? ` · ${t.table.rowFly}` : ''}`}
                 className={`h-[1.8125rem] cursor-pointer border-b border-border-soft tabular-nums ${
-                  hl ? 'bg-[color-mix(in_srgb,var(--feature-highlight)_22%,transparent)] shadow-[inset_2px_0_0_var(--feature-highlight)]' : selected ? 'bg-accent-soft' : 'hover:bg-hover'
+                  hl ? 'bg-[color-mix(in_srgb,var(--feature-highlight)_22%,transparent)] shadow-[inset_2px_0_0_var(--feature-highlight)]' : 'hover:bg-accent-soft'
                 }`}
               >
                 {fields.map((f) => (
@@ -430,5 +445,15 @@ export function AttributeTable() {
       {rows.length === 0 && <SearchEmpty />}
       {rows.length > ROW_LIMIT && <p className="px-4 py-2 text-2xs text-muted">{t.table.limited(ROW_LIMIT, rows.length)}</p>}
     </div>
+    </>
+  );
+}
+
+/** Thin full-width strip above the table naming the layer shown (accent, stays put while the table scrolls). */
+function TableTitle({ def }) {
+  return (
+    <p className="h-6 shrink-0 truncate border-b border-accent-line bg-accent-soft px-4 text-center text-2xs font-semibold uppercase leading-6 tracking-[var(--tracking-caps)] text-accent" title={t.table.showing(def.label)}>
+      {def.label}
+    </p>
   );
 }

@@ -15,7 +15,7 @@ Browser ──► gateway (nginx) ──► /        frontend (static React buil
 | backend | Domain API, spatial/non-spatial queries, process registry (OGC API – Processes) | Run long jobs in the request (use workers) |
 | database | PostGIS, h3-pg, app data | Be reachable from outside the compose network |
 | translate | LibreTranslate (EN/DE models), called only by the backend (`POST /api/translate`) | Be reachable from the browser or the internet |
-| worker | Open-data imports on intervals (`backend/app/ingest`, backend image): fetch → PostGIS, record source/licence/version in `datasets` | Serve requests; publish a port |
+| worker | Open-data imports on the schedule in `ingest_jobs` (`backend/app/ingest`, backend image): fetch → PostGIS, record source/licence/version in `datasets`, each run in `ingest_runs`; Run now / Pause from the admin console via `/api/pipelines` | Serve requests; publish a port |
 
 ## Planned services
 

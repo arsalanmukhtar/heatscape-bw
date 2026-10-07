@@ -26,8 +26,12 @@ const DEFAULT_LAYERS = {
   selection: true,
 };
 
+// Last camera of the main map ({ longitude, latitude, zoom, pitch, bearing }); null = start view.
+const validView = (v) =>
+  v && ['longitude', 'latitude', 'zoom', 'pitch', 'bearing'].every((k) => Number.isFinite(v[k])) && Math.abs(v.latitude) <= 90 ? v : null;
+
 /*
-  Workspace state. Layer visibility and the grid overlay are saved in localStorage
+  Workspace state. Layer visibility, the map camera and the grid overlay are saved in localStorage
   (hs-workspace), so what is shown survives refreshes, closed tabs and new sessions; layers
   added later start at their default.
 */
@@ -37,7 +41,10 @@ export const useWorkspace = create()(
       // Visibility of the map layers (ids from lib/layers.js) and the overlays (selection,
       // priority); the analysis grid is tools.grid, shared with the map controls.
       layers: DEFAULT_LAYERS,
+      view: null,
+      setView: (view) => set({ view }),
       selectedId: 'M-14',
+      selectFly: true,
       pixel: null, // raster identify: { lon, lat } of the clicked point, or null
       // Feature popup: { lngLat, item: { layer, props, geometry, color }, at } or null.
       popup: null,
@@ -57,7 +64,8 @@ export const useWorkspace = create()(
       // Hide or show every layer at once, grid included.
       setAllLayers: (on) =>
         set({ layers: Object.fromEntries(Object.keys(get().layers).map((k) => [k, on])), tools: { ...get().tools, grid: on } }),
-      select: (selectedId) => set({ selectedId }),
+      // fly: the map follows the new block (MapView); false keeps the camera (attribute table).
+      select: (selectedId, fly = true) => set({ selectedId, selectFly: fly }),
       setPixel: (pixel) => set({ pixel }),
       setPopup: (popup) => set({ popup }),
       toggleTableFly: () => set({ tableFly: !get().tableFly, rowHighlight: null }),
@@ -87,13 +95,13 @@ export const useWorkspace = create()(
       name: 'hs-workspace',
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ layers, tools, tableFly, coordOrder }) => ({ layers, grid: tools.grid, tableFly, coordOrder }),
+      partialize: ({ layers, tools, tableFly, coordOrder, view }) => ({ layers, grid: tools.grid, tableFly, coordOrder, view }),
       merge: (saved, current) => {
         const layers = { ...DEFAULT_LAYERS };
         Object.keys(layers).forEach((k) => {
           if (typeof saved?.layers?.[k] === 'boolean') layers[k] = saved.layers[k];
         });
-        return { ...current, layers, tools: { ...current.tools, grid: !!saved?.grid }, tableFly: saved?.tableFly ?? true, coordOrder: saved?.coordOrder === 'lonlat' ? 'lonlat' : 'latlon' };
+        return { ...current, layers, tools: { ...current.tools, grid: !!saved?.grid }, tableFly: saved?.tableFly ?? true, coordOrder: saved?.coordOrder === 'lonlat' ? 'lonlat' : 'latlon', view: validView(saved?.view) };
       },
     },
   ),

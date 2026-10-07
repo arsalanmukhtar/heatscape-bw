@@ -44,17 +44,21 @@ docker compose up -d --build
 
 ## Live data (Phase 1)
 
-No registration needed: DWD, OpenStreetMap and Destatis data are open and keyless.
+No registration needed: DWD, Overture Maps, OpenStreetMap, BKG and Destatis data are open and keyless.
 
 | Dataset | Source | Refresh (worker) | Shown in |
 |---|---|---|---|
 | Heat and weather warnings, warn cells Mannheim | DWD GeoServer WFS | 10 min | Portal "Today" card, `/api/weather/warnings` |
 | MOSMIX point forecast, station 10729 Mannheim | DWD Open Data | 1 h | Portal forecast highs / tonight's low, `/api/weather/forecast` |
 | Climate stations within 30 km: daily values + latest 10-min temperature | DWD CDC | 6 h / 20 min | Layer "Weather Stations (DWD)" |
-| Hospitals, drinking-water supply | OpenStreetMap (Overpass) | 7 days | Layers "Hospitals", "Water Supply", Inspector at-risk facilities |
+| Hospitals | Overture Maps places (GeoParquet on S3, read with DuckDB) | 7 days (Overture releases monthly) | Layer "Hospitals", Inspector at-risk facilities |
+| Drinking-water supply | OpenStreetMap (Overpass, with mirror fallback) | 7 days | Layer "Water Supply", Inspector at-risk facilities |
 | Population and mean age, 100 m grid | Destatis Zensus 2022 | once (on demand) | Layer "Population (Zensus 100 m)" |
-| Admin units of BW: state, Regierungsbezirke, Stadt-/Landkreise, Verwaltungsgemeinschaften, Gemeinden (with population, area) | BKG VG250-EW | once (on demand) | Layer group "Administrative Units" |
-| City districts and quarters (admin_level 9/10) in the region | OpenStreetMap (Overpass) | 30 days | Layers "City Districts", "City Quarters" |
+| Admin units of BW, Hessen, Rheinland-Pfalz, Bayern (one table `admin_units`, column `level`): states, Regierungsbezirke, Stadt-/Landkreise, Verwaltungsgemeinschaften, Gemeinden (with population, area) | BKG VG250-EW | once, first on start-up | Layer group "Administrative Units" |
+| City districts and quarters in the region | Overture Maps divisions (macrohood, neighborhood; from OSM) | 30 days | Layers "City Districts", "City Quarters" |
+
+- Schedule lives in the database (`ingest_jobs`, runs in `ingest_runs`): restarts keep it; admin units run first; a failed import retries after 15 min; Run now / Pause in `/admin` → Data Pipelines.
+- Water Supply = drinking water only: storm-water, overflow and sewage basins are left out (by tags and by name).
 
 First time (existing database volume — `database/init/` only runs on an empty volume):
 
@@ -62,13 +66,16 @@ First time (existing database volume — `database/init/` only runs on an empty 
 docker compose up -d --build database
 Get-Content -Raw database/init/30_live_data.sql | docker compose exec -T database sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 docker compose up -d --build backend worker middleware gateway frontend
-docker compose logs -f worker      # first pass imports everything (Zensus ≈ 1–3 min); Ctrl+C to stop following
+docker compose logs -f worker      # first pass imports everything, admin units first, Zensus last (≈ 1–3 min); Ctrl+C to stop following
 ```
 
 | Task | Command |
 |---|---|
 | Import status (source, licence, version, last fetch, rows) | `curl.exe -s http://localhost:8180/api/datasets` |
-| Run imports now | `docker compose exec worker python -m app.ingest dwd-warnings dwd-forecast dwd-latest dwd-stations osm-facilities zensus-grid bkg-vg250 osm-admin` (or `all`) |
+| Pipelines and run log (what `/admin` → Data Pipelines shows) | `curl.exe -s http://localhost:8180/api/pipelines` · `curl.exe -s "http://localhost:8180/api/pipelines/runs?limit=20"` |
+| Run imports now | `docker compose exec worker python -m app.ingest dwd-warnings dwd-forecast dwd-latest dwd-stations overture-places osm-water zensus-grid bkg-vg250 overture-divisions` (or `all`) |
+| Overture water check (base-theme classes and water-like names in the region) | `docker compose exec worker python -m app.ingest.overture` |
+| Admin units from a manual download (BKG server drops the transfer) | download the [VG250-EW Ebenen GeoPackage zip](https://daten.gdz.bkg.bund.de/produkte/vg/vg250-ew_ebenen_1231/aktuell/vg250-ew_12-31.utm32s.gpkg.ebenen.zip), then `docker compose cp <file>.zip worker:/tmp/vg250.zip`; `docker compose exec -e VG250_FILE=/tmp/vg250.zip worker python -m app.ingest bkg-vg250`; `docker compose exec -u root worker rm -f /tmp/vg250.zip` |
 | One layer as GeoJSON | `curl.exe -s http://localhost:8180/api/layers/dwd-stations` (also `hospitals`, `water`, `zensus`, `admin-land`, `admin-rbz`, `admin-krs`, `admin-vwg`, `admin-gem`, `admin-osm9`, `admin-osm10`) |
 | Portal warning card data | `curl.exe -s http://localhost:8180/api/portal/warning` |
 | Worker logs | `docker compose logs --tail 100 worker` |
@@ -90,7 +97,7 @@ gateway/     nginx.conf
 | Item | State |
 |---|---|
 | GIS workspace screen (layers, map, attribute table, inspector incl. raster pixel identify, feature popups on every vector layer) | Done; live layers: Hospitals, Water Supply, Weather Stations (DWD), Population (Zensus), Administrative Units (BKG + OSM); other layers MOCK |
-| Live data Phase 1: worker imports (DWD warnings, MOSMIX, stations; OSM facilities; Zensus grid) + `/api/datasets`, `/api/layers/*`, `/api/weather/*`, `/api/portal/warning` | Done (README → Live data) |
+| Live data Phase 1: worker imports (DWD warnings, MOSMIX, stations; OSM facilities; Zensus grid; admin units BW + Hessen, Rheinland-Pfalz, Bayern) + `/api/datasets`, `/api/layers/*`, `/api/weather/*`, `/api/portal/warning` | Done (README → Live data) |
 | Notifications (bell: jobs finished/failed, measure changes; unread badge, opens the job or measure) | Done, from MOCK job runner and local measures |
 | Data attribution (map credit tiles, report footer, portal sources and licences, admin catalog/pipelines) | Done; credits name the real providers of the datasets the MOCK layers stand for |
 | Copilot panel (plan, tool steps, result, composer) | UI done, MOCK conversation; copilot API planned |
@@ -100,7 +107,7 @@ gateway/     nginx.conf
 | Measures register (list + filters, add form with draw (snap-close, corner editing) or GeoJSON/Shapefile upload, footprints + buffers on map, Effect panel with status change + timestamped status history + delete (soft: archived as Deprecated, confirmed in a modal), before/after + DiD chart, dock Summary + CSV/PDF reporting export) | UI done, MOCK register and effects; measures API planned (`docs/decisions.md` Open) |
 | Report Builder (Reports view: outline with drag reorder, A4 preview with zoom, section properties, map capture, EN/DE page text, templates, rich text, per-language texts with machine translation via `POST /api/translate`; Export PDF via print, DOCX, share link) | UI done, MOCK indicators; saved in the browser; translation live (LibreTranslate); reports API planned (`docs/decisions.md` Open) |
 | Public Heat Portal `/portal` (EN/DE, mobile bottom sheet, address search, DWD warning card, area result with quantile dot plot, cool places with walking time, value-suppressing heat layer, 10-min walk isochrone) | UI done; DWD warning card live (`/api/portal/warning`), isochrone live (Mapbox); places and confidence MOCK |
-| Admin console `/admin` (Overview KPIs + pipeline timeline + alerts, Data Pipelines with run/pause/logs + run history, STAC catalog, Regions onboarding, Users & Roles + permission matrix, Copilot usage/cost/eval, System Health, Audit Log, log dock) | UI done, MOCK except System Health (live checks of the running services); ops API planned (`docs/decisions.md` Open) |
+| Admin console `/admin` (Overview KPIs + pipeline timeline + alerts, Data Pipelines with run/pause/logs + run history (live: worker jobs, `/api/pipelines`), STAC catalog, Regions onboarding, Users & Roles + permission matrix, Copilot usage/cost/eval, System Health, Audit Log, log dock) | UI done; Data Pipelines, pipeline KPIs, timeline and failure alerts live; System Health live; the rest MOCK; ops API planned (`docs/decisions.md` Open) |
 | Sign-in (`/signin`, split screen, EN/DE, inline validation, show password, remember me, error banner) + middleware sessions + gateway Admin-role guard on `/admin` | Done with MOCK users from `.env` (`ADMIN_*`, `PLANNER_*`); Keycloak planned (`docs/decisions.md` Open) |
 | Forgot / update password, email verification, municipality SSO button, Account settings (`/account`: profile, language & theme, active sessions, API tokens) | UI done; sessions live, the rest MOCK until Keycloak |
 | Responsive scale (root font size per screen class, rem everywhere, compact portrait-tablet view; portal ≥ 16 px; report pages fixed A4) | Done |

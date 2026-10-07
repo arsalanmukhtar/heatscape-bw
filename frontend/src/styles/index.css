@@ -530,8 +530,15 @@
 /* Feature popup on the map (FeaturePopup): Mapbox's box is cleared and its tip redrawn in the
    surface tokens, so it follows the theme; the card pops in (overshoot scale from the tip)
    and the tip fades in after it. Reduced motion: a plain fade. */
+/* --popup-scale shrinks card and tip as one (all screens). CSS zoom, not a transform: the
+   layout box shrinks too, so Mapbox still anchors the tip on the feature. */
 .hs-popup {
   z-index: 20;
+  --popup-scale: 0.75;
+}
+.hs-popup .mapboxgl-popup-content,
+.hs-popup .mapboxgl-popup-tip {
+  zoom: var(--popup-scale);
 }
 .hs-popup .mapboxgl-popup-content {
   position: relative;

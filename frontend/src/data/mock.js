@@ -598,49 +598,23 @@ export function cellConfidence(id, center) {
 }
 
 /*
-  MOCK admin & operations data (until the ops API reads the scheduler, STAC, Keycloak and
-  the audit table). Times are ISO strings around the MOCK "now" ADMIN_NOW; durations in
-  seconds. Pipeline status: ok | running | failed | paused. Dataset names are real.
+  MOCK admin & operations data (until the ops API reads STAC, Keycloak and the audit
+  table; pipelines are live: /api/pipelines). Times are ISO strings around ADMIN_NOW, the
+  time the page loaded, so they stay recent next to the live pipeline runs; durations in
+  seconds. Dataset names are real.
 */
-export const ADMIN_NOW = '2025-09-01T09:00:00';
+export const ADMIN_NOW = new Date().toISOString();
 // Full ISO (UTC) so the console reads every time the same way in any time zone.
 const at = (h) => new Date(new Date(ADMIN_NOW).getTime() + h * 3600e3).toISOString();
 
-export const PIPELINES = [
-  { id: 'landsat', attribution: 'usgs', name: 'Landsat 8/9 ST (Collection 2 L2)', source: 'USGS M2M API', schedule: 'Daily 04:00', lastRun: at(-5), nextRun: at(19), status: 'ok', records: 18, duration: 1260 },
-  { id: 'sentinel2', attribution: 'copernicus', name: 'Sentinel-2 L2A', source: 'Copernicus Data Space', schedule: 'Daily 03:00', lastRun: at(-6), nextRun: at(18), status: 'ok', records: 46, duration: 2140 },
-  { id: 'sentinel3', attribution: 'copernicus', name: 'Sentinel-3 SLSTR LST', source: 'Copernicus Data Space', schedule: 'Every 6 h', lastRun: at(-0.4), nextRun: at(5.6), status: 'running', records: 0, duration: 380 },
-  { id: 'dwd', attribution: 'dwd', name: 'DWD station observations', source: 'DWD Open Data (CDC)', schedule: 'Hourly', lastRun: at(-1), nextRun: at(0), status: 'failed', records: 0, duration: 41 },
-  { id: 'zensus', attribution: 'destatis', name: 'Zensus 2022 100 m grid', source: 'Destatis', schedule: 'Manual', lastRun: '2025-06-12T10:15', nextRun: null, status: 'ok', records: 31842, duration: 920 },
-  { id: 'lod2', attribution: 'lgl', name: 'LGL LoD2 buildings', source: 'LGL Baden-Württemberg', schedule: 'Monthly, 1st 02:00', lastRun: at(-7), nextRun: '2025-10-01T02:00', status: 'paused', records: 2194, duration: 3310 },
-];
-
-/** MOCK run history per pipeline: 14 runs, newest last. */
-export const PIPELINE_RUNS = Object.fromEntries(
-  PIPELINES.map((p, k) => {
-    const rand = rng(101 + k);
-    const runs = Array.from({ length: 14 }, (_, i) => {
-      const failed = (p.id === 'dwd' && (i === 13 || i === 9)) || rand() < 0.06;
-      return {
-        id: `${p.id}-${i + 1}`,
-        start: at(-(14 - i) * (p.id === 'dwd' ? 1 : p.id === 'sentinel3' ? 6 : 24)),
-        duration: Math.round(p.duration * (0.7 + rand() * 0.6)) || 60,
-        records: failed ? 0 : Math.round((p.records || 20) * (0.6 + rand() * 0.8)),
-        status: failed ? 'failed' : 'ok',
-      };
-    });
-    return [p.id, runs];
-  }),
-);
-
 export const ADMIN_ALERTS = [
-  { id: 'al-1', severity: 'critical', time: at(-1), source: 'DWD station observations', message: 'Ingestion failed: HTTP 503 from opendata.dwd.de (3 retries).' },
   { id: 'al-2', severity: 'warning', time: at(-3.5), source: 'Landsat 8/9 ST', message: 'Cloud cover above 60 % on 2 of 3 new scenes; LST composite unchanged.' },
   { id: 'al-3', severity: 'warning', time: at(-8), source: 'object storage', message: 'Bucket heatscape-cogs at 81 % of quota.' },
   { id: 'al-4', severity: 'info', time: at(-20), source: 'Regions', message: 'Karlsruhe: validation step started (indicator checks 4 of 6).' },
 ];
 
-export const ADMIN_KPIS = { datasets: 42, latestIngestion: at(-5), latestSource: 'Landsat 8/9 ST', runningJobs: 2, failed24h: 1, activeUsers7d: 38, copilot7d: 214 };
+// Pipeline KPIs (latest ingestion, running, failed) come from the live pipelines.
+export const ADMIN_KPIS = { datasets: 42, activeUsers7d: 38, copilot7d: 214 };
 
 // STAC collections: bbox [west, south, east, north]; temporal [start, end|null].
 export const STAC_COLLECTIONS = [
@@ -744,17 +718,6 @@ export const AUDIT_LOG = [
   { id: 'a-12', time: at(-48), user: 'L. Schmidt', action: 'auth.login', target: 'workspace', result: 'ok' },
   { id: 'a-13', time: at(-50), user: 'K. Hoffmann', action: 'data.download', target: 'heatscape-lst-composite 2025 (COG)', result: 'ok' },
   { id: 'a-14', time: at(-72), user: 'M. Arsalan', action: 'user.invite', target: 'e.fischer@stuttgart.example (Planner)', result: 'ok' },
-];
-
-/** MOCK log lines for the admin dock; level: info | warn | error. */
-export const ADMIN_LOGS = [
-  { time: at(-1.02), level: 'info', source: 'dwd', message: 'GET https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/10_minutes/air_temperature/now/' },
-  { time: at(-1.01), level: 'warn', source: 'dwd', message: 'HTTP 503, retry 1/3 in 30 s' },
-  { time: at(-1.0), level: 'error', source: 'dwd', message: 'HTTP 503 after 3 retries; run marked failed' },
-  { time: at(-0.4), level: 'info', source: 'sentinel3', message: 'Search STAC sentinel-3-slstr-lst bbox=BW datetime=last 6 h: 4 items' },
-  { time: at(-0.35), level: 'info', source: 'sentinel3', message: 'Download S3B_SL_2_LST____20250901T0812 (1 of 4)' },
-  { time: at(-0.2), level: 'info', source: 'api', message: 'POST /api/translate 200 412 ms' },
-  { time: at(-0.1), level: 'info', source: 'bff', message: 'GET /api/health 200 3 ms' },
 ];
 
 /*
