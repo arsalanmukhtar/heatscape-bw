@@ -1,13 +1,14 @@
 import { contrastText, resolveColor, withAlpha } from './color';
 import { stats } from './classify';
 import { heightExpr, solidData } from './extrude';
-import { labelLayers } from './labels';
-import { fieldValues } from './layers';
+import { labelLayers, shownUntil } from './labels';
+import { fieldValues, layerData } from './layers';
 import { activeQuery, labelData, preparedData } from './prepared';
 import { bake, isIconMarker, markerId, patternId } from './mapImages';
 import { rampColors } from './ramps';
 import { rasterSource } from './rasterImage';
 import { rasterRange } from './styleModel';
+import { TILED, tileUrl } from '../state/live';
 
 /*
   Style → Mapbox. buildLayerSpec turns one layer's style into a source and the Mapbox
@@ -461,6 +462,50 @@ function extrudeLayers(def, style, op, picked, popped) {
   ].filter(Boolean);
 }
 
+/*
+  Tiled layers (def.tiles: vector tiles, state/live.js): the properties the browser computes
+  (__sel, __rule, __label, __lclass) are not in the tiles, so their expressions read them by
+  feature id from the layer's attribute data. A unit cut into several tiles keeps one id, so
+  a filter or colour by id covers all of its parts.
+*/
+const TILE_MAXZOOM = 14; // deeper zooms draw the z14 tiles enlarged (≈ 0.1 px per tile unit)
+const byIdCache = new WeakMap();
+
+/** ['match', id, [ids…], value, …, fallback] of one computed property (cached per feature list). */
+function byId(features, key, fallback) {
+  if (!byIdCache.has(features)) byIdCache.set(features, new Map());
+  const m = byIdCache.get(features);
+  if (!m.has(key)) {
+    const groups = new Map();
+    for (const f of features) {
+      const v = f.properties[key];
+      if (v === undefined || v === fallback) continue;
+      if (!groups.has(v)) groups.set(v, []);
+      groups.get(v).push(String(f.properties.id));
+    }
+    m.set(key, groups.size ? ['match', ['to-string', ['get', 'id']], ...[...groups].flatMap(([v, ids]) => [ids, v]), fallback] : fallback);
+  }
+  return m.get(key);
+}
+
+/** Features kept by a definition query, as a filter by id. */
+const keepIds = (features) => (features.length ? ['match', ['to-string', ['get', 'id']], features.map((f) => String(f.properties.id)), true, false] : ['==', ['get', 'id'], '']);
+
+const swap = (e, table) => (!Array.isArray(e) ? e : e[0] === 'get' && e.length === 2 && e[1] in table ? table[e[1]] : e.map((x) => swap(x, table)));
+
+/** A layer spec drawn from the tiles: their source layer, computed properties by id, the definition query's filter. */
+function onTiles(l, sourceLayer, table, keep) {
+  const each = (o) => o && Object.fromEntries(Object.entries(o).map(([k, v]) => [k, swap(v, table)]));
+  const filters = [l.filter && swap(l.filter, table), keep].filter(Boolean);
+  return {
+    ...l,
+    'source-layer': sourceLayer,
+    ...(l.paint && { paint: each(l.paint) }),
+    ...(l.layout && { layout: each(l.layout) }),
+    ...(filters.length && { filter: filters.length === 1 ? filters[0] : ['all', ...filters] }),
+  };
+}
+
 /**
  * { sourceId, sourceKey, source, layers, solid, terrain, extra } for one map layer. sourceKey
  * changes when the source itself must be rebuilt (clustering on/off), since Mapbox cannot
@@ -468,8 +513,11 @@ function extrudeLayers(def, style, op, picked, popped) {
  * picked: filter of the features to highlight in 3D (2D selections are map overlays);
  * popped: filter of the feature whose popup is open (yellow in 3D).
  */
-export function buildLayerSpec(def, style, visible, picked = null, popped = null) {
+export function buildLayerSpec(def, style, shown, picked = null, popped = null) {
   const op = style.opacity;
+  // A tiled layer draws once its attributes (and with them the tile version) are loaded.
+  const version = def.tiles ? layerData(def)?.version : null;
+  const visible = shown && (!def.tiles || version != null);
   const dem = def.kind === 'dem';
   // 3D on: polygons extrude from their own source, points, lines and rasters from a derived
   // one (spec.solid); the DEM keeps its hillshade and lends a second source to the terrain.
@@ -481,21 +529,27 @@ export function buildLayerSpec(def, style, visible, picked = null, popped = null
     const { url, coordinates } = rasterSource(def);
     source = { type: 'image', url, coordinates };
   } else if (style.renderer === 'cluster') source = { type: 'geojson', data: prepared.data, cluster: true, clusterRadius: style.cluster.radius, clusterMaxZoom: style.cluster.maxZoom };
+  else if (def.tiles) source = { type: 'vector', tiles: [tileUrl(def.id)], maxzoom: TILE_MAXZOOM, promoteId: 'id' };
   else source = { type: 'geojson', data: prepared.data };
 
-  const clustered = source.cluster ? `c${style.cluster.radius}-${style.cluster.maxZoom}` : 'p';
+  const clustered = source.cluster ? `c${style.cluster.radius}-${style.cluster.maxZoom}` : def.tiles ? `t${version}` : 'p';
   const sourceId = `${def.id}-src`;
   const show = (l) => ({ ...l, layout: { ...l.layout, visibility: visible ? (l.layout?.visibility ?? 'visible') : 'none' } });
-  const zoomed = (l) => show({ ...l, minzoom: style.minZoom, maxzoom: style.maxZoom });
+  const zoomed = (l) => show({ ...l, minzoom: style.minZoom, maxzoom: shownUntil(style.maxZoom) });
   const selecting = prepared && activeQuery(def, style)?.mode === 'selection' && style.renderer !== 'cluster';
   const flat = def.raster || dem ? rasterLayers(def, style, op) : vectorLayers(def, style, op);
   // In 3D a query selection is highlighted with the picked features instead of a ground outline.
   const hl = [picked, solid && selecting && ['==', ['get', '__sel'], true]].filter(Boolean);
   const solids = solid ? extrudeLayers(def, style, op, hl.length > 1 ? ['any', ...hl] : (hl[0] ?? null), popped) : [];
+  const tiled = def.tiles && prepared.data;
+  const keep = tiled && activeQuery(def, style)?.mode === 'definition' ? keepIds(prepared.data.features) : null;
+  const computed = tiled ? { ...(selecting && { __sel: byId(prepared.data.features, '__sel', false) }), ...(style.renderer === 'rules' && { __rule: byId(prepared.data.features, '__rule', -1) }) } : null;
   const layers = [
     ...(solid ? (def.geometry === 'polygon' ? solids : []) : flat),
     ...(selecting && !solid ? selectionLayers(def, resolveColor('var(--accent-2)')) : []),
-  ].map(zoomed);
+  ]
+    .map((l) => (tiled ? onTiles(l, TILED[def.id], computed, keep) : l))
+    .map(zoomed);
 
   let solidSpec = null;
   if (dem) solidSpec = { sourceId: `${def.id}-terrain`, sourceKey: `${def.id}-terrain`, source: { type: 'raster-dem', url: DEM_URL, tileSize: 512 }, layers: [] };
@@ -503,10 +557,23 @@ export function buildLayerSpec(def, style, visible, picked = null, popped = null
     solidSpec = { sourceId: `${def.id}-3d`, sourceKey: `${def.id}-3d`, source: { type: 'geojson', data: solidData(def, style, prepared?.data) }, layers: solids.map(zoomed) };
   const terrain = dem && visible && style.extrude.enabled ? { source: `${def.id}-terrain`, exaggeration: style.extrude.exaggeration } : null;
 
-  // Labels draw from their own point/line source (centroids, inside points, outlines).
+  // Labels draw from their own point/line source (centroids, inside points, outlines);
+  // perimeter labels of a tiled layer draw along the unit outlines in the tiles.
   const labels = prepared ? labelData(def, style) : null;
-  const extra = labels
-    ? [{ sourceId: `${def.id}-labels`, sourceKey: `${def.id}-labels`, source: { type: 'geojson', data: labels }, layers: labelLayers(def, style).map(show) }]
-    : [];
+  const alongTiles = tiled && style.label.placement.polygon === 'perimeter';
+  const extra = !labels
+    ? []
+    : alongTiles
+      ? [
+          {
+            sourceId: `${def.id}-labels`,
+            sourceKey: `${def.id}-labels-t${version}`,
+            source,
+            layers: labelLayers(def, style)
+              .map((l) => onTiles(l, TILED[def.id], { __label: byId(labels.features, '__label', ''), __lclass: byId(labels.features, '__lclass', -1) }, keep))
+              .map(show),
+          },
+        ]
+      : [{ sourceId: `${def.id}-labels`, sourceKey: `${def.id}-labels`, source: { type: 'geojson', data: labels }, layers: labelLayers(def, style).map(show) }];
   return { sourceId, sourceKey: `${sourceId}-${clustered}`, source, layers, solid: solidSpec, terrain, extra };
 }

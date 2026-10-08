@@ -37,6 +37,13 @@ export const POSITIONS = ['top-left', 'top', 'top-right', 'left', 'center', 'rig
 // Cartographic order (QGIS "around point"): above right first, as map conventions prefer.
 const AUTO_ANCHORS = ['bottom-left', 'bottom', 'left', 'top-left', 'bottom-right', 'right', 'top', 'top-right'];
 
+/**
+ * Mapbox maxzoom for a "visible up to" zoom: Mapbox hides a layer from maxzoom on, so a
+ * whole-number maximum (as the top-nav readout shows the zoom) keeps that whole level: 8–8 is
+ * visible from 8 to just under 9. A fractional maximum is used as is.
+ */
+export const shownUntil = (max) => Math.min(24, Number.isInteger(max) ? max + 1 : max);
+
 /** Image id for the label background box (fill + 1 px outline, stretched to the text). */
 export const labelBoxId = (fill, outline) => ['hs-lb', fill, outline].join('|');
 
@@ -116,7 +123,7 @@ export function labelLayers(def, style) {
       paint,
       // Within the layer's visible zoom range (Style tab) as well as the label's own.
       minzoom: Math.max(L.minZoom, style.minZoom ?? 0),
-      maxzoom: Math.min(L.maxZoom, style.maxZoom ?? 24),
+      maxzoom: shownUntil(Math.min(L.maxZoom, style.maxZoom ?? 24)),
       ...(hidden.length ? { filter: ['!', ['in', ['get', '__lclass'], ['literal', hidden]]] } : {}),
     },
   ];

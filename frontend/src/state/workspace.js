@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 const DEFAULT_LAYERS = {
   surfaceTemp: true,
   airTemp: true,
+  airIsotherms: true,
   blocks: false,
   sealing: true,
   hospitals: true,
@@ -31,7 +32,8 @@ const validView = (v) =>
   v && ['longitude', 'latitude', 'zoom', 'pitch', 'bearing'].every((k) => Number.isFinite(v[k])) && Math.abs(v.latitude) <= 90 ? v : null;
 
 /*
-  Workspace state. Layer visibility, the map camera and the grid overlay are saved in localStorage
+  Workspace state. Layer visibility, the map camera, the grid overlay and the attribute table's
+  layer are saved in localStorage
   (hs-workspace), so what is shown survives refreshes, closed tabs and new sessions; layers
   added later start at their default.
 */
@@ -95,13 +97,13 @@ export const useWorkspace = create()(
       name: 'hs-workspace',
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ layers, tools, tableFly, coordOrder, view }) => ({ layers, grid: tools.grid, tableFly, coordOrder, view }),
+      partialize: ({ layers, tools, tableFly, coordOrder, view, tableLayer }) => ({ layers, grid: tools.grid, tableFly, coordOrder, view, tableLayer }),
       merge: (saved, current) => {
         const layers = { ...DEFAULT_LAYERS };
         Object.keys(layers).forEach((k) => {
           if (typeof saved?.layers?.[k] === 'boolean') layers[k] = saved.layers[k];
         });
-        return { ...current, layers, tools: { ...current.tools, grid: !!saved?.grid }, tableFly: saved?.tableFly ?? true, coordOrder: saved?.coordOrder === 'lonlat' ? 'lonlat' : 'latlon', view: validView(saved?.view) };
+        return { ...current, layers, tools: { ...current.tools, grid: !!saved?.grid }, tableFly: saved?.tableFly ?? true, coordOrder: saved?.coordOrder === 'lonlat' ? 'lonlat' : 'latlon', view: validView(saved?.view), tableLayer: saved?.tableLayer === null || typeof saved?.tableLayer === 'string' ? saved.tableLayer : current.tableLayer };
       },
     },
   ),

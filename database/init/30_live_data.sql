@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS zensus_grid (
 CREATE INDEX IF NOT EXISTS zensus_grid_geom ON zensus_grid USING gist (geom);
 
 -- Administrative units, all levels and Länder in one table: BKG VG250-EW for
--- Baden-Württemberg, Hessen, Rheinland-Pfalz, Bayern (land, rbz, krs, vwg, gem) and
+-- all 16 Länder of Germany (land, rbz, krs, vwg, gem) and
 -- OSM city districts / quarters in the region (osm9, osm10). Replaced per source.
 CREATE TABLE IF NOT EXISTS admin_units (
   id          text PRIMARY KEY,   -- <level>:<ARS> (BKG) | <level>:r<relation id> (OSM)
@@ -117,7 +117,12 @@ CREATE TABLE IF NOT EXISTS admin_units (
   geom        geometry(MultiPolygon, 4326) NOT NULL
 );
 ALTER TABLE admin_units ADD COLUMN IF NOT EXISTS state text;  -- databases created before it
+-- Derived from geom, kept by PostgreSQL: Web Mercator copy the vector tiles cut from (no
+-- per-tile reprojection) and a point inside each unit (labels, table coordinates).
+ALTER TABLE admin_units ADD COLUMN IF NOT EXISTS geom_3857 geometry(MultiPolygon, 3857) GENERATED ALWAYS AS (ST_Transform(geom, 3857)) STORED;
+ALTER TABLE admin_units ADD COLUMN IF NOT EXISTS inner_pt geometry(Point, 4326) GENERATED ALWAYS AS (ST_PointOnSurface(geom)) STORED;
 CREATE INDEX IF NOT EXISTS admin_units_geom ON admin_units USING gist (geom);
+CREATE INDEX IF NOT EXISTS admin_units_geom_3857 ON admin_units USING gist (geom_3857);
 CREATE INDEX IF NOT EXISTS admin_units_level ON admin_units (level);
 
 -- Hospitals from Overture Maps places (overture.py); replaced on every import.
@@ -137,6 +142,26 @@ CREATE INDEX IF NOT EXISTS overture_places_geom ON overture_places USING gist (g
 
 -- Imports replaced by Overture (hospitals, city districts): their catalogue rows go.
 DELETE FROM datasets WHERE id IN ('osm-facilities', 'osm-admin');
+
+-- Landsat land surface temperature, one summer (June–August) composite per row on a lon/lat
+-- grid over the region bbox (landsat.py): row-major from the north-west corner, NULL = no
+-- clear scene. p05 / p50 / p95 in °C over the clear-sky scenes, n = their count per cell.
+CREATE TABLE IF NOT EXISTS lst_composites (
+  year        integer PRIMARY KEY,
+  west        float8 NOT NULL,
+  south       float8 NOT NULL,
+  east        float8 NOT NULL,
+  north       float8 NOT NULL,
+  cols        integer NOT NULL,
+  rows        integer NOT NULL,
+  p05         real[] NOT NULL,
+  p50         real[] NOT NULL,
+  p95         real[] NOT NULL,
+  n           smallint[] NOT NULL,
+  scenes      text[] NOT NULL,      -- STAC item ids used
+  complete    boolean NOT NULL,     -- the summer is over (later runs keep it)
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
 
 -- Worker schedule per import job (one row per entry of app.ingest.JOBS; written by the
 -- worker, Run now / Pause written by the API for the admin console).

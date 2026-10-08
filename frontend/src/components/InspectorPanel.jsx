@@ -13,6 +13,7 @@ import { ExpandButton, ExpandSlot } from './Expandable';
 import { OverflowText } from './OverflowText';
 import { TempChart } from './TempChart';
 
+const fmtC = (v) => (v == null ? '–' : Number(v).toFixed(1));
 const tempClass = (v) => (v >= 38 ? 'text-level-severe' : v >= 36 ? 'text-level-high' : v >= 34 ? 'text-level-moderate' : 'text-text');
 const vulnColor = (v) => (v >= 70 ? 'var(--level-severe)' : v >= 45 ? 'var(--level-moderate)' : 'var(--level-normal)');
 
@@ -167,12 +168,39 @@ function PixelSection() {
       <p className="text-xs tabular-nums text-text">{`${pixel.lat.toFixed(5)}° N, ${pixel.lon.toFixed(5)}° E`}</p>
       <p className="mt-0.5 text-2xs tabular-nums text-muted">{t.inspector.cell(cell.row + 1, cell.col + 1, cell.size)}</p>
       <ul className="mt-3 flex flex-col gap-2">
-        {rows.map(({ def, cell: c }) => (
-          <li key={def.id} className="flex h-10 items-center gap-3 border border-border bg-field px-3">
-            <span className="flex-1 truncate text-sm text-text">{def.label}</span>
-            <span className={`whitespace-nowrap text-sm font-medium tabular-nums ${c.value == null ? 'text-muted' : 'text-text'}`}>{value(def, c.value)}</span>
-          </li>
-        ))}
+        {rows.map(({ def, cell: c }) => {
+          // Rasters with an uncertainty range (Landsat LST): p05–p95, clear scenes, summer.
+          const g = def.raster;
+          const i = c.index;
+          const details =
+            c.value != null && g.p05
+              ? [
+                  [t.inspector.pixelRange, `${fmtC(g.p05[i])} - ${fmtC(g.p95[i])} °C`],
+                  [t.inspector.pixelScenes, String(g.n[i])],
+                  [t.inspector.pixelSummer, String(g.year)],
+                ]
+              : [];
+          return (
+            <li key={def.id} className="border border-border bg-field">
+              <div className="flex h-10 items-center gap-3 px-3">
+                <span className="min-w-0 flex-1 truncate text-sm text-text" title={def.label}>
+                  {def.label}
+                </span>
+                <span className={`shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums ${c.value == null ? 'text-muted' : 'text-text'}`}>{value(def, c.value)}</span>
+              </div>
+              {details.length > 0 && (
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-t border-border-soft px-3 py-2 text-2xs">
+                  {details.map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="text-muted">{k}</dt>
+                      <dd className="text-right tabular-nums text-text">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

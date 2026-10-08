@@ -51,7 +51,7 @@ DATASETS = {
         "attribution": "osm",
     },
     "bkg-vg250": {
-        "title": "Administrative units of Baden-Württemberg, Hessen, Rheinland-Pfalz, Bayern (VG250-EW): state to municipality",
+        "title": "Administrative units of Germany, all 16 Länder (VG250-EW): state to municipality",
         "source": "Bundesamt für Kartographie und Geodäsie (BKG), VG250-EW Ebenen",
         "url": "https://gdz.bkg.bund.de/index.php/default/verwaltungsgebiete-1-250-000-mit-einwohnerzahlen-ebenen-stand-31-12-vg250-ew-ebenen-31-12.html",
         "licence": "dl-de/by-2-0",
@@ -63,6 +63,13 @@ DATASETS = {
         "url": "https://docs.overturemaps.org/guides/divisions/",
         "licence": "ODbL 1.0",
         "attribution": "overture",
+    },
+    "landsat-lst": {
+        "title": "Land surface temperature, summer composites (Landsat 8/9 Collection 2 Level-2)",
+        "source": "USGS Landsat via Microsoft Planetary Computer (STAC, landsat-c2-l2, band ST_B10)",
+        "url": "https://planetarycomputer.microsoft.com/dataset/landsat-c2-l2",
+        "licence": "Public domain (USGS)",
+        "attribution": "usgs",
     },
     "zensus-grid": {
         "title": "Zensus 2022, 100 m grid: population and mean age",

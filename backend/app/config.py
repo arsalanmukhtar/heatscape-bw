@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     region_name: str = "Mannheim"
     region_bbox: tuple[float, float, float, float] = (8.41, 49.40, 8.59, 49.59)
     region_center: tuple[float, float] = (8.466, 49.4875)
+    # ARS of the region's municipality in admin_units (VG250): the modelled air temperature
+    # layers are clipped to its boundary (the whole bbox until the admin units are imported).
+    region_ars: str = "082220000000"
     # DWD: warn cells (municipality and district of Mannheim), MOSMIX station (Mannheim),
     # climate stations within this radius of the region centre.
     dwd_warncells: tuple[int, ...] = (808222000, 108222000)
@@ -34,6 +37,8 @@ class Settings(BaseSettings):
     )
     # Overture Maps release to read (e.g. "2026-09-17.0"); empty = the latest in the bucket.
     overture_release: str = ""
+    # First summer of the Landsat LST composites (Landsat 8 from 2013).
+    lst_first_year: int = 2013
     # Sent with every import request (providers ask for an identifying user agent).
     ingest_user_agent: str = "heatscape-bw/0.1 (open-data import; research project)"
     ingest_timeout_s: float = 120.0

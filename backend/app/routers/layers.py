@@ -1,7 +1,11 @@
-"""Map layers from the imported open data, as GeoJSON FeatureCollections (EPSG:4326).
+"""Map layers from the imported open data, as GeoJSON FeatureCollections (EPSG:4326), and
+for the admin units also as vector tiles with their attributes and single features.
 
 Property names are camelCase, matching the layer fields in frontend/src/lib/layers.js.
 """
+
+import gzip
+from collections import OrderedDict
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -79,14 +83,109 @@ LAYERS = {
         for level in ("land", "rbz", "krs", "vwg", "gem", "osm9", "osm10")
     },
 }
-# Coordinate decimals per layer (5 ≈ 1 m: enough for the generalised VG250 boundaries).
-PRECISION = {name: 5 for name in LAYERS if name.startswith("admin-")}
+# Coordinate decimals per layer: admin boundaries go out unrounded (9 = ST_AsGeoJSON's full
+# default), so no vertex moves and no outline can cross itself.
+PRECISION = {name: 9 for name in LAYERS if name.startswith("admin-")}
+
+# Admin units are drawn from vector tiles (decision 63): the browser keeps their attributes
+# (table, queries, styles, labels) and fetches one unit's full geometry when it is
+# highlighted. Spatial operations use admin_units.geom, never tile geometry.
+TILED = {f"admin-{level}": level for level in ("land", "rbz", "krs", "vwg", "gem", "osm9", "osm10")}
+TILE_EXTENT, TILE_BUFFER = 4096, 64
+# Same properties as the GeoJSON, as MVT value types (int, float, text).
+TILE_PROPS = """id, name, type, ars, ags, population, round(area_km2::numeric, 2)::float8 AS area,
+  round((population / NULLIF(area_km2, 0))::numeric)::int AS density, district, region, state, nuts"""
+TILE = f"""
+SELECT ST_AsMVT(t, $5, {TILE_EXTENT}, 'geom') FROM (
+  SELECT {TILE_PROPS}, ST_AsMVTGeom(geom_3857, ST_TileEnvelope($1, $2, $3), {TILE_EXTENT}, {TILE_BUFFER}, true) AS geom
+  FROM admin_units
+  WHERE level = $4 AND geom_3857 && ST_TileEnvelope($1, $2, $3, margin => {TILE_BUFFER / TILE_EXTENT})
+) t WHERE geom IS NOT NULL
+"""
+ATTRIBUTES = """
+SELECT count(*) AS n, json_build_object(
+  'type', 'FeatureCollection',
+  'version', $2::text,
+  'features', COALESCE(json_agg(json_build_object(
+    'type', 'Feature',
+    'bbox', json_build_array(ST_XMin(geom), ST_YMin(geom), ST_XMax(geom), ST_YMax(geom)),
+    'geometry', ST_AsGeoJSON(inner_pt, 7)::json,
+    'properties', json_build_object({props})
+  ) ORDER BY name), '[]'::json)
+)::text AS body
+FROM admin_units WHERE level = $1
+"""
+FEATURE = """
+SELECT json_build_object('type', 'Feature', 'geometry', ST_AsGeoJSON(geom, 9)::json, 'properties', json_build_object('id', id))::text
+FROM admin_units WHERE level = $1 AND id = $2
+"""
+# Rendered tiles (gzipped) per (layer, version, z, x, y); the version (import time) changes
+# the URL, so entries never go stale. Least recently used dropped first beyond TILE_CACHE bytes.
+_tiles: OrderedDict[tuple, bytes] = OrderedDict()
+_tile_bytes = 0
+TILE_CACHE = 256 * 1024 * 1024
+
+
+def _tiled(layer: str) -> str:
+    if layer not in TILED:
+        raise HTTPException(status_code=404, detail=f"No tiles for '{layer}'. Tiled layers: {', '.join(TILED)}")
+    return TILED[layer]
+
+
+async def _version(pool: asyncpg.Pool, level: str) -> str:
+    """Import time of the dataset behind a level (tile URL version)."""
+    dataset = "overture-divisions" if level.startswith("osm") else "bkg-vg250"
+    at = await pool.fetchval("SELECT extract(epoch FROM fetched_at)::bigint FROM datasets WHERE id = $1", dataset)
+    return str(at or 0)
+
+
+@router.get("/{layer}/attributes", responses={200: {"content": {"application/geo+json": {}}}})
+async def attributes(layer: str, pool: asyncpg.Pool = Depends(get_pool)) -> Response:
+    """Attributes of a tiled layer (admin-*) without boundaries: per unit the GeoJSON properties,
+    a point inside it (geometry) and its bbox; `version` goes into the tile URLs."""
+    level = _tiled(layer)
+    row = await pool.fetchrow(ATTRIBUTES.format(props=LAYERS[layer][1]), level, await _version(pool, level))
+    cache = "max-age=300" if row["n"] else "no-store"
+    return Response(content=row["body"], media_type="application/geo+json", headers={"Cache-Control": cache})
+
+
+@router.get("/{layer}/tiles/{z}/{x}/{y}.mvt", responses={200: {"content": {"application/vnd.mapbox-vector-tile": {}}}})
+async def tile(layer: str, z: int, x: int, y: int, v: str = "", pool: asyncpg.Pool = Depends(get_pool)) -> Response:
+    """Mapbox vector tile of a tiled layer (source layer = the layer name): the original
+    geometries clipped to the tile and placed on its 4096 grid (no simplification)."""
+    level = _tiled(layer)
+    if not (0 <= z <= 22 and 0 <= x < 2**z and 0 <= y < 2**z):
+        raise HTTPException(status_code=404, detail="Tile outside the grid")
+    global _tile_bytes
+    key = (layer, v, z, x, y)
+    body = _tiles.get(key)
+    if body is None:
+        body = gzip.compress(bytes(await pool.fetchval(TILE, z, x, y, level, layer) or b""), compresslevel=6)
+        _tiles[key] = body
+        _tile_bytes += len(body)
+        while _tile_bytes > TILE_CACHE and len(_tiles) > 1:
+            _tile_bytes -= len(_tiles.popitem(last=False)[1])
+    else:
+        _tiles.move_to_end(key)
+    # A versioned URL never changes content; an unversioned one may after the next import.
+    cache = "public, max-age=86400, immutable" if v else "max-age=300"
+    headers = {"Cache-Control": cache, "Content-Encoding": "gzip"}
+    return Response(content=body, media_type="application/vnd.mapbox-vector-tile", headers=headers)
+
+
+@router.get("/{layer}/features/{fid}", responses={200: {"content": {"application/geo+json": {}}}})
+async def feature(layer: str, fid: str, pool: asyncpg.Pool = Depends(get_pool)) -> Response:
+    """One unit of a tiled layer with its whole original geometry (highlight, zoom to)."""
+    body = await pool.fetchval(FEATURE, _tiled(layer), fid)
+    if body is None:
+        raise HTTPException(status_code=404, detail=f"No feature '{fid}' in '{layer}'")
+    return Response(content=body, media_type="application/geo+json", headers={"Cache-Control": "max-age=300"})
 
 
 @router.get("/{layer}", responses={200: {"content": {"application/geo+json": {}}}})
 async def layer(layer: str, pool: asyncpg.Pool = Depends(get_pool)) -> Response:
     """GeoJSON of an open-data layer: hospitals, water (OSM), dwd-stations (DWD), zensus (Destatis 100 m grid),
-    admin-{land|rbz|krs|vwg|gem} (BKG VG250-EW, Baden-Württemberg and neighbouring Länder), admin-{osm9|osm10} (OSM city districts / quarters).
+    admin-{land|rbz|krs|vwg|gem} (BKG VG250-EW, all of Germany), admin-{osm9|osm10} (OSM city districts / quarters).
 
     Empty until the worker (or `python -m app.ingest …`) has imported the data; see /api/datasets.
     """

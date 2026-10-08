@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { LuFilter, LuPlay, LuPlus, LuSave, LuScanSearch, LuTable2, LuTrash2, LuX } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
-import { fieldText, layerData } from '../../lib/layers';
+import { extentGeometry, fieldText, layerData } from '../../lib/layers';
 import { exprFields } from '../../lib/prepared';
 import { builderToSql, BUILDER_OPS, compiled, evaluate, listValues, MULTI_OPS, RANGE_OPS, sqlToBuilder } from '../../lib/sqlExpr';
 import { t } from '../../i18n';
@@ -28,7 +28,7 @@ function featuresMatching(def, sql) {
 function boundsOf(features) {
   let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity];
   const visit = (c) => (typeof c[0] === 'number' ? ((w = Math.min(w, c[0])), (e = Math.max(e, c[0])), (s = Math.min(s, c[1])), (n = Math.max(n, c[1]))) : c.forEach(visit));
-  features.forEach((f) => visit(f.geometry.coordinates));
+  features.forEach((f) => visit(extentGeometry(f).coordinates));
   return [[w, s], [e, n]];
 }
 

@@ -47,10 +47,24 @@ export function AdminPipelines() {
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id} onClick={() => selectPipeline(p.id)} aria-selected={p.id === selectedPipeline} className={`${trCls} cursor-pointer ${p.id === selectedPipeline ? 'bg-accent-soft' : 'hover:bg-hover'}`}>
-                    <td className={tdCls}>
+                    <td className={`${tdCls} py-2.5`}>
                       <span className="block text-text">{p.name}</span>
-                      <span className="block text-2xs text-muted">
-                        <span className="font-mono">{p.id}</span> · {p.source} · {p.licence}
+                      {/* Job, source and licence as chips, each in its own colour (full text on hover). */}
+                      <span className="mt-1.5 flex flex-wrap gap-1">
+                        {[
+                          [p.id, 'var(--text-muted)', 'font-mono font-semibold', a.pipelines.job],
+                          [p.source, 'var(--accent-2)', 'font-light', a.pipelines.source],
+                          [p.licence, 'var(--success)', 'font-light', a.pipelines.licence],
+                        ].map(([text, color, cls, kind]) => (
+                          <span
+                            key={kind}
+                            className={`inline-block max-w-[20rem] truncate border border-[color-mix(in_srgb,var(--chip)_36%,transparent)] bg-[color-mix(in_srgb,var(--chip)_14%,transparent)] px-1.5 py-[3px] text-[0.625rem] leading-none text-[var(--chip)] ${cls}`}
+                            style={{ '--chip': color }}
+                            title={`${kind}: ${text}`}
+                          >
+                            {text}
+                          </span>
+                        ))}
                       </span>
                       {p.message && (
                         <span className="block max-w-[28rem] truncate text-2xs text-danger" title={p.message}>
@@ -122,6 +136,10 @@ export function AdminPipelines() {
                   </a>{' '}
                   · {a.pipelines.credit}: {credit(sel.attribution)}
                 </p>
+                {/* Imported before the run log existed (or never run): no bars, a note instead. */}
+                {runs.length === 0 ? (
+                  <p className="border border-dashed border-border px-3 py-4 text-center text-xs text-muted">{a.pipelines.noRuns(sel.lastRun ? fmtTime(sel.lastRun) : null)}</p>
+                ) : (
                 <Bars
                   large={large}
                   format={(v) => a.duration(Math.round(v))}
@@ -133,6 +151,7 @@ export function AdminPipelines() {
                     title: `${fmtTime(r.start)} · ${a.status[r.status]} · ${a.duration(r.duration)} · ${fmtInt(r.records)} ${c.records.toLowerCase()}`,
                   }))}
                 />
+                )}
               </div>
             ) : (
               <SearchEmpty>{a.pipelines.pick}</SearchEmpty>

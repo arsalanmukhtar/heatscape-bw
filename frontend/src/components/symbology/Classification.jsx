@@ -4,7 +4,7 @@ import { t } from '../../i18n';
 import { fmtNum, METHODS, stats } from '../../lib/classify';
 import { categoryFields, fieldValues, layerRows, numericFields } from '../../lib/layers';
 import { autoLabel } from '../../lib/legend';
-import { CUSTOM_RAMP, DEFAULT_CUSTOM_STOPS, RAMPS, rampGradient } from '../../lib/ramps';
+import { CUSTOM_RAMP, DEFAULT_CUSTOM_STOPS, RAMPS, rampColors, rampGradient } from '../../lib/ramps';
 import { rasterRange } from '../../lib/styleModel';
 import { classColors } from '../../lib/symbology';
 import { matchesSearch } from '../../lib/search';
@@ -25,6 +25,12 @@ export function RampPicker({ id, style }) {
   ];
   const stops = ramp.stops ?? DEFAULT_CUSTOM_STOPS;
   const setStops = (next) => update(id, 'ramp', { ...ramp, stops: next });
+  // A new stop goes in before the last one; all stops are then spaced evenly and coloured from
+  // the ramp as it was (sampled at their new places), so the ends keep the extreme colours.
+  const addStop = () => {
+    const n = stops.length + 1;
+    setStops(rampColors({ ...ramp, id: CUSTOM_RAMP, stops, invert: false }, n).map((color, i) => ({ color, at: i / (n - 1) })));
+  };
 
   return (
     <>
@@ -68,7 +74,7 @@ export function RampPicker({ id, style }) {
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => setStops([...stops, { color: '#ffffff', at: 1 }])} className="flex h-7 items-center gap-1.5 self-start px-1 text-xs text-accent hover:bg-hover">
+          <button type="button" onClick={addStop} className="flex h-7 items-center gap-1.5 self-start px-1 text-xs text-accent hover:bg-hover">
             <LuPlus size={12} />
             <span>{s.addStop}</span>
           </button>

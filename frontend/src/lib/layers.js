@@ -1,16 +1,8 @@
-import {
-  AIR_GRID,
-  BLOCKS,
-  HAZARD_RASTER,
-  LST_RASTER,
-  SEALING_POINTS,
-  SURFACE_GRID,
-  blockBounds,
-} from '../data/mock';
+import { BLOCKS, SEALING_POINTS, blockBounds } from '../data/mock';
 import { t } from '../i18n';
 import { MEASURE_STATUSES, MEASURE_TYPES, measuresFC } from './measures';
 import { allMeasures, useMeasures } from '../state/measures';
-import { liveData } from '../state/live';
+import { TILED, liveData, liveRaster, liveShape } from '../state/live';
 
 /*
   Map layers that can be styled. Each entry: id (also the visibility key in
@@ -36,11 +28,36 @@ const COORDS = [
   { key: 'lon', label: c.lon, kind: 'coord', type: 'number' },
   { key: 'lat', label: c.lat, kind: 'coord', type: 'number' },
 ];
-const GRID_FIELDS = [
+// Landsat surface temperature cells (summer median with its 5–95 % range over the clear scenes).
+const SURFACE_FIELDS = [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 't', label: c.temp, kind: 'temp', type: 'number' },
+  { key: 'p05', label: c.p05, kind: 'num', type: 'number' },
+  { key: 'p95', label: c.p95, kind: 'num', type: 'number' },
+  { key: 'n', label: c.scenes, kind: 'int', type: 'number' },
   { key: 'heatClass', label: c.heatClass, kind: 'chip', type: 'string' },
+  { key: 'quality', label: c.quality, kind: 'text', type: 'string' },
+  { key: 'year', label: c.summer, kind: 'text', type: 'number' },
   ...COORDS,
+];
+// Air temperature cells, interpolated from the DWD stations.
+const AIR_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 't', label: c.airTmax, kind: 'temp', type: 'number' },
+  { key: 'heatClass', label: c.heatClass, kind: 'chip', type: 'string' },
+  { key: 'nearestKm', label: c.nearestKm, kind: 'num', type: 'number' },
+  { key: 'stations', label: c.stations, kind: 'int', type: 'number' },
+  { key: 'quality', label: c.quality, kind: 'text', type: 'string' },
+  { key: 'year', label: c.summer, kind: 'text', type: 'number' },
+  ...COORDS,
+];
+// Isotherms of the same air temperature model (one line per level).
+const ISO_FIELDS = [
+  { key: 'id', label: c.id, kind: 'id', type: 'string' },
+  { key: 't', label: c.airTmax, kind: 'temp', type: 'number' },
+  { key: 'step', label: c.isoStep, kind: 'num', type: 'number' },
+  { key: 'quality', label: c.quality, kind: 'text', type: 'string' },
+  { key: 'year', label: c.summer, kind: 'text', type: 'number' },
 ];
 // Live open-data layers (state/live.js; GeoJSON from /api/layers/…, imported by the worker).
 const live = (id) => () => liveData(id);
@@ -78,7 +95,7 @@ const STATION_FIELDS = [
   { key: 'elevation', label: c.elevation, kind: 'int', type: 'number' },
   ...COORDS,
 ];
-// Administrative units (BKG VG250-EW for Baden-Württemberg and neighbouring Länder; OSM city districts / quarters).
+// Administrative units (BKG VG250-EW for all of Germany; OSM city districts / quarters).
 const ADMIN_FIELDS = [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 'name', label: c.name, kind: 'text', type: 'string' },
@@ -93,7 +110,9 @@ const ADMIN_FIELDS = [
   { key: 'nuts', label: c.nuts, kind: 'text', type: 'string' },
   ...COORDS,
 ];
-const admin = (id, attribution) => ({ id, attribution, group: 'admin', geometry: 'polygon', label: t.layers[id], getData: live(id), fields: ADMIN_FIELDS });
+// tiles: drawn from vector tiles with the original geometries (state/live.js TILED); the
+// layer data are the attributes, one point inside each unit and its bbox.
+const admin = (id, attribution) => ({ id, attribution, group: 'admin', geometry: 'polygon', label: t.layers[id], getData: live(id), fields: ADMIN_FIELDS, tiles: !!TILED[id] });
 const POPULATION_FIELDS = [
   { key: 'id', label: c.id, kind: 'id', type: 'string' },
   { key: 'population', label: c.population, kind: 'int', type: 'number' },
@@ -126,8 +145,9 @@ export const LAYER_GROUPS = [
 ];
 
 export const LAYERS = [
-  { id: 'surfaceTemp', attribution: ['usgs'], group: 'heat', geometry: 'polygon', label: t.layers.surfaceTemp, data: SURFACE_GRID, fields: GRID_FIELDS },
-  { id: 'airTemp', attribution: ['dwd'], group: 'heat', geometry: 'line', label: t.layers.airTemp, data: AIR_GRID, fields: GRID_FIELDS },
+  { id: 'surfaceTemp', attribution: ['usgs'], group: 'heat', geometry: 'polygon', label: t.layers.surfaceTemp, getData: live('surfaceTemp'), fields: SURFACE_FIELDS },
+  { id: 'airTemp', attribution: ['dwd'], group: 'heat', geometry: 'polygon', label: t.layers.airTemp, getData: live('airTemp'), fields: AIR_FIELDS },
+  { id: 'airIsotherms', attribution: ['dwd'], group: 'heat', geometry: 'line', label: t.layers.airIsotherms, getData: live('airIsotherms'), fields: ISO_FIELDS },
   {
     id: 'blocks',
     attribution: ['usgs', 'destatis', 'lgl'],
@@ -175,15 +195,36 @@ export const LAYERS = [
   admin('adminGem', ['bkg']),
   admin('adminOsm9', ['overture', 'osm']),
   admin('adminOsm10', ['overture', 'osm']),
-  { id: 'lstRaster', attribution: ['usgs'], group: 'raster', geometry: 'raster', kind: 'continuous', label: t.layers.lstRaster, raster: LST_RASTER },
-  { id: 'hazardRaster', attribution: ['usgs', 'dwd'], group: 'raster', geometry: 'raster', kind: 'classified', label: t.layers.hazardRaster, raster: HAZARD_RASTER },
+  // Live rasters (state/live.js): the grid as loaded, or no cells until then.
+  {
+    id: 'lstRaster',
+    attribution: ['usgs'],
+    group: 'raster',
+    geometry: 'raster',
+    kind: 'continuous',
+    label: t.layers.lstRaster,
+    get raster() {
+      return liveRaster('lstRaster');
+    },
+  },
+  {
+    id: 'hazardRaster',
+    attribution: ['usgs'],
+    group: 'raster',
+    geometry: 'raster',
+    kind: 'classified',
+    label: t.layers.hazardRaster,
+    get raster() {
+      return liveRaster('hazardRaster');
+    },
+  },
   { id: 'hillshade', attribution: ['mapbox'], group: 'raster', geometry: 'raster', kind: 'dem', label: t.layers.hillshade },
 ];
 
 export const layerById = (id) => LAYERS.find((l) => l.id === id);
 
 /** Draw order, bottom to top. 'priority' is the scenario overlay, kept in the stack so data can sit above or below it. */
-export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'population', 'blocks', 'airTemp', 'priority', 'measureBuffers', 'measures', 'adminGem', 'adminVwg', 'adminOsm10', 'adminOsm9', 'adminKrs', 'adminRbz', 'adminLand', 'sealing', 'hospitals', 'water', 'dwdStations'];
+export const DEFAULT_ORDER = ['hillshade', 'lstRaster', 'hazardRaster', 'surfaceTemp', 'population', 'blocks', 'airTemp', 'airIsotherms', 'priority', 'measureBuffers', 'measures', 'adminGem', 'adminVwg', 'adminOsm10', 'adminOsm9', 'adminKrs', 'adminRbz', 'adminLand', 'sealing', 'hospitals', 'water', 'dwdStations'];
 
 // Centre of a feature's coordinates (good enough for points and grid cells).
 function centerOf(geometry) {
@@ -246,9 +287,10 @@ export function rasterCellAt(def, index) {
   return { index, row, col, value: values[index] ?? null, bounds: [w + col * dLon, n - (row + 1) * dLat, w + (col + 1) * dLon, n - row * dLat], size: Math.round(dLat * 111320) };
 }
 
-/** The raster cell under a point, or null outside the raster. */
+/** The raster cell under a point, or null outside the raster (or before its data arrive). */
 export function rasterCell(def, lon, lat) {
   const { cols, rows, bounds } = def.raster;
+  if (!cols || !rows) return null;
   const [w, s, e, n] = bounds;
   if (lon < w || lon >= e || lat <= s || lat > n) return null;
   return rasterCellAt(def, Math.floor((n - lat) / ((n - s) / rows)) * cols + Math.floor((lon - w) / ((e - w) / cols)));
@@ -258,6 +300,20 @@ export function rasterCell(def, lon, lat) {
 export function featureById(def, id) {
   if (id == null) return null;
   return layerData(def)?.features.find((f) => String(f.properties.id) === String(id)) ?? null;
+}
+
+/** Whole geometry of a feature for the highlight: tiled layers' once fetched (state/live.js loadShape), else null. */
+export function featureShape(def, id) {
+  if (def?.tiles) return liveShape(def.id, id);
+  return featureById(def, id)?.geometry ?? null;
+}
+
+/** Geometry to zoom to: the feature's bbox as a polygon when it has one (tiled layers), else its geometry. */
+export function extentGeometry(feature) {
+  if (!feature) return null;
+  if (!feature.bbox) return feature.geometry;
+  const [w, s, e, n] = feature.bbox;
+  return { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] };
 }
 
 /** [[west, south], [east, north]] of a layer, for zoom to layer. */
@@ -277,6 +333,6 @@ export function layerBounds(def) {
       n = Math.max(n, c[1]);
     } else c.forEach(visit);
   };
-  data.features.forEach((f) => visit(f.geometry.coordinates));
+  data.features.forEach((f) => visit(extentGeometry(f).coordinates));
   return [[w, s], [e, n]];
 }

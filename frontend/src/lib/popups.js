@@ -31,17 +31,27 @@ const stat = (label, value, color) => ({ label, value, color });
 const row = (label, value) => ({ label, value });
 
 const TEMPLATES = {
+  // Landsat summer median with its 5–95 % range over the clear scenes (uncertainty).
   surfaceTemp: (r) => ({
     title: p.cell(r.id),
-    subtitle: p.surfaceSub,
-    chips: [{ label: r.heatClass, color: HEAT_CLASS[r.heatClass] }],
-    stats: [stat(p.surfaceTemp, unit(r.t, '°C', 1), surfaceColor(r.t))],
+    subtitle: p.surfaceSub(r.year),
+    chips: [{ label: r.heatClass, color: HEAT_CLASS[r.heatClass] }, r.quality === 'low' && { label: p.lowQuality, color: 'var(--warning)' }],
+    stats: [stat(p.surfaceTemp, unit(r.t, '°C', 1), surfaceColor(r.t)), stat(p.range90, `${fmt(r.p05, 1)} - ${fmt(r.p95, 1)} °C`), stat(f.scenes, fmt(r.n))],
+    rows: [row(f.id, r.id)],
   }),
+  // Interpolated from the DWD stations: the distance to the nearest one is the uncertainty.
   airTemp: (r) => ({
     title: p.cell(r.id),
-    subtitle: p.airSub,
-    chips: [{ label: r.heatClass, color: HEAT_CLASS[r.heatClass] }],
-    stats: [stat(p.airTemp, unit(r.t, '°C', 1), airColor(r.t))],
+    subtitle: p.airSub(r.year),
+    chips: [{ label: r.heatClass, color: HEAT_CLASS[r.heatClass] }, { label: p.modelled, color: 'var(--info)' }],
+    stats: [stat(f.airTmax, unit(r.t, '°C', 1), airColor(r.t)), stat(f.nearestKm, unit(r.nearestKm, 'km', 1))],
+    rows: [row(f.stations, fmt(r.stations)), row(f.id, r.id)],
+  }),
+  airIsotherms: (r) => ({
+    title: p.isotherm(fmt(r.t, r.step < 0.1 ? 2 : r.step < 1 ? 1 : 0)),
+    subtitle: p.isoSub(r.year, r.step),
+    chips: [{ label: p.modelled, color: 'var(--info)' }],
+    rows: [row(f.id, r.id)],
   }),
   blocks: (r) => ({
     title: r.district,

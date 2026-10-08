@@ -42,9 +42,9 @@ docker compose up -d --build
 
 - Docker dev mode: after `npm install` (new or changed dependencies) add `-V` (`--renew-anon-volumes`) to the dev command, or the container keeps its old `node_modules` volume.
 
-## Live data (Phase 1)
+## Live data (Phases 1–2)
 
-No registration needed: DWD, Overture Maps, OpenStreetMap, BKG and Destatis data are open and keyless.
+No registration needed: DWD, Overture Maps, OpenStreetMap, BKG, Destatis and USGS Landsat (via Microsoft Planetary Computer) data are open and keyless.
 
 | Dataset | Source | Refresh (worker) | Shown in |
 |---|---|---|---|
@@ -54,8 +54,10 @@ No registration needed: DWD, Overture Maps, OpenStreetMap, BKG and Destatis data
 | Hospitals | Overture Maps places (GeoParquet on S3, read with DuckDB) | 7 days (Overture releases monthly) | Layer "Hospitals", Inspector at-risk facilities |
 | Drinking-water supply | OpenStreetMap (Overpass, with mirror fallback) | 7 days | Layer "Water Supply", Inspector at-risk facilities |
 | Population and mean age, 100 m grid | Destatis Zensus 2022 | once (on demand) | Layer "Population (Zensus 100 m)" |
-| Admin units of BW, Hessen, Rheinland-Pfalz, Bayern (one table `admin_units`, column `level`): states, Regierungsbezirke, Stadt-/Landkreise, Verwaltungsgemeinschaften, Gemeinden (with population, area) | BKG VG250-EW | once, first on start-up | Layer group "Administrative Units" |
+| Admin units of Germany, all 16 Länder (one table `admin_units`, column `level`): states, Regierungsbezirke, Stadt-/Landkreise, Verwaltungsgemeinschaften, Gemeinden (with population, area) | BKG VG250-EW | once, first on start-up | Layer group "Administrative Units" |
 | City districts and quarters in the region | Overture Maps divisions (macrohood, neighborhood; from OSM) | 30 days | Layers "City Districts", "City Quarters" |
+| Land surface temperature, summer (Jun–Aug) composites since 2013, ≈ 100 m: median, p05, p95, clear scenes | USGS Landsat 8/9 C2 L2 (ST_B10) via Planetary Computer STAC | 7 days (current summer recomputed; first run imports every summer, ≈ 10–30 min) | Layers "Land Surface Temp (raster)", "Surface Temp" (≈ 300 m grid), "Heat Hazard Class (raster)" (quintiles), Inspector pixel identify |
+| 2 m air temperature, summer mean daily maximum, ≈ 1 km cells and isotherms, clipped to Mannheim | modelled: IDW of the DWD stations above (computed by the API) | with the stations | Layers "Air Temp Model", "Air Temp Isotherms" |
 
 - Schedule lives in the database (`ingest_jobs`, runs in `ingest_runs`): restarts keep it; admin units run first; a failed import retries after 15 min; Run now / Pause in `/admin` → Data Pipelines.
 - Water Supply = drinking water only: storm-water, overflow and sewage basins are left out (by tags and by name).
@@ -73,10 +75,12 @@ docker compose logs -f worker      # first pass imports everything, admin units 
 |---|---|
 | Import status (source, licence, version, last fetch, rows) | `curl.exe -s http://localhost:8180/api/datasets` |
 | Pipelines and run log (what `/admin` → Data Pipelines shows) | `curl.exe -s http://localhost:8180/api/pipelines` · `curl.exe -s "http://localhost:8180/api/pipelines/runs?limit=20"` |
-| Run imports now | `docker compose exec worker python -m app.ingest dwd-warnings dwd-forecast dwd-latest dwd-stations overture-places osm-water zensus-grid bkg-vg250 overture-divisions` (or `all`) |
+| Run imports now | `docker compose exec worker python -m app.ingest dwd-warnings dwd-forecast dwd-latest dwd-stations overture-places osm-water zensus-grid bkg-vg250 overture-divisions landsat-lst` (or `all`) |
 | Overture water check (base-theme classes and water-like names in the region) | `docker compose exec worker python -m app.ingest.overture` |
 | Admin units from a manual download (BKG server drops the transfer) | download the [VG250-EW Ebenen GeoPackage zip](https://daten.gdz.bkg.bund.de/produkte/vg/vg250-ew_ebenen_1231/aktuell/vg250-ew_12-31.utm32s.gpkg.ebenen.zip), then `docker compose cp <file>.zip worker:/tmp/vg250.zip`; `docker compose exec -e VG250_FILE=/tmp/vg250.zip worker python -m app.ingest bkg-vg250`; `docker compose exec -u root worker rm -f /tmp/vg250.zip` |
 | One layer as GeoJSON | `curl.exe -s http://localhost:8180/api/layers/dwd-stations` (also `hospitals`, `water`, `zensus`, `admin-land`, `admin-rbz`, `admin-krs`, `admin-vwg`, `admin-gem`, `admin-osm9`, `admin-osm10`) |
+| Admin units as the map loads them (vector tiles) | `/api/layers/admin-gem/attributes` (properties, inner point, bbox, tile `version`) · `/api/layers/admin-gem/tiles/{z}/{x}/{y}.mvt?v=<version>` · `/api/layers/admin-gem/features/<id>` (one unit, whole geometry); any `admin-*` layer |
+| Heat layers | `curl.exe -s http://localhost:8180/api/heat/years` · `/api/heat/lst` · `/api/heat/hazard` · `/api/heat/surface-temp` · `/api/heat/air-temp` · `/api/heat/air-temp/isotherms` (`?year=` for an older summer) |
 | Portal warning card data | `curl.exe -s http://localhost:8180/api/portal/warning` |
 | Worker logs | `docker compose logs --tail 100 worker` |
 
@@ -96,8 +100,9 @@ gateway/     nginx.conf
 
 | Item | State |
 |---|---|
-| GIS workspace screen (layers, map, attribute table, inspector incl. raster pixel identify, feature popups on every vector layer) | Done; live layers: Hospitals, Water Supply, Weather Stations (DWD), Population (Zensus), Administrative Units (BKG + OSM); other layers MOCK |
-| Live data Phase 1: worker imports (DWD warnings, MOSMIX, stations; OSM facilities; Zensus grid; admin units BW + Hessen, Rheinland-Pfalz, Bayern) + `/api/datasets`, `/api/layers/*`, `/api/weather/*`, `/api/portal/warning` | Done (README → Live data) |
+| GIS workspace screen (layers, map, attribute table, inspector incl. raster pixel identify, feature popups on every vector layer) | Done; live layers: Hospitals, Water Supply, Weather Stations (DWD), Population (Zensus), Administrative Units (BKG + Overture), Surface Temp, Air Temp Model, LST and Heat Hazard rasters (Landsat, DWD); Urban Blocks, Sealing, measures MOCK |
+| Live data Phase 1: worker imports (DWD warnings, MOSMIX, stations; OSM facilities; Zensus grid; admin units of Germany) + `/api/datasets`, `/api/layers/*`, `/api/weather/*`, `/api/portal/warning` | Done (README → Live data) |
+| Live data Phase 2: Landsat LST summer composites (worker `landsat-lst`, `lst_composites`), `/api/heat/*` (LST and hazard rasters, surface-temp grid, air temperature from DWD stations) | Done (README → Live data) |
 | Notifications (bell: jobs finished/failed, measure changes; unread badge, opens the job or measure) | Done, from MOCK job runner and local measures |
 | Data attribution (map credit tiles, report footer, portal sources and licences, admin catalog/pipelines) | Done; credits name the real providers of the datasets the MOCK layers stand for |
 | Copilot panel (plan, tool steps, result, composer) | UI done, MOCK conversation; copilot API planned |
@@ -112,7 +117,8 @@ gateway/     nginx.conf
 | Forgot / update password, email verification, municipality SSO button, Account settings (`/account`: profile, language & theme, active sessions, API tokens) | UI done; sessions live, the rest MOCK until Keycloak |
 | Responsive scale (root font size per screen class, rem everywhere, compact portrait-tablet view; portal ≥ 16 px; report pages fixed A4) | Done |
 | Backend health + database extensions check | Done |
-| Keycloak, Celery workers, tiles, copilot API | Planned (`docs/architecture.md`) |
+| Vector tiles for the admin units (`ST_AsMVT`, decision 63) | Done; other layers stay GeoJSON |
+| Keycloak, Celery workers, raster tiles, copilot API | Planned (`docs/architecture.md`) |
 
 ## Docs
 

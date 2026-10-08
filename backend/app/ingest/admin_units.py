@@ -1,7 +1,7 @@
 """Administrative units.
 
 bkg: BKG VG250-EW (Verwaltungsgebiete 1:250 000 with population, as of 31 Dec) for
-Baden-Württemberg and its neighbouring Länder (STATE_KEYS; one file covers Germany, all
+all 16 Länder of Germany (STATE_KEYS; one file covers Germany, all
 states go into the same table): states, Regierungsbezirke, Stadt-/Landkreise,
 Verwaltungsgemeinschaften, Gemeinden (towns and villages). Land areas only (GF 4: the
 Bodensee water parts are left out). The GeoPackage geometries (EPSG:25832) are read with
@@ -22,9 +22,8 @@ from app.config import settings
 from app.ingest.common import download, log, record
 
 VG250 = "https://daten.gdz.bkg.bund.de/produkte/vg/vg250-ew_ebenen_1231/aktuell/vg250-ew_12-31.utm32s.gpkg.ebenen.zip"
-# Länderschlüssel: Baden-Württemberg and its neighbours Hessen, Rheinland-Pfalz, Bayern
-# (Mannheim lies on the borders with Hessen and Rheinland-Pfalz).
-STATE_KEYS = ("08", "06", "07", "09")
+# Länderschlüssel 01 (Schleswig-Holstein) to 16 (Thüringen): all of Germany.
+STATE_KEYS = tuple(f"{k:02d}" for k in range(1, 17))
 BKG_LEVELS = {"land": "vg250_lan", "rbz": "vg250_rbz", "krs": "vg250_krs", "vwg": "vg250_vwg", "gem": "vg250_gem"}
 
 # Containing units: Land by the first 2 ARS digits, Kreis by the first 5, Regierungsbezirk by

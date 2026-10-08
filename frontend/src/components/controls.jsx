@@ -207,10 +207,19 @@ export function Slider({ label, value, min, max, step = 1, onChange, format = (v
   );
 }
 
-/** Compact number input; commits on change when the value is a number. */
-export function NumberField({ value, onChange, min, max, step = 1, label, className = 'w-16' }) {
+/**
+ * Compact number input; commits on change when the value is a number. onBlurCommit: commits
+ * on blur or Enter instead, for values the parent clamps against another field (a zoom
+ * range), so a half-typed number is not clamped and written back while typing.
+ */
+export function NumberField({ value, onChange, min, max, step = 1, label, className = 'w-16', onBlurCommit = false }) {
   const [draft, setDraft] = useState(String(value ?? ''));
   useEffect(() => setDraft(String(value ?? '')), [value]);
+  const commit = (text) => {
+    const n = Number(text);
+    if (text !== '' && Number.isFinite(n)) onChange(n);
+    setDraft(String(value ?? ''));
+  };
   return (
     <input
       type="number"
@@ -223,10 +232,12 @@ export function NumberField({ value, onChange, min, max, step = 1, label, classN
       title={label}
       onChange={(e) => {
         setDraft(e.target.value);
+        if (onBlurCommit) return;
         const n = Number(e.target.value);
         if (e.target.value !== '' && Number.isFinite(n)) onChange(n);
       }}
-      onBlur={() => setDraft(String(value ?? ''))}
+      onKeyDown={(e) => onBlurCommit && e.key === 'Enter' && commit(e.currentTarget.value)}
+      onBlur={(e) => (onBlurCommit ? commit(e.currentTarget.value) : setDraft(String(value ?? '')))}
       className={`h-7 border border-border bg-field px-2 text-xs tabular-nums text-text outline-none focus:border-accent-line ${className}`}
     />
   );

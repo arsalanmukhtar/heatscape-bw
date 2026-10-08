@@ -2,7 +2,7 @@ import { Popup, useMap } from 'react-map-gl/mapbox';
 import { LuScanSearch, LuTable2, LuX } from 'react-icons/lu';
 import { t } from '../i18n';
 import { flyToGeometry } from '../lib/geo';
-import { featureById, layerById } from '../lib/layers';
+import { extentGeometry, featureById, layerById } from '../lib/layers';
 import { popupModel } from '../lib/popups';
 import { useLayout } from '../state/layout';
 import { useWorkspace } from '../state/workspace';
@@ -26,7 +26,8 @@ export function FeaturePopup() {
   const m = popupModel(def, item.props);
   const id = m.row.id;
 
-  const zoom = () => flyToGeometry(main, featureById(def, id)?.geometry ?? item.geometry);
+  // Tiled layers: the unit's bbox, never the clicked tile's part of it.
+  const zoom = () => flyToGeometry(main, extentGeometry(featureById(def, id)) ?? item.geometry);
   const showInTable = () => {
     setTableLayer(def.id);
     setTableFilter(String(id ?? ''));
@@ -37,7 +38,7 @@ export function FeaturePopup() {
     // Offset: the tip stops a few px short of the clicked spot (areas, lines) or of a point's yellow ring.
     <Popup longitude={popup.lngLat[0]} latitude={popup.lngLat[1]} closeButton={false} closeOnClick={false} maxWidth="none" offset={item.geometry?.type === 'Point' ? 16 : 6} className="hs-popup" onClose={() => setPopup(null)}>
       {/* The key restarts the pop when another feature is clicked. */}
-      <div key={`${popup.at}:${item.layer}:${id}`} role="dialog" aria-label={`${def.label}: ${m.title}`} className="hs-popup-card w-[19rem] border border-border-strong bg-surface-strong text-text shadow-[var(--shadow-glass)]">
+      <div key={`${popup.at}:${item.layer}:${id}`} role="dialog" aria-label={`${def.label}: ${m.title}`} className="hs-popup-card w-max min-w-[19rem] max-w-[28rem] border border-border-strong bg-surface-strong text-text shadow-[var(--shadow-glass)]">
         {/* Header: layer (with its map colour), name, subtitle, chips. */}
         <header className="px-4 pb-3 pt-3.5">
           <div className="flex items-center gap-2">
@@ -62,15 +63,15 @@ export function FeaturePopup() {
 
         {/* Key values: one band, divided columns, values coloured by meaning. */}
         {m.stats.length > 0 && (
-          <div className="grid divide-x divide-border border-y border-border bg-field" style={{ gridTemplateColumns: `repeat(${m.stats.length}, minmax(0, 1fr))` }}>
+          // Values are never cut: each column is at least as wide as its value (the card widens
+          // up to its max width); labels wrap under them.
+          <div className="grid divide-x divide-border border-y border-border bg-field" style={{ gridTemplateColumns: `repeat(${m.stats.length}, minmax(max-content, 1fr))` }}>
             {m.stats.map((s) => (
-              <div key={s.label} className="min-w-0 px-3 py-2.5 first:pl-4 last:pr-4">
-                <p className="truncate text-lg font-semibold leading-tight tabular-nums" style={{ color: s.color ?? 'var(--text)' }} title={String(s.value)}>
+              <div key={s.label} className="px-3 py-2.5 first:pl-4 last:pr-4">
+                <p className="whitespace-nowrap text-lg font-semibold leading-tight tabular-nums" style={{ color: s.color ?? 'var(--text)' }}>
                   {s.value}
                 </p>
-                <p className="mt-1 truncate text-2xs text-muted" title={s.label}>
-                  {s.label}
-                </p>
+                <p className="mt-1 max-w-[9rem] text-2xs leading-snug text-muted">{s.label}</p>
               </div>
             ))}
           </div>

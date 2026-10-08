@@ -150,9 +150,9 @@ function LayerSection({ def, style }) {
     <Section title={s.layerSettings}>
       <Slider label={s.layerOpacity} value={style.opacity} min={0} max={1} step={0.05} onChange={(v) => update(id, 'opacity', v)} format={(v) => `${Math.round(v * 100)}%`} />
       <Field label={s.zoomRange} hint={s.zoomRangeHint}>
-        <NumberField value={style.minZoom} min={0} max={24} step={0.5} label={s.minZoom} onChange={(v) => update(id, 'minZoom', Math.max(0, Math.min(style.maxZoom, v)))} />
+        <NumberField value={style.minZoom} min={0} max={24} step={0.5} onBlurCommit label={s.minZoom} onChange={(v) => update(id, 'minZoom', Math.max(0, Math.min(style.maxZoom, v)))} />
         <span className="text-xs text-muted">–</span>
-        <NumberField value={style.maxZoom} min={0} max={24} step={0.5} label={s.maxZoom} onChange={(v) => update(id, 'maxZoom', Math.min(24, Math.max(style.minZoom, v)))} />
+        <NumberField value={style.maxZoom} min={0} max={24} step={0.5} onBlurCommit label={s.maxZoom} onChange={(v) => update(id, 'maxZoom', Math.min(24, Math.max(style.minZoom, v)))} />
       </Field>
       <Field label={s.drawOrder}>
         <button type="button" onClick={() => move(id, 1)} disabled={pos === order.length - 1} aria-label={s.moveUp} title={s.moveUp} className={outlineBtn}>

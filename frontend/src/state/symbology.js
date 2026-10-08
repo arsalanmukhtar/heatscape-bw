@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_ORDER, fieldValues, LAYERS, layerById, numericFields } from '../lib/layers';
+import { rampColors } from '../lib/ramps';
 import { buildClasses, DEFAULT_STYLES, normalizeStyle, RECLASSIFY_KEYS, renderersFor } from '../lib/styleModel';
+import { useLive } from './live';
 
 /*
   Layer symbology: one style per layer plus the draw order, saved in localStorage
@@ -71,6 +73,23 @@ export const useSymbology = create()(
         const coalesce = top && top.path === path && path !== '*' && now - top.at < COALESCE_MS;
         const nextStack = coalesce ? [...stack.slice(0, -1), { ...top, at: now }] : [...stack, { style: prev, path, at: now }].slice(-HISTORY);
         set({ styles: { ...get().styles, [id]: style }, history: { ...get().history, [id]: nextStack } });
+      },
+
+      /**
+       * Categorized style of a live layer: values that arrived with new data (e.g. Kreis types
+       * of states imported later) are appended as classes, so they are not hidden as "other".
+       * Existing classes keep their colours (ramp colours are fixed first); not an undo step.
+       */
+      syncCategories: (id) => {
+        const style = get().styles[id];
+        const def = layerById(id);
+        if (!def || style?.renderer !== 'categorized') return;
+        const known = new Set(style.classes.map((c) => String(c.value)));
+        const added = buildClasses(def, style).filter((c) => !known.has(String(c.value)));
+        if (!added.length) return;
+        const ramp = rampColors(style.ramp, style.classes.length);
+        const kept = style.classes.map((c, i) => ({ ...c, color: c.color ?? ramp[i] }));
+        set({ styles: { ...get().styles, [id]: { ...style, classes: [...kept, ...added] } } });
       },
 
       /** Change one setting by path, e.g. update('hospitals', 'point.fill', '#ff0000'). */
@@ -159,3 +178,11 @@ export const useSymbology = create()(
     },
   ),
 );
+
+// Live layers: new data may carry categories a saved categorized style has not seen yet.
+useLive.subscribe((s, prev) => {
+  if (s.data === prev.data) return;
+  Object.keys(s.data)
+    .filter((id) => s.data[id] !== prev.data[id])
+    .forEach((id) => useSymbology.getState().syncCategories(id));
+});

@@ -242,9 +242,9 @@ export function LabelTab({ def }) {
 
       <Section title={l.renderingTitle}>
         <Field label={l.zoomRange}>
-          <NumberField value={label.minZoom} min={0} max={24} step={0.5} label={l.minZoom} onChange={(v) => set('minZoom', Math.max(0, Math.min(label.maxZoom, v)))} />
+          <NumberField value={label.minZoom} min={0} max={24} step={0.5} onBlurCommit label={l.minZoom} onChange={(v) => set('minZoom', Math.max(0, Math.min(label.maxZoom, v)))} />
           <span className="text-xs text-muted">–</span>
-          <NumberField value={label.maxZoom} min={0} max={24} step={0.5} label={l.maxZoom} onChange={(v) => set('maxZoom', Math.min(24, Math.max(label.minZoom, v)))} />
+          <NumberField value={label.maxZoom} min={0} max={24} step={0.5} onBlurCommit label={l.maxZoom} onChange={(v) => set('maxZoom', Math.min(24, Math.max(label.minZoom, v)))} />
         </Field>
         <Check checked={label.allowOverlap} onChange={(v) => set('allowOverlap', v)} label={l.overlap} hint={l.overlapHint} />
         <Field label={l.priority} hint={l.priorityHint}>

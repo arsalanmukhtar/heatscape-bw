@@ -156,7 +156,9 @@ export function labelData(def, style) {
       const g = f.geometry;
       let geometry = g;
       if (def.geometry === 'polygon') {
-        if (label.placement.polygon === 'perimeter') geometry = { type: 'LineString', coordinates: outer(g)[0] };
+        // Tiled layers carry a point inside each unit instead of its boundary (perimeter labels draw from the tiles).
+        if (g.type === 'Point') geometry = g;
+        else if (label.placement.polygon === 'perimeter') geometry = { type: 'LineString', coordinates: outer(g)[0] };
         else geometry = { type: 'Point', coordinates: label.placement.polygon === 'inside' ? visualCenter(outer(g)) : ringCentroid(outer(g)[0]) };
       } else if (def.geometry === 'line') {
         const lineCoords = g.type === 'Polygon' ? g.coordinates[0] : g.coordinates;

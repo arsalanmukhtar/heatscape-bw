@@ -24,8 +24,8 @@ export async function translateText(text, source, target, html = true) {
   return out;
 }
 
-// Open-data layers (GeoJSON) and the portal's DWD heat warning card (backend, live data).
-export const getLayer = (name) => api('GET', `/layers/${encodeURIComponent(name)}`);
+// Live layers (GeoJSON, or raster grids under /heat) and the portal's DWD heat warning card.
+export const getLive = (path) => api('GET', path);
 export const getPortalWarning = () => api('GET', '/portal/warning');
 
 // Import pipelines (worker jobs) for the admin console; run and pause need the admin role.

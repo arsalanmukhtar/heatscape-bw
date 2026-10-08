@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuCamera, LuChevronUp, LuColumns2, LuEarth, LuGrid2X2, LuMagnet, LuMapPinned, LuMinus, LuMousePointerClick, LuPlus, LuRuler } from 'react-icons/lu';
+import { LuCamera, LuChevronUp, LuColumns2, LuGrid2X2, LuMagnet, LuMinus, LuMousePointerClick, LuPlus, LuRuler } from 'react-icons/lu';
 import { useMap } from 'react-map-gl/mapbox';
 import { t } from '../i18n';
-import { BW_BOUNDS, WORLD_VIEW } from '../lib/geo';
+import { BW_BOUNDS, DE_BOUNDS } from '../lib/geo';
 import { SNAPSHOT_EXCLUDE, captureMap, useSnapshot } from '../lib/mapSnapshot';
 import { useLayout } from '../state/layout';
 import { useScenarios } from '../state/scenarios';
@@ -13,6 +13,18 @@ import { ControlButton, Group, NorthButton } from './MapButtons';
 
 const FLY = { duration: 1200, essential: true };
 const STAGGER_MS = 40;
+
+/** Zoom-to-extent icon: focus corners (as Material's filter-center-focus) around the area's code in bold. */
+function ZoomFocus({ text }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M5 15H3v4c0 1.1.9 2 2 2h4v-2H5v-4zM5 5h4V3H5c-1.1 0-2 .9-2 2v4h2V5zm14-2h-4v2h4v4h2V5c0-1.1-.9-2-2-2zm0 16h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z" />
+      <text x="12" y="12.4" textAnchor="middle" dominantBaseline="central" fontSize="7.6" fontWeight="800" letterSpacing="-0.2" style={{ fontFamily: 'inherit' }}>
+        {text}
+      </text>
+    </svg>
+  );
+}
 
 export function MapControls({ disabled, canCompare }) {
   const { main } = useMap();
@@ -53,11 +65,11 @@ export function MapControls({ disabled, canCompare }) {
       <NorthButton map={main} label={t.map.north} disabled={disabled} />
     </Group>,
     <Group key="extent">
-      <ControlButton label={t.map.zoomWorld} disabled={disabled} onClick={() => main?.flyTo({ ...WORLD_VIEW, ...FLY })}>
-        <LuEarth size={13} />
+      <ControlButton label={t.map.zoomDE} disabled={disabled} onClick={() => main?.fitBounds(DE_BOUNDS, { padding: 40, ...FLY })}>
+        <ZoomFocus text="DE" />
       </ControlButton>
       <ControlButton label={t.map.zoomBW} disabled={disabled} onClick={() => main?.fitBounds(BW_BOUNDS, { padding: 40, ...FLY })}>
-        <LuMapPinned size={13} />
+        <ZoomFocus text="BW" />
       </ControlButton>
     </Group>,
     <Group key="tools">

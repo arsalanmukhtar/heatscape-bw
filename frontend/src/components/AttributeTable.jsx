@@ -6,7 +6,7 @@ import { useMap } from 'react-map-gl/mapbox';
 import { t } from '../i18n';
 import { downloadCsv } from '../lib/csv';
 import { flyToGeometry } from '../lib/geo';
-import { featureById, fieldText, isVector, layerById, layerRows } from '../lib/layers';
+import { extentGeometry, featureById, fieldText, isVector, layerById, layerRows } from '../lib/layers';
 import { measureStatus, measureType } from '../lib/measures';
 import { matchesSearch } from '../lib/search';
 import { LIVE_LAYERS, useLive } from '../state/live';
@@ -373,7 +373,7 @@ export function AttributeTable() {
   // yellow on the map and in the table, without moving the map; a second click on the same
   // row clears it. A double-click flies to the feature when "Fly to features" is on (its two
   // clicks are not taken as clear-again).
-  const geometryOf = (r) => featureById(def, r.id)?.geometry ?? (r.lon != null ? { type: 'Point', coordinates: [r.lon, r.lat] } : null);
+  const geometryOf = (r) => extentGeometry(featureById(def, r.id)) ?? (r.lon != null ? { type: 'Point', coordinates: [r.lon, r.lat] } : null);
   const pick = (r) => (isBlocks ? select(r.id, false) : setPicked(r.id));
   const onRow = (e, r) => {
     if (e.detail > 1) return;

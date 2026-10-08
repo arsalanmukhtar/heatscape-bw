@@ -168,25 +168,29 @@ function LiveStatus({ id }) {
   );
 }
 
-function Row({ Icon, label, title, kind, active, actions, children, badge }) {
+function Row({ Icon, label, title, kind, active, actions, children, badge, marker }) {
   return (
     <li className={`border bg-field ${active ? 'border-accent-line' : 'border-border'}`}>
       <div className="flex items-start gap-2.5 py-1.5 pl-2 pr-1">
-        {/* Geometry icon; hover or keyboard focus shows the layer kind beside it. */}
-        <span
-          tabIndex={0}
-          aria-label={kind.detail ? `${kind.type}, ${kind.detail}` : kind.type}
-          className="group/kind relative mt-0.5 grid size-6 shrink-0 cursor-default place-items-center border border-border bg-surface-raised text-muted hover:border-border-strong hover:text-text"
-        >
-          <Icon size={13} aria-hidden />
+        {/* Geometry icon; hover or keyboard focus shows the layer kind beside it. Below it, the
+            active-query filter (marker). */}
+        <div className="flex shrink-0 flex-col justify-between gap-1.5 self-stretch py-1">
           <span
-            role="tooltip"
-            className="pointer-events-none invisible absolute left-full top-1/2 z-40 ml-2 flex -translate-x-1 -translate-y-1/2 flex-col gap-0.5 whitespace-nowrap border border-border-strong bg-surface-strong px-2.5 py-1.5 opacity-0 shadow-[var(--shadow-glass)] transition-[opacity,transform,visibility] duration-150 ease-out group-hover/kind:visible group-hover/kind:translate-x-0 group-hover/kind:opacity-100 group-focus-visible/kind:visible group-focus-visible/kind:translate-x-0 group-focus-visible/kind:opacity-100"
+            tabIndex={0}
+            aria-label={kind.detail ? `${kind.type}, ${kind.detail}` : kind.type}
+            className="group/kind relative grid size-5 shrink-0 cursor-default place-items-center border border-border bg-surface-raised text-muted hover:border-border-strong hover:text-text"
           >
-            <span className="text-xs font-semibold text-text">{kind.type}</span>
-            {kind.detail && <span className="text-2xs text-muted">{kind.detail}</span>}
+            <Icon size={12} aria-hidden />
+            <span
+              role="tooltip"
+              className="pointer-events-none invisible absolute left-full top-1/2 z-40 ml-2 flex -translate-x-1 -translate-y-1/2 flex-col gap-0.5 whitespace-nowrap border border-border-strong bg-surface-strong px-2.5 py-1.5 opacity-0 shadow-[var(--shadow-glass)] transition-[opacity,transform,visibility] duration-150 ease-out group-hover/kind:visible group-hover/kind:translate-x-0 group-hover/kind:opacity-100 group-focus-visible/kind:visible group-focus-visible/kind:translate-x-0 group-focus-visible/kind:opacity-100"
+            >
+              <span className="text-xs font-semibold text-text">{kind.type}</span>
+              {kind.detail && <span className="text-2xs text-muted">{kind.detail}</span>}
+            </span>
           </span>
-        </span>
+          {marker}
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex h-7 items-center gap-0.5">
             <span className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -237,7 +241,10 @@ function LayerItem({ def }) {
       badge={
         <>
           <LiveStatus id={def.id} />
-          {style.query?.applied && (
+        </>
+      }
+      marker={
+        style.query?.applied ? (
           <button
             type="button"
             onClick={() => {
@@ -247,12 +254,14 @@ function LayerItem({ def }) {
             }}
             aria-label={t.layers.queryActive[style.query.mode](style.query.applied)}
             title={t.layers.queryActive[style.query.mode](style.query.applied)}
-            className="grid size-5 shrink-0 place-items-center text-accent"
+            className="grid size-5 shrink-0 place-items-center border border-border bg-surface-raised text-accent/55 hover:border-border-strong hover:text-accent"
           >
-            <LuFilter size={12} />
+            <LuFilter size={11} />
           </button>
-          )}
-        </>
+        ) : (
+          // Same space without a query, so the row keeps its height.
+          <span className="size-5" aria-hidden />
+        )
       }
       active={styling}
       actions={

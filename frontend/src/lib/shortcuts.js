@@ -5,7 +5,7 @@ import { useReports, ZOOMS } from '../state/reports';
 import { useScenarios } from '../state/scenarios';
 import { useTheme } from '../state/theme';
 import { useWorkspace } from '../state/workspace';
-import { BW_BOUNDS, WORLD_VIEW } from './geo';
+import { BW_BOUNDS, DE_BOUNDS } from './geo';
 import { captureMap } from './mapSnapshot';
 
 /*
@@ -79,7 +79,7 @@ export const SHORTCUTS = [
   { id: 'zoomIn', group: 'map', combo: '=', label: s.zoomIn, run: () => mainMap?.zoomIn() },
   { id: 'zoomOut', group: 'map', combo: '-', label: s.zoomOut, run: () => mainMap?.zoomOut() },
   { id: 'north', group: 'map', combo: 'shift+n', label: s.north, run: () => mainMap?.getMap().resetNorthPitch({ duration: 500 }) },
-  { id: 'world', group: 'map', combo: 'w', label: s.world, run: () => mainMap?.flyTo({ ...WORLD_VIEW, ...FLY }) },
+  { id: 'germany', group: 'map', combo: 'w', label: s.germany, run: () => mainMap?.fitBounds(DE_BOUNDS, { padding: 40, ...FLY }) },
   { id: 'bw', group: 'map', combo: 'b', label: s.bw, run: () => mainMap?.fitBounds(BW_BOUNDS, { padding: 40, ...FLY }) },
   { id: 'controls', group: 'map', combo: 'h', label: s.controls, run: () => L().toggleMapControls(), on: () => L().mapControlsOpen },
   { id: 'ruler', group: 'map', combo: 'd', label: s.ruler, ...tool('measure') },

@@ -13,7 +13,12 @@ export const BW_BOUNDS = [
   [10.5, 49.8],
 ];
 
-/** Whole-world view for the "zoom to world" control. */
+/** Germany extent [[west, south], [east, north]] (national border, rounded out). */
+export const DE_BOUNDS = [
+  [5.86, 47.27],
+  [15.05, 55.06],
+];
+
 /** [[west, south], [east, north]] of a GeoJSON geometry. */
 export function geometryBounds(geometry) {
   let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity];
@@ -35,5 +40,3 @@ export function flyToGeometry(map, geometry) {
   if (geometry.type === 'Point') map.flyTo({ center: geometry.coordinates, zoom: Math.max(map.getZoom(), 15), duration: 800 });
   else map.fitBounds(geometryBounds(geometry), { padding: 80, maxZoom: 16, duration: 800 });
 }
-
-export const WORLD_VIEW = { center: [10, 25], zoom: 1.2 };

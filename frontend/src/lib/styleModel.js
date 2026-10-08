@@ -196,17 +196,24 @@ const OVERRIDES = {
     continuous: true,
     polygon: { fillOpacity: 0.72, outlineWidth: 0 },
   },
+  // Summer mean of the daily maxima (2 m air): a lower range than the surface temperature.
   airTemp: {
     renderer: 'graduated',
     field: 't',
     method: 'equal',
     classCount: 9,
     rangeMode: 'manual',
-    rangeMin: TEMP_DOMAIN[0],
-    rangeMax: TEMP_DOMAIN[1],
+    rangeMin: 24,
+    rangeMax: 32,
     ramp: { id: 'heat', invert: false, stops: null },
     continuous: true,
-    line: { width: 1.2, opacity: 0.9 },
+    // Faint cell outlines, so the 1 km model grid reads as cells, not one block.
+    polygon: { fillOpacity: 0.55, outline: 'var(--text)', outlineWidth: 0.5, outlineOpacity: 0.25 },
+  },
+  // Isotherms over the air temperature cells: thin lines labelled with their level.
+  airIsotherms: {
+    line: { color: 'var(--text)', width: 1, opacity: 0.8 },
+    label: { enabled: true, field: 't', decimals: 2, size: 11, placement: { line: 'line', spacing: 300 } },
   },
   blocks: { polygon: { fill: 'var(--accent)', fillOpacity: 0.12, outline: 'var(--accent)', outlineWidth: 1 } },
   sealing: {

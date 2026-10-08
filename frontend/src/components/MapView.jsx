@@ -5,7 +5,7 @@ import { BLOCKS, REGION, SURFACE_GRID, blockBounds, blockById } from '../data/mo
 import { t } from '../i18n';
 import { resolveColor } from '../lib/color';
 import { cssVar, distanceKm } from '../lib/css';
-import { featureById, isVector, LAYERS, rasterCell, rasterCellAt } from '../lib/layers';
+import { featureShape, isVector, LAYERS, rasterCell, rasterCellAt } from '../lib/layers';
 import { addGeneratedImage } from '../lib/mapImages';
 import { MAP_FOG, MAP_PROJECTION, MAPBOX_TOKEN as TOKEN, addHatchImage } from '../lib/mapStyle';
 import { MAP_CONTAINER_ID, SNAPSHOT_EXCLUDE } from '../lib/mapSnapshot';
@@ -78,6 +78,7 @@ function LiveMap() {
   const measuresAdded = useMeasures((s) => s.added);
   const statusLog = useMeasures((s) => s.statusLog);
   const liveData = useLive((s) => s.data);
+  const shapes = useLive((s) => s.shapes);
   const { selectedId: measureId, select: selectMeasure, drawing, shaping } = useMeasures();
   const showRightView = useLayout((s) => s.showRightView);
   const selectedMeasure = allMeasures(measuresAdded, statusLog).find((m) => m.id === measureId);
@@ -137,14 +138,23 @@ function LiveMap() {
   }, [styles, layers, resolved, measuresAdded, statusLog, liveData, pixel, measureId, selectedId, popup, rowHighlight]);
 
   // Yellow ground highlight in exact geometry (from the layer data, not the tile-clipped
-  // rendered shape): the popup's feature and the attribute table's highlighted row.
+  // rendered shape): the popup's feature and the attribute table's highlighted row. Tiled
+  // layers fetch the unit's whole geometry first (nothing is lit until it arrives, never a
+  // tile's part of it).
+  const highlighted = useMemo(() => [popup && layers[popup.item.layer] && { layer: popup.item.layer, id: popup.item.props?.id, fallback: popup.item.geometry }, rowHighlight].filter((x) => x && x.id != null), [popup, rowHighlight, layers]);
+  useEffect(() => {
+    highlighted.forEach((x) => LAYERS.find((d) => d.id === x.layer)?.tiles && useLive.getState().loadShape(x.layer, x.id));
+  }, [highlighted]);
   const popFeature = useMemo(() => {
-    const geometryOf = (layer, id, fallback) => featureById(LAYERS.find((d) => d.id === layer), id)?.geometry ?? fallback ?? null;
+    const geometryOf = ({ layer, id, fallback }) => {
+      const def = LAYERS.find((d) => d.id === layer);
+      return featureShape(def, id) ?? (def?.tiles ? null : (fallback ?? null));
+    };
     // The popup follows its layer's visibility; a table row stays lit even if its layer is off.
-    const geometries = [popup && layers[popup.item.layer] && geometryOf(popup.item.layer, popup.item.props?.id, popup.item.geometry), rowHighlight && geometryOf(rowHighlight.layer, rowHighlight.id)].filter(Boolean);
+    const geometries = highlighted.map(geometryOf).filter(Boolean);
     return geometries.length ? { type: 'FeatureCollection', features: geometries.map((geometry) => ({ type: 'Feature', properties: {}, geometry })) } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [popup, rowHighlight, layers, liveData, measuresAdded, statusLog]);
+  }, [highlighted, liveData, shapes, measuresAdded, statusLog]);
 
   // Identified raster pixel, outlined on the ground (a raster in 3D highlights its column instead).
   const pixelCell = useMemo(() => {

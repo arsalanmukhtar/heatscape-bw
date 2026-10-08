@@ -1,15 +1,21 @@
 /*
-  MOCK rasters as PNG image sources. Each cell value is written into the red channel
+  Rasters (live grids from /api/heat) as PNG image sources. Each cell value is written into the red channel
   (1–255, 0 = no data) and decoded on the GPU through raster-color-mix, so raster-color
   can colour the real values (°C, hazard class) with any ramp or palette.
   Continuous rasters map their [min, max] onto 1–255; classified rasters store the class.
 */
-const cache = new Map();
+// One image per loaded grid (a new grid after a reload gets a new image).
+const cache = new WeakMap();
+// Before the data arrive: one no-data cell over the grid's bounds (draws nothing).
+const PLACEHOLDER = { cols: 1, rows: 1, values: [null] };
 
 export function rasterSource(def) {
-  if (cache.has(def.id)) return cache.get(def.id);
-  const { cols, rows, values, bounds } = def.raster;
-  const data = values.filter((v) => v != null);
+  const grid = def.raster;
+  if (cache.has(grid)) return cache.get(grid);
+  const ready = grid.cols > 0 && grid.values.some((v) => v != null);
+  const { cols, rows, values } = ready ? grid : PLACEHOLDER;
+  const { bounds } = grid;
+  const data = ready ? values.filter((v) => v != null) : [0, 1];
   const classified = def.kind === 'classified';
   const lo = classified ? 0 : Math.min(...data);
   const hi = classified ? 255 : Math.max(...data);
@@ -37,6 +43,6 @@ export function rasterSource(def) {
     nodata: classified ? 0 : lo - step,
     range: classified ? [0, Math.max(...data)] : [lo - step, hi],
   };
-  cache.set(def.id, source);
+  cache.set(grid, source);
   return source;
 }

@@ -103,8 +103,9 @@ export function blockBounds(b) {
   ];
 }
 
-/* Synthetic surface-temperature field on a ~250 m grid: warm in the dense centre and
-   the industrial north, cooler along the Rhine and in the Käfertal forest. */
+/* MOCK synthetic surface-temperature field on a ~250 m grid (scenario priority map, portal
+   area result, analysis grid; the Surface Temp layer itself is live Landsat data): warm in
+   the dense centre and the industrial north, cooler along the Rhine and the Käfertal forest. */
 const GRID = { west: 8.42, east: 8.6, south: 49.43, north: 49.56, dLon: 0.0035, dLat: 0.00225 };
 
 function heatAt(lon, lat, noise) {
@@ -143,7 +144,6 @@ function grid(scale, offset, seed, prefix) {
 }
 
 export const SURFACE_GRID = grid(1, 0, 7, 'S');
-export const AIR_GRID = grid(4, -3.5, 11, 'A');
 
 /** Sealing points on a ~500 m grid, sized by sealed share. */
 export const SEALING_POINTS = (() => {
@@ -166,42 +166,6 @@ export const SEALING_POINTS = (() => {
   }
   return { type: 'FeatureCollection', features };
 })();
-
-/*
-  MOCK rasters on a ~125 m grid over the study area. values: row-major from the north-west
-  corner, null = no data (the Rhine strip along the western edge).
-  LST_RASTER: land surface temperature, °C. HAZARD_RASTER: heat hazard class 1–5.
-*/
-function rasterGrid(seed, valueAt) {
-  const rand = rng(seed);
-  const dLon = GRID.dLon / 2;
-  const dLat = GRID.dLat / 2;
-  const cols = Math.round((GRID.east - GRID.west) / dLon);
-  const rows = Math.round((GRID.north - GRID.south) / dLat);
-  const values = new Array(cols * rows);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const lon = GRID.west + (c + 0.5) * dLon;
-      const lat = GRID.north - (r + 0.5) * dLat;
-      values[r * cols + c] = lon < 8.428 ? null : valueAt(heatAt(lon, lat, (rand() - 0.5) * 1.2));
-    }
-  }
-  return { bounds: [GRID.west, GRID.south, GRID.west + cols * dLon, GRID.north], cols, rows, values };
-}
-
-export const LST_RASTER = { ...rasterGrid(31, round1), unit: '°C' };
-export const HAZARD_CLASSES = [
-  { value: 1, label: 'Very low' },
-  { value: 2, label: 'Low' },
-  { value: 3, label: 'Moderate' },
-  { value: 4, label: 'High' },
-  { value: 5, label: 'Very high' },
-];
-export const HAZARD_RASTER = {
-  ...rasterGrid(37, (t) => (t >= 39.5 ? 5 : t >= 37 ? 4 : t >= 34.5 ? 3 : t >= 32 ? 2 : 1)),
-  unit: '',
-  classes: HAZARD_CLASSES,
-};
 
 /*
   MOCK adaptation measures register (Mannheim; illustrative only, not real projects).
